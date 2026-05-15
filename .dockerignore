@@ -1,0 +1,40 @@
+# Build artifacts — Dockerfile rebuilds them inside the image.
+node_modules
+dist
+dist-server
+
+# Runtime data volume — mounted via -v, must not be baked in.
+data
+
+# Host-arch obscura binary (tracked for local dev). Builder downloads the
+# correct linux binary inside the image; leaking the host binary would
+# produce a wrong-arch executable at /app/bin/obscura.
+bin
+
+# Version control & editor metadata.
+.git
+.github
+.gitignore
+.vscode
+.idea
+
+# Logs & misc.
+*.log
+.DS_Store
+tmp
+.tmp
+
+# Test outputs.
+coverage
+
+# AI-agent collaboration assets (no runtime value; keeps builder cache stable).
+src/docs
+skills
+rules
+guidelines
+CLAUDE.md
+AGENTS.md
+DESIGN.md
+EXAMPLES.md
+ATTRIBUTIONS.md
+README.md

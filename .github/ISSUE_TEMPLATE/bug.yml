@@ -1,0 +1,76 @@
+name: 🐛 Bug 报告 / Bug report
+description: 报告一个 PenTou 的可复现问题
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢报告问题。请尽量提供复现步骤与环境信息，便于定位。
+        Thanks for reporting. Please include reproducible steps and environment info.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 现象 / What happened
+      description: 简要描述实际现象，与你期望的行为之间的差异。
+      placeholder: 我点击了 X，期望 Y，实际看到 Z。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      placeholder: |
+        1. 启动 PenTou (docker run ...)
+        2. 点击侧边栏 "导入"
+        3. 上传 X 文件
+        4. 看到错误 Y
+    validations:
+      required: true
+
+  - type: input
+    id: pentou-version
+    attributes:
+      label: PenTou 版本 / Version
+      description: 镜像 tag 或 git commit
+      placeholder: "ghcr.io/startppt/pentou:v1.0.0 或 abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deploy-mode
+    attributes:
+      label: 部署形态 / Deployment
+      options:
+        - Docker (single command)
+        - Docker Compose
+        - Local dev (pnpm dev)
+        - Local prod (pnpm build:all && pnpm start)
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统 / OS
+      placeholder: "macOS 14.5 / Ubuntu 22.04 / Synology DSM 7.2 ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / Logs
+      description: docker logs 或浏览器 DevTools 中的相关错误。请去掉密码、cookie 等敏感信息。
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 自查 / Pre-flight
+      options:
+        - label: 我已搜索过已有 issues，没有重复
+          required: true
+        - label: 我已去掉报告中的敏感信息（密码、token、个人数据）
+          required: true

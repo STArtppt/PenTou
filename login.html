@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PenTou · 登录</title>
+  <style>
+    :root { color-scheme: light dark; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font: 14px/1.5 system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+      min-height: 100vh; display: grid; place-items: center;
+      background: #fafafa; color: #18181b;
+    }
+    @media (prefers-color-scheme: dark) { body { background: #18181b; color: #e4e4e7; } }
+    form {
+      width: 320px; padding: 32px; border-radius: 12px;
+      background: var(--card,#fff); box-shadow: 0 8px 32px rgba(0,0,0,.08);
+    }
+    @media (prefers-color-scheme: dark) { form { --card: #27272a; box-shadow: none; } }
+    h1 { margin: 0 0 24px; font-size: 22px; text-align: center; }
+    label { display: block; font-size: 12px; margin-bottom: 6px; opacity: .7; }
+    input {
+      width: 100%; padding: 10px 12px; border-radius: 8px;
+      border: 1px solid #d4d4d8; box-sizing: border-box;
+      font-size: 14px; background: inherit; color: inherit;
+    }
+    @media (prefers-color-scheme: dark) { input { border-color: #3f3f46; } }
+    button {
+      margin-top: 16px; width: 100%; padding: 10px; border-radius: 8px;
+      border: 0; background: #18181b; color: #fff;
+      font-size: 14px; cursor: pointer;
+    }
+    @media (prefers-color-scheme: dark) { button { background: #fafafa; color: #18181b; } }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .err { color: #dc2626; font-size: 12px; margin-top: 8px; min-height: 1em; }
+  </style>
+</head>
+<body>
+  <form id="f" novalidate>
+    <h1>PenTou</h1>
+    <label for="pwd">密码 / Password</label>
+    <input id="pwd" type="password" autocomplete="current-password" required autofocus />
+    <button id="btn" type="submit">登录 / Sign in</button>
+    <div class="err" id="err" aria-live="polite"></div>
+  </form>
+<script>
+  const f = document.getElementById('f');
+  const btn = document.getElementById('btn');
+  const err = document.getElementById('err');
+  const pwd = document.getElementById('pwd');
+  const T = (navigator.language || 'en').toLowerCase().startsWith('zh')
+    ? { tooMany: (s) => `尝试次数过多，请 ${s}s 后重试`, bad: '密码错误', net: '网络错误' }
+    : { tooMany: (s) => `Too many attempts, retry in ${s}s`, bad: 'Invalid password', net: 'Network error' };
+
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      const r = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: pwd.value }),
+      });
+      if (r.status === 204) { location.href = '/'; return; }
+      if (r.status === 429) {
+        const d = await r.json().catch(() => ({}));
+        err.textContent = T.tooMany(d.retryAfterSec || 60);
+      } else {
+        err.textContent = T.bad;
+      }
+    } catch {
+      err.textContent = T.net;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

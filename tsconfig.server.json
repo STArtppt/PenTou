@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "outDir": "dist-server",
+    "rootDir": ".",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "isolatedModules": false,
+    "verbatimModuleSyntax": false,
+    "useDefineForClassFields": true,
+    "jsx": "preserve",
+    "types": ["node"]
+  },
+  "include": [
+    "src/server/**/*.ts",
+    "vite-plugins/**/*.ts",
+    "src/app/parsers.ts"
+  ],
+  "exclude": [
+    "src/server/**/*.test.ts",
+    "node_modules",
+    "dist",
+    "dist-server"
+  ]
+}

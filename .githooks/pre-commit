@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Pentou public branch — block AI-workflow / internal files from being committed.
+# Only enforced on the `public` branch so the local `main` archive is unaffected.
+set -e
+
+# Use symbolic-ref so this works even on a fresh orphan branch
+# (before its first commit, where `git rev-parse --abbrev-ref HEAD` errors out).
+CURRENT=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
+if [ "$CURRENT" != "public" ]; then
+  exit 0
+fi
+
+# Entire src/docs/ is the spec-driven internal collab tree — never publish.
+# User-facing docs live under top-level docs/ (curated by the maintainer).
+BLACKLIST_REGEX='^(CLAUDE\.md|AGENTS\.md|EXAMPLES\.md|DESIGN\.md|skills/|rules/|guidelines/|\.claude/|\.waylog/|src/docs/)'
+
+OFFENDERS=$(git diff --cached --name-only --diff-filter=ACM | grep -E "$BLACKLIST_REGEX" || true)
+
+if [ -n "$OFFENDERS" ]; then
+  echo "❌ pre-commit blocked: the following paths are blacklisted on the public branch:"
+  echo "$OFFENDERS" | sed 's/^/   /'
+  echo ""
+  echo "If you intended to commit on main, run: git reset && git checkout main"
+  echo "If a doc here truly belongs in the open-source repo, move it to top-level docs/ first."
+  exit 1
+fi

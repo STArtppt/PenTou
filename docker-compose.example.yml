@@ -1,0 +1,23 @@
+# PenTou — sample docker-compose. Copy to compose.yml, fill .env, then
+#   docker compose up -d
+# See docs/deployment.md for full deployment notes.
+
+services:
+  pentou:
+    image: ghcr.io/startppt/pentou:latest   # pin to vX.Y.Z in production
+    container_name: pentou
+    restart: unless-stopped
+    ports:
+      # 127.0.0.1 binding keeps the container off the public network;
+      # terminate TLS with your own reverse proxy (Caddy / Nginx / NPM / Traefik).
+      - "127.0.0.1:7766:7766"
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7766/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
