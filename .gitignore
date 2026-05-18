@@ -25,8 +25,8 @@ vite.config.*.timestamp-*
 .env.development
 
 # Local data
-data/conversations/
-data/documents/
+data/conversations/*
+data/documents/*
 data/.session-secret
 data/document-folders.json
 data/folders.json
