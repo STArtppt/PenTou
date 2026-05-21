@@ -124,6 +124,8 @@ jobs:
         run: |
           set -e
           test -x .githooks/pre-commit || { echo "::error::.githooks/pre-commit 缺失或不可执行"; exit 1; }
+          # hook 设计为仅在 public 分支生效；GitHub 上分支叫 main，需重命名模拟 maintainer 场景
+          git checkout -B public
           git config user.email "audit@example.com"
           git config user.name "audit-bot"
           git config core.hooksPath .githooks
@@ -141,8 +143,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
