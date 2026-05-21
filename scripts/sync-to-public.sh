@@ -79,12 +79,12 @@ fi
 
 COMMITS="$(git log --reverse --pretty=format:'%H' "$FROM..$TO")"
 if [ -z "$COMMITS" ]; then
-  echo "✓ 无待同步 commit（$FROM..$TO）"
+  echo "✓ 无待同步 commit（${FROM}..${TO}）"
   exit 0
 fi
 
 echo ""
-echo "待同步 commit（$FROM..$TO）："
+echo "待同步 commit（${FROM}..${TO}）："
 git log --reverse --oneline "$FROM..$TO"
 echo ""
 
