@@ -10,6 +10,7 @@ import { RightNav } from "./RightNav";
 import { useTranslation } from "../i18n";
 import { convertConversationToDocument, LLMError } from "../llm";
 import { excerptConversationToDoc, generateDocId, mergeRewriteWithExistingBody } from "../doc-utils";
+import { copyText } from "../utils/clipboard";
 
 export function ChatBody() {
   const {
@@ -230,11 +231,10 @@ function CodeBlock({ children, className }: any) {
   const language = className ? className.replace(/language-/, "") : "snippet";
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
+    if (await copyText(text)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    }
   };
 
   return (
@@ -273,11 +273,10 @@ function MessageHeader({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(content);
+    if (await copyText(content)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    }
   };
 
   return (

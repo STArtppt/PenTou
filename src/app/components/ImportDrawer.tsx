@@ -18,6 +18,7 @@ import {
   Check,
 } from "lucide-react";
 import clsx from "clsx";
+import { copyText } from "../utils/clipboard";
 import { useAppContext } from "../data";
 import { parseFileContent } from "../parsers";
 import { useTranslation } from "../i18n";
@@ -398,7 +399,7 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
   };
 
   const copyHint = async (hint: string, idx: number) => {
-    await navigator.clipboard.writeText(hint).catch(() => {});
+    await copyText(hint);
     setCopiedIdx(idx);
     setTimeout(() => setCopiedIdx(null), 2000);
   };

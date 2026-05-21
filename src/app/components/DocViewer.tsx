@@ -7,6 +7,7 @@ import { useAppContext, Annotation } from "../data";
 import { captureAnnotationFromSelection } from "../annotations";
 import { generateAnnotationId, extractHeadings, slugify } from "../doc-utils";
 import { useTranslation } from "../i18n";
+import { copyText } from "../utils/clipboard";
 
 interface Props {
   docId: string;
@@ -331,11 +332,10 @@ function DocCodeBlock({ children, className }: any) {
   const language = className ? className.replace(/language-/, "") : "snippet";
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
+    if (await copyText(text)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    }
   };
 
   return (

@@ -1,4 +1,5 @@
 import type { Document, ObsidianConfig } from "./data";
+import { copyText } from "./utils/clipboard";
 
 export const OBSIDIAN_URI_SAFE_LIMIT = 8000;
 
@@ -21,7 +22,8 @@ export async function exportToObsidian(
   const uri = buildObsidianUri(doc, cfg);
 
   if (uri.length > OBSIDIAN_URI_SAFE_LIMIT) {
-    await navigator.clipboard.writeText(doc.body);
+    const ok = await copyText(doc.body);
+    if (!ok) throw new Error("Copy to clipboard failed");
     return { mode: "clipboard", charCount: doc.body.length };
   }
 
