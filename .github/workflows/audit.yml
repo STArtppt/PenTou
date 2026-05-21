@@ -1,0 +1,151 @@
+name: audit
+
+# 把 guide.md §6 验收矩阵自动化。
+# 仅在 GitHub 上跑（本地 / 内网 Gitea 不识别 GitHub Actions 语法，天然不会跑），
+# 因此期望仓库已经是 public 分支同步后的"干净"状态（不含 CLAUDE.md / skills/ / src/docs/ 等）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  blacklist:
+    name: 黑名单（AI 流程产物 + 隐私字段）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 不应存在的路径
+        run: |
+          set -e
+          fail=0
+          for path in CLAUDE.md AGENTS.md EXAMPLES.md skills rules guidelines src/docs .claude .waylog .drafts .trae; do
+            if [ -e "$path" ]; then
+              echo "::error::黑名单路径仍存在: $path"
+              fail=1
+            fi
+          done
+          if find . -name "spec.md" -not -path "./node_modules/*" -print 2>/dev/null | grep -q .; then
+            echo "::error::仓库中仍存在 spec.md:"
+            find . -name "spec.md" -not -path "./node_modules/*" -print
+            fail=1
+          fi
+          if find . -name "implementation-log.md" -not -path "./node_modules/*" -print 2>/dev/null | grep -q .; then
+            echo "::error::仓库中仍存在 implementation-log.md"
+            fail=1
+          fi
+          exit $fail
+
+      - name: 隐私 / 旧字段字符串
+        run: |
+          set -e
+          # 排除 audit.yml 自身（它必然包含这些字串作为检测样本）。
+          patterns=(
+            "chao_sun01"
+            "KirbyEleanor911"
+            "192\\.168\\.50\\.125"
+            "@figma/my-make-file"
+            "forrestchang/andrej-karpathy-skills"
+          )
+          fail=0
+          for p in "${patterns[@]}"; do
+            if git grep -nE "$p" -- ':!.github/workflows/audit.yml' 2>/dev/null; then
+              echo "::error::命中黑名单模式: $p"
+              fail=1
+            fi
+          done
+          exit $fail
+
+  required-files:
+    name: 必备文件 + 元数据
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 顶层文件齐全
+        run: |
+          set -e
+          fail=0
+          for f in LICENSE README.md README.en.md CONTRIBUTING.md SECURITY.md docs/deployment.md .githooks/pre-commit; do
+            if [ ! -f "$f" ]; then
+              echo "::error::缺少必备文件: $f"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: LICENSE 是 MIT
+        run: |
+          head -1 LICENSE | grep -q "^MIT License" || { echo "::error::LICENSE 首行不是 'MIT License'"; exit 1; }
+
+      - name: package.json 元数据完整
+        run: |
+          node -e '
+            const p = require("./package.json");
+            const required = ["name","description","license","repository","author","homepage","keywords"];
+            const missing = required.filter(k => !p[k]);
+            if (missing.length) { console.error("::error::package.json 缺少字段: " + missing.join(", ")); process.exit(1); }
+            if (p.name === "@figma/my-make-file") { console.error("::error::package.json name 仍是 @figma/my-make-file"); process.exit(1); }
+            if (p.license !== "MIT") { console.error("::error::package.json license 不是 MIT"); process.exit(1); }
+          '
+
+      - name: docs/deployment.md 无内部引用残留
+        run: |
+          if grep -nE "prd\\.md|architecture\\.md|spec\\.md|implementation-log|src/docs/features" docs/deployment.md; then
+            echo "::error::docs/deployment.md 仍含内部文档引用"
+            exit 1
+          fi
+
+      - name: README / docker-compose 不引用 src/docs/
+        run: |
+          set -e
+          fail=0
+          if grep -nE "src/docs/" README.md 2>/dev/null; then
+            echo "::error::README.md 仍引用 src/docs/"
+            fail=1
+          fi
+          if [ -f docker-compose.example.yml ] && grep -nE "src/docs/" docker-compose.example.yml 2>/dev/null; then
+            echo "::error::docker-compose.example.yml 仍引用 src/docs/"
+            fail=1
+          fi
+          exit $fail
+
+  pre-commit-hook:
+    name: pre-commit 钩子能拦黑名单
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 模拟尝试提交 CLAUDE.md（期望被拦）
+        run: |
+          set -e
+          test -x .githooks/pre-commit || { echo "::error::.githooks/pre-commit 缺失或不可执行"; exit 1; }
+          git config user.email "audit@example.com"
+          git config user.name "audit-bot"
+          git config core.hooksPath .githooks
+          touch CLAUDE.md
+          git add CLAUDE.md
+          if git commit -m "audit: should fail" 2>&1; then
+            echo "::error::pre-commit 未拦截 CLAUDE.md"
+            exit 1
+          fi
+          echo "::notice::pre-commit 钩子按预期阻止 CLAUDE.md"
+
+  build:
+    name: 应用可构建
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
