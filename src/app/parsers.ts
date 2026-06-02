@@ -203,8 +203,85 @@ export function parseChatGPTExport(json: any): Conversation[] {
 
 // ── 3. CLI JSONL ──────────────────────────────────────────────────────────────
 
+/**
+ * Codex CLI / Desktop rollout-*.jsonl format.
+ * Lines wrap everything under `payload`; the clean human↔AI dialogue lives in
+ * `event_msg` entries (user_message / agent_message), free of system prompts and
+ * tool-call noise. Falls back to `response_item` messages when no event_msg
+ * dialogue is present.
+ */
+function parseCodexRollout(lines: string[]): Conversation | null {
+  const messages: Message[] = [];
+  const fallback: Message[] = [];
+  let title = "";
+  let date = "";
+
+  for (const line of lines) {
+    let obj: any;
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    if (obj.type === "session_meta" && obj.payload?.timestamp && !date) {
+      date = obj.payload.timestamp;
+    }
+
+    const payload = obj.payload;
+    if (!payload) continue;
+
+    // Primary source: clean user/agent dialogue.
+    if (obj.type === "event_msg" && (payload.type === "user_message" || payload.type === "agent_message")) {
+      const role: "user" | "ai" = payload.type === "user_message" ? "user" : "ai";
+      const content = typeof payload.message === "string" ? payload.message.trim() : "";
+      if (!content) continue;
+      const ts = obj.timestamp ?? date ?? new Date().toISOString();
+      if (!date) date = ts;
+      if (!title && role === "user") title = content.slice(0, 80).split("\n")[0];
+      messages.push(makeMsg(role, content, ts));
+    }
+
+    // Fallback source: response_item messages (skip developer/system instructions).
+    else if (obj.type === "response_item" && payload.type === "message" && (payload.role === "user" || payload.role === "assistant")) {
+      const role: "user" | "ai" = payload.role === "user" ? "user" : "ai";
+      const content = (Array.isArray(payload.content) ? payload.content : [])
+        .map((c: any) => (typeof c?.text === "string" ? c.text : ""))
+        .join("\n")
+        .trim();
+      if (!content) continue;
+      const ts = obj.timestamp ?? date ?? new Date().toISOString();
+      fallback.push(makeMsg(role, content, ts));
+    }
+  }
+
+  const finalMessages = messages.length > 0 ? messages : fallback;
+  if (finalMessages.length === 0) return null;
+
+  if (!title) {
+    const firstUser = finalMessages.find((m) => m.role === "user");
+    title = (firstUser?.content ?? finalMessages[0].content).slice(0, 80).split("\n")[0];
+  }
+
+  return {
+    id: makeId(),
+    title: title || "Codex Conversation",
+    platform: "Codex",
+    date: date || finalMessages[0].timestamp,
+    folderId: null,
+    messages: finalMessages,
+  };
+}
+
 export function parseJsonl(jsonlText: string): Conversation | null {
   const lines = jsonlText.split("\n").filter((l) => l.trim());
+
+  // Codex rollout files nest messages under `payload`; detect and route them.
+  if (/"type"\s*:\s*"(?:session_meta|event_msg|response_item)"/.test(jsonlText)) {
+    const conv = parseCodexRollout(lines);
+    if (conv) return conv;
+  }
+
   const messages: Message[] = [];
   let title = "";
   let date = new Date().toISOString();
