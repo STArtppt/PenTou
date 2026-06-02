@@ -95,6 +95,39 @@ export async function fetchHtmlWithObscura(url: string): Promise<string> {
     }
   }
 
+  if (url.includes("gemini.google.com/share/")) {
+    const shareId = url.match(/\/share\/([^/?#]+)/)?.[1];
+    if (shareId) {
+      try {
+        const rpcPayload = [[["ujx1Bf", JSON.stringify([null, shareId, [4]]), null, "generic"]]];
+        const apiUrl = new URL("https://gemini.google.com/_/BardChatUi/data/batchexecute");
+        apiUrl.searchParams.set("rpcids", "ujx1Bf");
+        apiUrl.searchParams.set("source-path", `/share/${shareId}`);
+        apiUrl.searchParams.set("hl", "zh-CN");
+        apiUrl.searchParams.set("rt", "c");
+
+        const res = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            ...BROWSER_HEADERS,
+            "Accept": "application/json,text/plain,*/*",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "Origin": "https://gemini.google.com",
+            "Referer": url,
+          },
+          body: new URLSearchParams({ "f.req": JSON.stringify(rpcPayload), at: "" }),
+        });
+        const text = await res.text();
+        const data = parseGeminiBatchExecuteResponse(text);
+        if (res.ok && data?.[0]?.[1]) {
+          return JSON.stringify({ __GEMINI_API_PAYLOAD__: data });
+        }
+      } catch (e) {
+        console.warn("Native Gemini API fetch failed", e);
+      }
+    }
+  }
+
   // DeepSeek
   if (url.includes("chat.deepseek.com/share/") || url.includes("chat.deepseek.com/a/chat/s/")) {
     const match = url.match(/\/s(hare|\/chat\/s)\/([a-zA-Z0-9_-]+)/);
@@ -454,6 +487,96 @@ function parseMetasoApiPayload(data: any): any[] {
   }];
 }
 
+function parseGeminiBatchExecuteResponse(text: string): any | null {
+  for (const line of text.split("\n")) {
+    if (!line.startsWith("[[")) continue;
+
+    try {
+      const envelope = JSON.parse(line);
+      for (const entry of envelope) {
+        if (entry?.[0] === "wrb.fr" && entry?.[1] === "ujx1Bf" && typeof entry?.[2] === "string") {
+          return JSON.parse(entry[2]);
+        }
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+function geminiTimestamp(value: any, fallback: string): string {
+  if (!Array.isArray(value) || typeof value[0] !== "number") return fallback;
+  const millis = value[0] * 1000 + Math.floor((typeof value[1] === "number" ? value[1] : 0) / 1_000_000);
+  return new Date(millis).toISOString();
+}
+
+function extractGeminiUserText(request: any): string {
+  const parts = request?.[0];
+  if (!Array.isArray(parts)) return "";
+
+  return parts
+    .map((part: any) => typeof part === "string" ? part.trim() : "")
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+}
+
+function extractGeminiResponseText(response: any): string {
+  const candidates = [
+    response?.[0]?.[0]?.[1],
+    response?.[0]?.[1],
+    response?.[0]?.[11]?.[0],
+    response?.[11]?.[0],
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      const text = candidate
+        .map((part: any) => typeof part === "string" ? part.trim() : "")
+        .filter(Boolean)
+        .join("\n\n")
+        .trim();
+      if (text) return text;
+    }
+
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+
+  return "";
+}
+
+function parseGeminiApiPayload(data: any): any[] {
+  const date = new Date().toISOString();
+  const conversation = data?.[0];
+  const turns = conversation?.[1];
+  if (!Array.isArray(turns) || turns.length === 0) {
+    throw new Error("Gemini API payload did not contain any messages.");
+  }
+
+  const messages: any[] = [];
+  for (const turn of turns) {
+    const timestamp = geminiTimestamp(turn?.[4], date);
+    const userText = extractGeminiUserText(turn?.[2]);
+    const aiText = extractGeminiResponseText(turn?.[3]);
+
+    if (userText) messages.push(makeMsg("user", userText, timestamp));
+    if (aiText) messages.push(makeMsg("ai", aiText, timestamp));
+  }
+
+  if (messages.length === 0) {
+    throw new Error("Gemini API payload did not contain any message text.");
+  }
+
+  return [{
+    id: makeId(),
+    title: conversation?.[2]?.[1] || messages[0].content.slice(0, 80).split("\n")[0],
+    platform: "Gemini",
+    date,
+    folderId: null,
+    messages,
+  }];
+}
+
 function assertNoKnownUnavailablePage(url: string, $: cheerio.CheerioAPI): void {
   const bodyText = $("body").text().replace(/\s+/g, " ").trim();
   const pageTitle = getPageTitle($);
@@ -469,6 +592,10 @@ function assertNoKnownUnavailablePage(url: string, $: cheerio.CheerioAPI): void 
   if (url.includes("metaso.cn") && (bodyText.includes("NEXT_NOT_FOUND") || bodyText.includes("您访问的页面找不到了"))) {
     throw new Error("Metaso share content is unavailable or not found.");
   }
+
+  if (url.includes("gemini.google.com/share/") && bodyText.includes("Gemini 显示的信息") && bodyText.includes("登录")) {
+    throw new Error("Gemini share content is not readable from the rendered shell; the structured share API returned no messages.");
+  }
 }
 
 export async function parseSharedLinkData(url: string, html: string): Promise<any[]> {
@@ -480,6 +607,11 @@ export async function parseSharedLinkData(url: string, html: string): Promise<an
   if (html.startsWith('{"__METASO_API_PAYLOAD__"')) {
     const payload = JSON.parse(html);
     return parseMetasoApiPayload(payload.__METASO_API_PAYLOAD__);
+  }
+
+  if (html.startsWith('{"__GEMINI_API_PAYLOAD__"')) {
+    const payload = JSON.parse(html);
+    return parseGeminiApiPayload(payload.__GEMINI_API_PAYLOAD__);
   }
 
   // Check if we intercepted an API payload directly (e.g. DeepSeek)

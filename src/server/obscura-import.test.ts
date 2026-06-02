@@ -73,6 +73,50 @@ describe("share-link import unavailable pages", () => {
     ]);
   });
 
+  it("extracts Gemini share messages from batchexecute payload", async () => {
+    const payload = {
+      __GEMINI_API_PAYLOAD__: [
+        [
+          null,
+          [
+            [
+              ["c_1", "r_1"],
+              null,
+              [["你是AGI时代各种业务领域的最佳实践挖掘大师"], 2],
+              [[["rc_1", ["太棒了，我已经准备好一起挖掘最佳实践。"]]]],
+              [1773998143, 508633000],
+            ],
+            [
+              ["c_1", "r_2"],
+              ["c_1", "r_1", "rc_1"],
+              [["帮我找找围绕obsidian打造的智能体"], 2],
+              [[["rc_2", ["可以从文件系统流、MCP 协议流和 Git 同步流三个方向设计。"]]]],
+              [1773998268, 282891000],
+            ],
+          ],
+          [true, "AGI 业务实践挖掘工作流"],
+          "270df6c1295f",
+        ],
+        null,
+        false,
+      ],
+    };
+
+    const [conversation] = await parseSharedLinkData(
+      "https://gemini.google.com/share/270df6c1295f",
+      JSON.stringify(payload),
+    );
+
+    expect(conversation.platform).toBe("Gemini");
+    expect(conversation.title).toBe("AGI 业务实践挖掘工作流");
+    expect(conversation.messages).toMatchObject([
+      { role: "user", content: "你是AGI时代各种业务领域的最佳实践挖掘大师" },
+      { role: "ai", content: "太棒了，我已经准备好一起挖掘最佳实践。" },
+      { role: "user", content: "帮我找找围绕obsidian打造的智能体" },
+      { role: "ai", content: "可以从文件系统流、MCP 协议流和 Git 同步流三个方向设计。" },
+    ]);
+  });
+
   it("extracts Doubao share messages from streamed router data", async () => {
     const routerArgs = JSON.stringify([
       "thread_(token)/page",
@@ -172,5 +216,21 @@ describe("share-link import unavailable pages", () => {
 
     await expect(parseSharedLinkData("https://metaso.cn/s/dead", html))
       .rejects.toThrow("Metaso share content is unavailable");
+  });
+
+  it("rejects Gemini rendered shell instead of importing login text", async () => {
+    const html = `
+      <html>
+        <head><title>Gemini</title></head>
+        <body>
+          <a>登录</a>
+          <h1>AGI 业务实践挖掘工作流</h1>
+          <p>Gemini 显示的信息（包括与人相关的信息）不一定准确，请注意核查。</p>
+        </body>
+      </html>
+    `;
+
+    await expect(parseSharedLinkData("https://gemini.google.com/share/dead", html))
+      .rejects.toThrow("Gemini share content is not readable");
   });
 });
