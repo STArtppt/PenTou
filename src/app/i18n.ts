@@ -187,9 +187,18 @@ export const translations = {
     "version.type.conversation-excerpt": "Conversation Excerpt",
     "version.type.pre-llm-rewrite": "Pre-rewrite Snapshot",
     "version.type.llm-rewrite": "AI Rewrite",
+    "version.type.pre-import-overwrite": "Pre-merge Snapshot",
     "version.type.pre-rollback": "Pre-rollback Snapshot",
     "version.type.rolled-back-from": "Rolled Back",
     "version.basedOn": "Based on {n} annotation(s)",
+    "version.updatedAt": "Updated {time}",
+    // Import dedup summary (non-blocking toast)
+    "import.summary.created": "Created {n}",
+    "import.summary.merged": "Merged {n}",
+    "import.summary.skipped": "Skipped {n}",
+    "import.summary.mergedToast": "Merged into existing «{title}» — old content saved to version history",
+    "import.summary.skippedToast": "«{title}» already exists with identical content — skipped",
+    "import.locate": "Locate",
 
     // Rewrite confirm dialog
     "rewrite.title": "AI Rewrite Based on {n} Annotation(s)",
@@ -414,9 +423,18 @@ export const translations = {
     "version.type.conversation-excerpt": "对话摘录",
     "version.type.pre-llm-rewrite": "重写前快照",
     "version.type.llm-rewrite": "AI 重写",
+    "version.type.pre-import-overwrite": "合并前快照",
     "version.type.pre-rollback": "回滚前快照",
     "version.type.rolled-back-from": "回滚版本",
     "version.basedOn": "基于 {n} 条批注",
+    "version.updatedAt": "更新于 {time}",
+    // 导入去重合并汇总（非阻塞提示）
+    "import.summary.created": "新建 {n}",
+    "import.summary.merged": "并入 {n}",
+    "import.summary.skipped": "跳过 {n}",
+    "import.summary.mergedToast": "已并入已有会话《{title}》，旧内容已存入版本历史",
+    "import.summary.skippedToast": "《{title}》已存在且内容一致，已跳过",
+    "import.locate": "定位",
 
     // Rewrite confirm dialog
     "rewrite.title": "基于 {n} 条批注让 AI 重写文档",

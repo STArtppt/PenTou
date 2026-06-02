@@ -11,6 +11,7 @@ import {
   DOC_IMPORT_MAX_TOTAL_SIZE,
   DOC_IMPORT_SUPPORTED_EXTENSIONS,
 } from "./markitdownPlugin.js";
+import { documentSignature, documentDedupable } from "../src/server/dedup.js";
 
 // Module-level state: prod entry / vite plugin should call setDocsDataDir() at startup.
 // We use a mutable module variable rather than threading dataDir through ~30 helper
@@ -242,6 +243,61 @@ function createDocWithV1(doc: any): void {
 
   const fullDoc = { ...doc, currentVersionId: v1Id };
   fs.writeFileSync(path.join(DOCS_DIR, `${doc.id}.md`), documentToMd(fullDoc), "utf-8");
+}
+
+// ── Document dedup / merge（spec import-dedup-versioning US-02） ──────────────
+
+interface UpsertDocumentResult {
+  action: "created" | "merged" | "skipped";
+  id: string;
+  title: string;
+  document: any;
+  mergedIntoExisting?: boolean;
+}
+
+function findMatchingDocument(fingerprint: string): any | null {
+  if (!fs.existsSync(DOCS_DIR)) return null;
+  const files = fs.readdirSync(DOCS_DIR).filter((f) => f.endsWith(".md"));
+  for (const f of files) {
+    const id = f.replace(".md", "");
+    const doc = parseDocumentMd(id, fs.readFileSync(path.join(DOCS_DIR, f), "utf-8"));
+    if (documentSignature(doc).fingerprint === fingerprint) return doc;
+  }
+  return null;
+}
+
+function mergeDocument(existing: any, incoming: any): UpsertDocumentResult {
+  // 1. 当前正文存档为 pre-import-overwrite；失败则抛出，中止覆盖（spec §5 异常·版本写入失败）
+  appendVersion({ docId: existing.id, body: existing.body, type: "pre-import-overwrite" });
+  // 2. 用新内容生成当前版本（import），保留 D 的 id / folderId / 批注
+  const v = appendVersion({ docId: existing.id, body: incoming.body, type: "import" });
+  updateCurrentVersionPointer(existing.id, v.id);
+  const updated = {
+    ...existing,
+    title: incoming.title ?? existing.title,
+    body: incoming.body,
+    currentVersionId: v.id,
+    updatedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(path.join(DOCS_DIR, `${existing.id}.md`), documentToMd(updated), "utf-8");
+  return { action: "merged", id: existing.id, title: updated.title, document: updated, mergedIntoExisting: true };
+}
+
+/** 导入文档：无匹配→新建 / 完全一致→跳过 / 有差异→合并（spec §4.1）。 */
+export function upsertDocument(incoming: any): UpsertDocumentResult {
+  const sig = documentSignature(incoming);
+  if (documentDedupable(incoming)) {
+    const existing = findMatchingDocument(sig.fingerprint);
+    if (existing) {
+      if (documentSignature(existing).contentHash === sig.contentHash) {
+        return { action: "skipped", id: existing.id, title: existing.title, document: existing };
+      }
+      return mergeDocument(existing, incoming);
+    }
+  }
+  createDocWithV1(incoming);
+  const saved = parseDocumentMd(incoming.id, fs.readFileSync(path.join(DOCS_DIR, `${incoming.id}.md`), "utf-8"));
+  return { action: "created", id: incoming.id, title: saved.title, document: saved };
 }
 
 function deleteDocFiles(id: string): void {
@@ -645,12 +701,12 @@ async function handleDocumentImport(req: IncomingMessage, res: ServerResponse): 
         mdContent = converted.content;
       }
 
-      // Generate doc id and save
+      // Generate doc id and dedup-upsert（无匹配→新建 / 一致→跳过 / 有差异→合并）
       const docId = `doc_${Date.now()}_${nanoid5()}`;
       const title = originalName.replace(/\.[^.]+$/, "");
       const now = new Date().toISOString();
 
-      createDocWithV1({
+      const upserted = upsertDocument({
         id: docId,
         title,
         folderId: null,
@@ -662,8 +718,13 @@ async function handleDocumentImport(req: IncomingMessage, res: ServerResponse): 
         versionType: "import",
       });
 
-      const savedDoc = parseDocumentMd(docId, fs.readFileSync(path.join(DOCS_DIR, `${docId}.md`), "utf-8"));
-      results.push({ originalName, success: true, document: savedDoc });
+      results.push({
+        originalName,
+        success: true,
+        action: upserted.action,
+        mergedIntoExisting: upserted.mergedIntoExisting,
+        document: upserted.document,
+      });
     } catch (e: any) {
       results.push({ originalName, success: false, error: String(e) });
     } finally {

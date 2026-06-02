@@ -21,6 +21,22 @@ export interface Conversation {
   // Present when this entry came from /api/conversations?fields=meta.
   // Sidebar uses it to render the turn count without forcing message hydration.
   messageCount?: number;
+  // 导入去重合并后写入：最近一次合并/回滚时间 + 当前版本指针（spec import-dedup-versioning）
+  updatedAt?: string;
+  currentVersionId?: string;
+}
+
+// 导入去重合并的结果汇总（addConversations 返回，供 ImportDrawer 展示非阻塞提示）
+export interface ImportActionItem {
+  action: "created" | "merged" | "skipped";
+  id: string;
+  title: string;
+}
+export interface ImportSummary {
+  created: number;
+  merged: number;
+  skipped: number;
+  items: ImportActionItem[];
 }
 
 export interface Folder {
@@ -62,6 +78,7 @@ export type VersionType =
   | "conversation-excerpt"
   | "pre-llm-rewrite"
   | "llm-rewrite"
+  | "pre-import-overwrite"
   | "pre-rollback"
   | "rolled-back-from";
 
@@ -75,6 +92,18 @@ export interface DocumentVersion {
   sourceAnnotationIds?: string[];
   rolledBackFromVersionId?: string;
   label?: string;
+}
+
+// 会话版本：列表项与文档版本同构（id/version/type/createdAt）；
+// 详情额外带 messages（由 /api/conversations/:id/versions/:vid 返回，供预览）。
+export interface ConversationVersion {
+  id: string;
+  version: number;
+  type: VersionType;
+  createdAt: string;
+  rolledBackFromVersionId?: string;
+  messages?: Message[];
+  title?: string;
 }
 
 export type AnnotationType = "highlight" | "comment";
@@ -146,10 +175,14 @@ interface AppContextType {
   conversations: Conversation[];
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
-  addConversations: (convs: Conversation[]) => Promise<void>;
+  addConversations: (convs: Conversation[]) => Promise<ImportSummary>;
   moveConversation: (convId: string, folderId: string | null) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, title: string) => Promise<void>;
+  // 会话版本历史（对齐文档；spec 决策5）
+  versionsByConv: Record<string, ConversationVersion[]>;
+  loadConversationVersions: (convId: string) => Promise<void>;
+  rollbackConversation: (convId: string, targetVersionId: string) => Promise<void>;
   addFolder: (name: string, platform?: Platform) => Promise<void>;
   renameFolder: (id: string, name: string) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
@@ -224,6 +257,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [annotationsByDoc, setAnnotationsByDoc] = useState<Record<string, Annotation[]>>({});
   const [versionsByDoc, setVersionsByDoc] = useState<Record<string, DocumentVersion[]>>({});
+  const [versionsByConv, setVersionsByConv] = useState<Record<string, ConversationVersion[]>>({});
   const [editMode, setEditMode] = useState<EditMode>("off");
   const [previewingVersionId, setPreviewingVersionId] = useState<string | null>(null);
   const [versionPanelOpen, setVersionPanelOpen] = useState(false);
@@ -355,26 +389,86 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── Conversation operations ─────────────────────────────────────────────────
 
-  const addConversations = useCallback(async (convs: Conversation[]) => {
-    const results: Conversation[] = [];
+  const addConversations = useCallback(async (convs: Conversation[]): Promise<ImportSummary> => {
+    const items: ImportActionItem[] = [];
+    const created: Conversation[] = [];
+    const merged: { id: string; conv: Conversation }[] = [];
+    const now = new Date().toISOString();
+
     for (const conv of convs) {
       try {
-        await apiFetch("/api/conversations", { method: "POST", body: JSON.stringify(conv) });
-        results.push(conv);
+        const r = await apiFetch("/api/conversations", { method: "POST", body: JSON.stringify(conv) });
+        const action: ImportActionItem["action"] = r.action ?? "created";
+        items.push({ action, id: r.id ?? conv.id, title: r.title ?? conv.title });
+        if (action === "created") created.push({ ...conv, id: r.id ?? conv.id, updatedAt: now });
+        else if (action === "merged") merged.push({ id: r.id, conv });
       } catch (e) {
         console.error("Failed to save conversation", conv.id, e);
       }
     }
-    // Newly added conversations already carry their full messages; mark them hydrated
-    // so on-demand fetch doesn't run when the user activates them right after import.
-    results.forEach((c) => hydratedConvRef.current.add(c.id));
-    setConversations((prev) => {
-      const existing = new Set(prev.map((c) => c.id));
-      const fresh = results.filter((c) => !existing.has(c.id));
-      return [...prev, ...fresh];
+
+    // Imported conversations carry full messages; mark hydrated so on-demand fetch is skipped.
+    created.forEach((c) => hydratedConvRef.current.add(c.id));
+    merged.forEach((m) => {
+      hydratedConvRef.current.add(m.id);
+      // 版本列表已变（多了 pre-import-overwrite + import），失效缓存以便面板重新拉取
+      setVersionsByConv((prev) => {
+        if (!prev[m.id]) return prev;
+        const next = { ...prev };
+        delete next[m.id];
+        return next;
+      });
     });
-    if (results.length > 0) setActiveConversationId(results[0].id);
+
+    setConversations((prev) => {
+      // 合并：用新内容覆盖已有条目的 messages/title，保留其 folderId（后端权威），刷新 updatedAt
+      let next = prev.map((c) => {
+        const m = merged.find((x) => x.id === c.id);
+        return m ? { ...c, messages: m.conv.messages, title: m.conv.title, updatedAt: now } : c;
+      });
+      // 新建：追加不存在的条目
+      const existing = new Set(next.map((c) => c.id));
+      const fresh = created.filter((c) => !existing.has(c.id));
+      return [...next, ...fresh];
+    });
+
+    // 激活第一条非跳过项，便于用户立即看到结果
+    const firstActive = items.find((i) => i.action !== "skipped");
+    if (firstActive) setActiveConversationId(firstActive.id);
+
+    return {
+      created: items.filter((i) => i.action === "created").length,
+      merged: items.filter((i) => i.action === "merged").length,
+      skipped: items.filter((i) => i.action === "skipped").length,
+      items,
+    };
   }, []);
+
+  // ── Conversation version operations（对齐文档；spec 决策5） ──────────────────
+
+  const loadConversationVersions = useCallback(async (convId: string) => {
+    try {
+      const data = await apiFetch(`/api/conversations/${convId}/versions`);
+      setVersionsByConv((prev) => ({ ...prev, [convId]: data.versions ?? [] }));
+    } catch (e) {
+      // 无版本历史（老数据）时后端返回 404；视为空列表
+      setVersionsByConv((prev) => ({ ...prev, [convId]: [] }));
+      console.error({ module: "data", op: "loadConversationVersions", err: e, context: { convId } });
+    }
+  }, []);
+
+  const rollbackConversation = useCallback(async (convId: string, targetVersionId: string) => {
+    const data = await apiFetch(`/api/conversations/${convId}/rollback`, {
+      method: "POST",
+      body: JSON.stringify({ targetVersionId }),
+    });
+    await loadConversationVersions(convId);
+    const conv = data.conversation as Conversation | undefined;
+    if (conv) {
+      hydratedConvRef.current.add(convId);
+      setConversations((prev) => prev.map((c) => (c.id === convId ? { ...c, ...conv } : c)));
+    }
+  }, [loadConversationVersions]);
 
   const moveConversation = useCallback(async (convId: string, folderId: string | null) => {
     setConversations((prev) =>
@@ -435,9 +529,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     results.forEach((d) => hydratedDocRef.current.add(d.id));
     setDocuments((prev) => {
-      const existing = new Set(prev.map((d) => d.id));
-      const fresh = results.filter((d) => !existing.has(d.id));
-      return [...prev, ...fresh];
+      // upsert：已存在的按 id 用最新结果替换（导入合并到既有文档时刷新正文/updatedAt），其余追加
+      const byId = new Map(prev.map((d) => [d.id, d]));
+      for (const d of results) byId.set(d.id, { ...byId.get(d.id), ...d });
+      return Array.from(byId.values());
     });
     if (results.length > 0) setActiveDocId(results[0].id);
   }, []);
@@ -615,6 +710,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         moveConversation,
         deleteConversation,
         renameConversation,
+        versionsByConv,
+        loadConversationVersions,
+        rollbackConversation,
         addFolder,
         renameFolder,
         deleteFolder,

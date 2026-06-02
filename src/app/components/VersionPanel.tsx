@@ -2,11 +2,23 @@ import React, { useEffect } from "react";
 import { X, RotateCcw, Eye, EyeOff, Trash2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
-import { useAppContext, DocumentVersion, VersionType } from "../data";
+import { useAppContext, DocumentVersion, ConversationVersion, VersionType } from "../data";
 import { useTranslation } from "../i18n";
 import { format } from "date-fns";
 
-export function VersionPanel() {
+// 通用版本面板：文档与会话共用（spec import-dedup-versioning 决策5）。
+// kind="document"（默认）走文档版本端点；kind="conversation" 走会话版本端点。
+type VersionKind = "document" | "conversation";
+
+interface PanelVersion {
+  id: string;
+  version: number;
+  type: VersionType;
+  createdAt: string;
+  sourceAnnotationIds?: string[];
+}
+
+export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
   const {
     versionPanelOpen,
     setVersionPanelOpen,
@@ -14,34 +26,50 @@ export function VersionPanel() {
     documents,
     versionsByDoc,
     loadVersions,
-    previewingVersionId,
-    setPreviewingVersionId,
     rollbackToVersion,
     deleteVersion,
+    activeConversationId,
+    conversations,
+    versionsByConv,
+    loadConversationVersions,
+    rollbackConversation,
+    previewingVersionId,
+    setPreviewingVersionId,
   } = useAppContext();
   const { t } = useTranslation();
 
-  const activeDoc = documents.find((d) => d.id === activeDocId);
-  const versions = (activeDocId ? versionsByDoc[activeDocId] : undefined) ?? [];
-  const currentVersionId = activeDoc?.currentVersionId;
+  const isConv = kind === "conversation";
+  const activeId = isConv ? activeConversationId : activeDocId;
+  const activeItem = isConv
+    ? conversations.find((c) => c.id === activeConversationId)
+    : documents.find((d) => d.id === activeDocId);
+  const versions = ((isConv
+    ? (activeConversationId ? versionsByConv[activeConversationId] : undefined)
+    : (activeDocId ? versionsByDoc[activeDocId] : undefined)) ?? []) as PanelVersion[];
+  const currentVersionId = activeItem?.currentVersionId;
+  const updatedAt = (activeItem as any)?.updatedAt as string | undefined;
 
   useEffect(() => {
-    if (versionPanelOpen && activeDocId && !versionsByDoc[activeDocId]) {
-      loadVersions(activeDocId);
+    if (!versionPanelOpen || !activeId) return;
+    if (isConv) {
+      if (!versionsByConv[activeId]) loadConversationVersions(activeId);
+    } else {
+      if (!versionsByDoc[activeId]) loadVersions(activeId);
     }
-  }, [versionPanelOpen, activeDocId]);
+  }, [versionPanelOpen, activeId, isConv]);
 
-  const handlePreview = (v: DocumentVersion) => {
+  const handlePreview = (v: PanelVersion) => {
     setPreviewingVersionId(previewingVersionId === v.id ? null : v.id);
   };
 
-  const handleRollback = async (v: DocumentVersion) => {
-    if (!activeDocId) return;
+  const handleRollback = async (v: PanelVersion) => {
+    if (!activeId) return;
     const currentVer = versions.find((x) => x.id === currentVersionId);
     const currentN = currentVer?.version ?? "?";
     if (!window.confirm(t("version.confirmRollback", { current: currentN, target: v.version }))) return;
     try {
-      await rollbackToVersion(activeDocId, v.id);
+      if (isConv) await rollbackConversation(activeId, v.id);
+      else await rollbackToVersion(activeId, v.id);
       setPreviewingVersionId(null);
       setVersionPanelOpen(false);
     } catch (e: any) {
@@ -49,11 +77,11 @@ export function VersionPanel() {
     }
   };
 
-  const handleDelete = async (v: DocumentVersion) => {
-    if (!activeDocId) return;
+  const handleDelete = async (v: PanelVersion) => {
+    if (!activeId || isConv) return; // 会话版本不支持删除（US-03 仅查看 / 回滚）
     if (!window.confirm(t("version.confirmDelete"))) return;
     try {
-      await deleteVersion(activeDocId, v.id);
+      await deleteVersion(activeId, v.id);
     } catch (e: any) {
       alert(String(e));
     }
@@ -78,10 +106,17 @@ export function VersionPanel() {
             className="fixed right-0 top-0 bottom-0 w-80 bg-white dark:bg-[#151515] border-l border-zinc-200 dark:border-white/10 shadow-2xl z-40 flex flex-col"
           >
             <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-white/10">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <Clock size={14} className="text-zinc-400" />
-                {t("version.title")}
-              </h3>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                  <Clock size={14} className="text-zinc-400" />
+                  {t("version.title")}
+                </h3>
+                {updatedAt && (
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+                    {t("version.updatedAt", { time: format(new Date(updatedAt), "MMM d, yyyy h:mm a") })}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setVersionPanelOpen(false)}
                 className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
@@ -107,6 +142,7 @@ export function VersionPanel() {
                     version={v}
                     isCurrent={v.id === currentVersionId}
                     isPreviewing={v.id === previewingVersionId}
+                    allowDelete={!isConv}
                     onPreview={() => handlePreview(v)}
                     onRollback={() => handleRollback(v)}
                     onDelete={() => handleDelete(v)}
@@ -128,6 +164,7 @@ const TYPE_COLORS: Record<VersionType, string> = {
   "conversation-excerpt": "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
   "pre-llm-rewrite": "bg-zinc-100 dark:bg-white/10 text-zinc-500 dark:text-zinc-500",
   "llm-rewrite": "bg-orange-100 dark:bg-yellow-500/20 text-orange-700 dark:text-yellow-300",
+  "pre-import-overwrite": "bg-zinc-100 dark:bg-white/10 text-zinc-500 dark:text-zinc-500",
   "pre-rollback": "bg-zinc-100 dark:bg-white/10 text-zinc-500 dark:text-zinc-500",
   "rolled-back-from": "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300",
 };
@@ -136,14 +173,16 @@ function VersionCard({
   version,
   isCurrent,
   isPreviewing,
+  allowDelete,
   onPreview,
   onRollback,
   onDelete,
   t,
 }: {
-  version: DocumentVersion;
+  version: PanelVersion;
   isCurrent: boolean;
   isPreviewing: boolean;
+  allowDelete: boolean;
   onPreview: () => void;
   onRollback: () => void;
   onDelete: () => void;
@@ -200,12 +239,14 @@ function VersionCard({
           >
             <RotateCcw size={10} /> {t("version.rollback")}
           </button>
-          <button
-            onClick={onDelete}
-            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors ml-auto"
-          >
-            <Trash2 size={10} /> {t("version.delete")}
-          </button>
+          {allowDelete && (
+            <button
+              onClick={onDelete}
+              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors ml-auto"
+            >
+              <Trash2 size={10} /> {t("version.delete")}
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -13,6 +13,16 @@ import {
   setDocsDataDir,
   ensureDocDirs,
 } from "../../vite-plugins/documentsPlugin.js";
+import { conversationSignature, conversationDedupable } from "./dedup.js";
+import {
+  hasConvVersions,
+  initConvVersions,
+  appendConvVersion,
+  updateConvCurrentPointer,
+  readConvVersionIndex,
+  readConvVersionBody,
+  deleteConvVersions,
+} from "./conversation-versions.js";
 
 export interface RouterContext {
   dataDir: string;
@@ -76,6 +86,8 @@ function toConversationMeta(conv: any) {
     platform: conv.platform,
     date: conv.date,
     folderId: conv.folderId,
+    updatedAt: conv.updatedAt,
+    currentVersionId: conv.currentVersionId,
     messageCount: conv.messages?.length ?? 0,
     messages: [],
   };
@@ -99,12 +111,18 @@ export function conversationToMd(conv: any): string {
     })
     .join("\n---\n\n");
 
+  const fmLines = [
+    `id: ${escapeFrontmatterValue(conv.id)}`,
+    `title: ${escapeFrontmatterValue(conv.title ?? "Untitled")}`,
+    `platform: ${escapeFrontmatterValue(conv.platform ?? "ChatGPT")}`,
+    `date: ${escapeFrontmatterValue(conv.date ?? new Date().toISOString())}`,
+    `folderId: ${conv.folderId ? escapeFrontmatterValue(conv.folderId) : "null"}`,
+  ];
+  if (conv.updatedAt) fmLines.push(`updatedAt: ${escapeFrontmatterValue(conv.updatedAt)}`);
+  if (conv.currentVersionId) fmLines.push(`currentVersionId: ${escapeFrontmatterValue(conv.currentVersionId)}`);
+
   return `---
-id: ${escapeFrontmatterValue(conv.id)}
-title: ${escapeFrontmatterValue(conv.title ?? "Untitled")}
-platform: ${escapeFrontmatterValue(conv.platform ?? "ChatGPT")}
-date: ${escapeFrontmatterValue(conv.date ?? new Date().toISOString())}
-folderId: ${conv.folderId ? escapeFrontmatterValue(conv.folderId) : "null"}
+${fmLines.join("\n")}
 ---
 
 ${msgBlock}`;
@@ -201,8 +219,79 @@ export function parseMdFile(id: string, content: string): any {
     platform: meta.platform ?? "ChatGPT",
     date: meta.date ?? new Date().toISOString(),
     folderId: meta.folderId === "null" ? null : (meta.folderId || null),
+    updatedAt: meta.updatedAt || undefined,
+    currentVersionId: meta.currentVersionId || undefined,
     messages: mergeConsecutiveMessages(messages),
   };
+}
+
+// ── Conversation dedup / merge / versioning ──────────────────────────────────
+
+const CONV_ID_RE = /^[a-zA-Z0-9_-]+$/;
+const CVER_ID_RE = /^cver_[a-zA-Z0-9_]+$/;
+
+export interface UpsertConversationResult {
+  action: "created" | "merged" | "skipped";
+  id: string;
+  title: string;
+  mergedIntoExisting?: boolean;
+}
+
+function writeConversationFile(convDir: string, conv: any): void {
+  fs.writeFileSync(path.join(convDir, `${conv.id}.md`), conversationToMd(conv), "utf-8");
+}
+
+/** 在同类条目中按 fingerprint 查找匹配项（按需即时计算指纹，不持久化）。 */
+function findMatchingConversation(convDir: string, fingerprint: string): any | null {
+  if (!fs.existsSync(convDir)) return null;
+  const files = fs.readdirSync(convDir).filter((f) => f.endsWith(".md"));
+  for (const f of files) {
+    const conv = parseMdFile(f.replace(".md", ""), fs.readFileSync(path.join(convDir, f), "utf-8"));
+    if (conversationSignature(conv).fingerprint === fingerprint) return conv;
+  }
+  return null;
+}
+
+function createConversation(convDir: string, incoming: any): UpsertConversationResult {
+  const now = new Date().toISOString();
+  const full = { ...incoming, updatedAt: incoming.updatedAt ?? now };
+  const v1 = initConvVersions(convDir, full.id, conversationToMd(full), "import");
+  writeConversationFile(convDir, { ...full, currentVersionId: v1.id });
+  return { action: "created", id: full.id, title: full.title };
+}
+
+function mergeConversation(convDir: string, existing: any, incoming: any): UpsertConversationResult {
+  const now = new Date().toISOString();
+  // 降级·历史数据无版本：首次合并时懒补 v1（spec §5）
+  if (!hasConvVersions(convDir, existing.id)) {
+    initConvVersions(convDir, existing.id, conversationToMd(existing), "import");
+  }
+  // 1. 先把当前内容存档为 pre-import-overwrite；失败则抛出，中止覆盖（spec §5 异常）
+  appendConvVersion(convDir, existing.id, {
+    body: conversationToMd(existing),
+    type: "pre-import-overwrite",
+  });
+  // 2. 用新内容覆盖当前；保留已有条目的 id 与 folderId（不被导入项覆盖，spec §5 边界·跨folder）
+  const merged = { ...incoming, id: existing.id, folderId: existing.folderId, updatedAt: now };
+  const v = appendConvVersion(convDir, existing.id, { body: conversationToMd(merged), type: "import" });
+  updateConvCurrentPointer(convDir, existing.id, v.id);
+  writeConversationFile(convDir, { ...merged, currentVersionId: v.id });
+  return { action: "merged", id: existing.id, title: merged.title, mergedIntoExisting: true };
+}
+
+/** 导入会话：无匹配→新建 / 完全一致→跳过 / 有差异→合并（spec §4.1）。 */
+export function upsertConversation(convDir: string, incoming: any): UpsertConversationResult {
+  const sig = conversationSignature(incoming);
+  if (conversationDedupable(incoming)) {
+    const existing = findMatchingConversation(convDir, sig.fingerprint);
+    if (existing) {
+      if (conversationSignature(existing).contentHash === sig.contentHash) {
+        return { action: "skipped", id: existing.id, title: existing.title };
+      }
+      return mergeConversation(convDir, existing, incoming);
+    }
+  }
+  return createConversation(convDir, incoming);
 }
 
 // ── Main entry: handleApiRequest ──────────────────────────────────────────────
@@ -237,6 +326,71 @@ export async function handleApiRequest(
     }
   }
 
+  // ── /api/conversations/:id/versions... 与 /rollback（须在通用 :id 路由之前） ──
+  if (url.startsWith("/api/conversations/")) {
+    const after = url.slice("/api/conversations/".length);
+    const parts = after.split("?")[0].split("/");
+    const cid = parts[0];
+    const sub = parts.slice(1).join("/");
+
+    if (cid && sub) {
+      if (!CONV_ID_RE.test(cid)) { json(res, 400, { error: "Invalid conversation id" }); return true; }
+
+      // GET /api/conversations/:id/versions
+      if (sub === "versions" && method === "GET") {
+        if (!hasConvVersions(convDir, cid)) { json(res, 404, { error: "Versions not found" }); return true; }
+        try {
+          const index = readConvVersionIndex(convDir, cid);
+          json(res, 200, { currentVersionId: index.currentVersionId, versions: index.versions });
+        } catch (e) { json(res, 500, { error: String(e) }); }
+        return true;
+      }
+
+      // GET /api/conversations/:id/versions/:vid
+      if (sub.startsWith("versions/") && method === "GET") {
+        const vid = sub.slice("versions/".length);
+        if (!CVER_ID_RE.test(vid)) { json(res, 400, { error: "Invalid version id" }); return true; }
+        try {
+          const index = readConvVersionIndex(convDir, cid);
+          const entry = index.versions.find((v) => v.id === vid);
+          if (!entry) { json(res, 404, { error: "Version not found" }); return true; }
+          const parsed = parseMdFile(cid, readConvVersionBody(convDir, cid, entry));
+          json(res, 200, { ...entry, convId: cid, title: parsed.title, messages: parsed.messages });
+        } catch (e) { json(res, 500, { error: String(e) }); }
+        return true;
+      }
+
+      // POST /api/conversations/:id/rollback
+      if (sub === "rollback" && method === "POST") {
+        try {
+          const { targetVersionId } = JSON.parse(await readBody(req));
+          if (!CVER_ID_RE.test(targetVersionId)) { json(res, 400, { error: "Invalid targetVersionId" }); return true; }
+          const index = readConvVersionIndex(convDir, cid);
+          const target = index.versions.find((v) => v.id === targetVersionId);
+          if (!target) { json(res, 404, { error: "Target version not found" }); return true; }
+
+          const targetConv = parseMdFile(cid, readConvVersionBody(convDir, cid, target));
+          const filePath = path.join(convDir, `${cid}.md`);
+          if (!fs.existsSync(filePath)) { json(res, 404, { error: "Not found" }); return true; }
+          const existing = parseMdFile(cid, fs.readFileSync(filePath, "utf-8"));
+
+          // 当前内容先存为 pre-rollback，再用目标版本覆盖（rolled-back-from）
+          appendConvVersion(convDir, cid, { body: conversationToMd(existing), type: "pre-rollback" });
+          const merged = { ...targetConv, id: cid, folderId: existing.folderId, updatedAt: new Date().toISOString() };
+          const newV = appendConvVersion(convDir, cid, {
+            body: conversationToMd(merged),
+            type: "rolled-back-from",
+            rolledBackFromVersionId: targetVersionId,
+          });
+          updateConvCurrentPointer(convDir, cid, newV.id);
+          writeConversationFile(convDir, { ...merged, currentVersionId: newV.id });
+          json(res, 200, { ok: true, version: newV, conversation: { ...merged, currentVersionId: newV.id } });
+        } catch (e) { json(res, 500, { error: String(e) }); }
+        return true;
+      }
+    }
+  }
+
   // ── GET /api/conversations/:id ────────────────────────────────────────
   if (url.startsWith("/api/conversations/") && method === "GET") {
     const id = parseId(url, "/api/conversations/");
@@ -253,14 +407,13 @@ export async function handleApiRequest(
     }
   }
 
-  // ── POST /api/conversations ───────────────────────────────────────────
+  // ── POST /api/conversations (去重合并三分支) ──────────────────────────
   if (url === "/api/conversations" && method === "POST") {
     try {
       const body = JSON.parse(await readBody(req));
-      const mdContent = conversationToMd(body);
-      const filePath = path.join(convDir, `${body.id}.md`);
-      fs.writeFileSync(filePath, mdContent, "utf-8");
-      json(res, 201, { ok: true, id: body.id });
+      const result = upsertConversation(convDir, body);
+      // 保持向后兼容字段 ok/id，叠加 action（spec §4.4）
+      json(res, result.action === "created" ? 201 : 200, { ok: true, ...result });
       return true;
     } catch (e) {
       json(res, 500, { error: String(e) });
@@ -297,6 +450,7 @@ export async function handleApiRequest(
     if (!fs.existsSync(filePath)) { json(res, 404, { error: "Not found" }); return true; }
     try {
       fs.unlinkSync(filePath);
+      deleteConvVersions(convDir, id); // 连带清理版本目录（spec §8 风险应对）
       json(res, 200, { ok: true });
       return true;
     } catch (e) {

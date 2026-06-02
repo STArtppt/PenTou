@@ -2,11 +2,12 @@ import React, { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { format } from "date-fns";
-import { Bot, User, Terminal, Copy, Check, Import, Loader2, FileText, Quote } from "lucide-react";
+import { Bot, User, Terminal, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAppContext, Message, Platform } from "../data";
 import { RightNav } from "./RightNav";
+import { VersionPanel } from "./VersionPanel";
 import { useTranslation } from "../i18n";
 import { convertConversationToDocument, LLMError } from "../llm";
 import { excerptConversationToDoc, generateDocId, mergeRewriteWithExistingBody } from "../doc-utils";
@@ -27,6 +28,10 @@ export function ChatBody() {
     setActiveView,
     setActiveDocId,
     setSettingsOpen,
+    setVersionPanelOpen,
+    versionsByConv,
+    previewingVersionId,
+    setPreviewingVersionId,
   } = useAppContext();
   const { t } = useTranslation();
 
@@ -34,6 +39,21 @@ export function ChatBody() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [converting, setConverting] = useState(false);
   const [excerpting, setExcerpting] = useState(false);
+  const [previewMessages, setPreviewMessages] = useState<Message[] | null>(null);
+
+  // 预览历史版本时拉取该版本的 messages（spec US-03）
+  useEffect(() => {
+    if (!previewingVersionId || !activeConversationId) {
+      setPreviewMessages(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/conversations/${activeConversationId}/versions/${previewingVersionId}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => { if (!cancelled) setPreviewMessages(data.messages ?? null); })
+      .catch(() => { if (!cancelled) setPreviewMessages(null); });
+    return () => { cancelled = true; };
+  }, [previewingVersionId, activeConversationId]);
 
   const handleConvertToDoc = async () => {
     if (!conversation) return;
@@ -142,7 +162,8 @@ export function ChatBody() {
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [activeConversationId]);
+    setPreviewingVersionId(null); // 切换会话时退出版本预览
+  }, [activeConversationId, setPreviewingVersionId]);
 
   if (isLoading) {
     return (
@@ -169,7 +190,10 @@ export function ChatBody() {
     );
   }
 
-  const turnCount = Math.floor(conversation.messages.length / 2);
+  const displayMessages = previewingVersionId ? (previewMessages ?? conversation.messages) : conversation.messages;
+  const previewVersionNum = previewingVersionId
+    ? (versionsByConv[conversation.id] ?? []).find((v) => v.id === previewingVersionId)?.version ?? "?"
+    : null;
 
   return (
     <div className="flex-1 flex bg-white dark:bg-[#1A1A1A] relative overflow-hidden min-w-0 min-h-0">
@@ -185,9 +209,21 @@ export function ChatBody() {
                 <PlatformIcon platform={conversation.platform} />
                 {conversation.platform}
               </span>
+              {conversation.updatedAt && (
+                <span className="text-zinc-400 dark:text-zinc-500 hidden sm:inline">
+                  {t("version.updatedAt", { time: format(new Date(conversation.updatedAt), "MMM d, h:mm a") })}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400 shrink-0">
+            <button
+              onClick={() => setVersionPanelOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-orange-500 dark:hover:text-yellow-400 transition-colors"
+            >
+              <History size={14} />
+              {t("toolbar.versionHistory")}
+            </button>
             <button
               onClick={handleConvertToDoc}
               disabled={converting}
@@ -199,10 +235,22 @@ export function ChatBody() {
           </div>
         </header>
 
+        {previewingVersionId && (
+          <div className="shrink-0 flex items-center gap-2 px-6 py-2 bg-blue-50 dark:bg-blue-500/10 border-b border-blue-200 dark:border-blue-500/20 text-xs text-blue-700 dark:text-blue-300">
+            <span className="flex-1">{t("doc.previewBanner", { n: previewVersionNum ?? "..." })}</span>
+            <button
+              onClick={() => setPreviewingVersionId(null)}
+              className="flex items-center gap-1 hover:underline font-medium"
+            >
+              <EyeOff size={12} /> {t("doc.stopPreview")}
+            </button>
+          </div>
+        )}
+
         {/* Message List */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar pb-32 pt-8">
           <div className="max-w-4xl mx-auto px-6 space-y-12">
-            {conversation.messages.map((msg) => (
+            {displayMessages.map((msg) => (
               <MessageBubble
                 key={msg.id}
                 message={msg}
@@ -215,7 +263,8 @@ export function ChatBody() {
         </div>
       </div>
 
-      <RightNav messages={conversation.messages} scrollContainer={scrollRef} />
+      <RightNav messages={displayMessages} scrollContainer={scrollRef} />
+      <VersionPanel kind="conversation" />
     </div>
   );
 }

@@ -18,14 +18,40 @@ import {
   Check,
 } from "lucide-react";
 import clsx from "clsx";
+import { toast } from "sonner";
 import { copyText } from "../utils/clipboard";
-import { useAppContext } from "../data";
+import { useAppContext, ImportSummary } from "../data";
 import { parseFileContent } from "../parsers";
 import { useTranslation } from "../i18n";
 
 export function ImportDrawer() {
-  const { isDrawerOpen, setDrawerOpen, addConversations, addDocuments, folders, activeView, setActiveView, setActiveDocId } = useAppContext();
+  const { isDrawerOpen, setDrawerOpen, addConversations, addDocuments, folders, activeView, setActiveView, setActiveDocId, setActiveConversationId } = useAppContext();
   const { t } = useTranslation();
+
+  // 导入完成后以非阻塞 toast 汇总「新建 / 并入 / 跳过」，并入项给出可点击定位入口（US-04）
+  const showImportSummary = (summary: ImportSummary) => {
+    const parts = [
+      t("import.summary.created", { n: summary.created }),
+      t("import.summary.merged", { n: summary.merged }),
+      t("import.summary.skipped", { n: summary.skipped }),
+    ];
+    const firstMerged = summary.items.find((i) => i.action === "merged");
+    toast.success(parts.join(" · "), {
+      action: firstMerged
+        ? {
+            label: t("import.locate"),
+            onClick: () => {
+              setActiveView("chat");
+              setActiveConversationId(firstMerged.id);
+              setDrawerOpen(false);
+            },
+          }
+        : undefined,
+    });
+    summary.items
+      .filter((i) => i.action === "skipped")
+      .forEach((i) => toast.info(t("import.summary.skippedToast", { title: i.title })));
+  };
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState("");
   const [importUrl, setImportUrl] = useState("");
@@ -61,7 +87,8 @@ export function ImportDrawer() {
             conv.folderId = matchedFolder.id;
           }
         });
-        await addConversations(data.conversations);
+        const summary = await addConversations(data.conversations);
+        showImportSummary(summary);
         setTimeout(() => setDrawerOpen(false), 500);
         setImportUrl("");
       } else {
@@ -110,9 +137,10 @@ export function ImportDrawer() {
         throw new Error("No valid conversations found in the selected files.");
       }
 
-      await addConversations(convsToImport);
+      const summary = await addConversations(convsToImport);
       totalImported = convsToImport.length;
-      
+      showImportSummary(summary);
+
       // Close after a brief success delay
       setTimeout(() => {
         setDrawerOpen(false);
@@ -503,7 +531,12 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
             {results.map((r: any, i: number) => (
               <div key={i} className={clsx("flex items-center gap-2 text-xs px-3 py-2 rounded-lg border", r.success ? "border-green-200 dark:border-green-500/20 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/10" : "border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10")}>
                 {r.success ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-                <span>{r.savedName ?? r.fileName ?? r.error ?? "Unknown"}</span>
+                <span className="flex-1 truncate">{r.document?.title ?? r.originalName ?? r.savedName ?? r.fileName ?? r.error ?? "Unknown"}</span>
+                {r.success && r.action && r.action !== "created" && (
+                  <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-white/60 dark:bg-white/10 font-medium">
+                    {t(`import.summary.${r.action}`, { n: 1 })}
+                  </span>
+                )}
               </div>
             ))}
           </div>
