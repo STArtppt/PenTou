@@ -8,6 +8,7 @@ import { captureAnnotationFromSelection } from "../annotations";
 import { generateAnnotationId, extractHeadings, slugify } from "../doc-utils";
 import { useTranslation } from "../i18n";
 import { copyText } from "../utils/clipboard";
+import { MermaidBlock } from "./MermaidBlock";
 
 interface Props {
   docId: string;
@@ -126,7 +127,7 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
   }, [popup]);
 
   return (
-    <div id="doc-scroll-container" className="relative flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-24 px-4 sm:px-8">
+    <div id="doc-scroll-container" className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar pb-24 px-4 sm:px-8">
       {orphanedCount > 0 && (
         <div className="mx-auto max-w-4xl pt-6">
           <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg px-3 py-2">
@@ -373,6 +374,10 @@ const mdComponents = {
     <a className="text-blue-600 dark:text-blue-400 hover:text-orange-500 dark:hover:text-yellow-400 underline transition-colors" target="_blank" rel="noopener noreferrer" {...props} />
   ),
   code: ({ node, className, children, isBlock, ...props }: any) => {
+    const language = className?.match(/language-(\S+)/)?.[1];
+    if (isBlock && language === "mermaid") {
+      return <MermaidBlock source={String(children).replace(/\n$/, "")} className={className} />;
+    }
     if (isBlock) return <DocCodeBlock className={className} {...props}>{children}</DocCodeBlock>;
     return <code className="bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono text-zinc-800 dark:text-zinc-200" {...props}>{children}</code>;
   },

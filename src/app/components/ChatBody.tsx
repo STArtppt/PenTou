@@ -11,6 +11,7 @@ import { useTranslation } from "../i18n";
 import { convertConversationToDocument, LLMError } from "../llm";
 import { excerptConversationToDoc, generateDocId, mergeRewriteWithExistingBody } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
+import { MermaidBlock } from "./MermaidBlock";
 
 export function ChatBody() {
   const {
@@ -199,7 +200,7 @@ export function ChatBody() {
         </header>
 
         {/* Message List */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-32 pt-8">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar pb-32 pt-8">
           <div className="max-w-4xl mx-auto px-6 space-y-12">
             {conversation.messages.map((msg) => (
               <MessageBubble
@@ -321,6 +322,10 @@ const markdownComponents = {
     })}</>
   ),
   code: ({ node, className, children, isBlock, ...props }: any) => {
+    const language = className?.match(/language-(\S+)/)?.[1];
+    if (isBlock && language === "mermaid") {
+      return <MermaidBlock source={String(children).replace(/\n$/, "")} className={className} />;
+    }
     if (isBlock) return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
     return (
       <code className="bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono text-zinc-800 dark:text-zinc-200" {...props}>
