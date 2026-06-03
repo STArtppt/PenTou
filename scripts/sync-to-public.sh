@@ -3,7 +3,7 @@
 # 配套：src/docs/features/opensource-release/guide.md §4
 #
 # 用法：
-#   scripts/sync-to-public.sh                          自动从最近的 sync/* tag 同步到 main HEAD
+#   scripts/sync-to-public.sh                          自动从最近的 synced/* 书签（打在 main 上）同步到 main HEAD
 #   scripts/sync-to-public.sh --from <ref> --to <ref>  显式指定区间
 #   scripts/sync-to-public.sh --dry-run                只列出待同步 commit，不切分支
 #
@@ -59,12 +59,15 @@ fi
 
 # 2) 推断 FROM
 if [ -z "$FROM" ]; then
-  FROM="$(git tag --list 'sync/*' --sort=-committerdate | head -1 || true)"
+  # synced/* 书签打在 main 上（见 guide.md §4.1）；public 是孤儿分支，
+  # 早期 sync/* 标签打在 public 上不能用作 --from，会列出 main 全部历史。
+  FROM="$(git tag --list 'synced/*' --sort=-committerdate | head -1 || true)"
   if [ -z "$FROM" ]; then
-    echo "❌ 仓库中没有 sync/* tag，请显式 --from <ref>" >&2
+    echo "❌ 仓库中没有 synced/* 书签（应打在 main 上），请显式 --from <ref>" >&2
+    echo "   首次启用：对照 'git log github/main --oneline' 栈顶反查 main 上对应 SHA，见 guide.md §4.1" >&2
     exit 1
   fi
-  echo "ℹ️  使用上次同步标签作为起点：$FROM"
+  echo "ℹ️  使用上次同步书签作为起点：$FROM"
 fi
 
 # 3) 列出待同步 commit
@@ -172,13 +175,14 @@ cat <<EOF
      git log --oneline ${PUBLIC_BRANCH}~${SUCCESS_COUNT}..${PUBLIC_BRANCH}
      git rebase -i ${PUBLIC_BRANCH}~${SUCCESS_COUNT}    # 把要改的标 'reword'
 
-2) 推送双远端 + 打 sync 标签：
-     TODAY=\$(date +%Y-%m-%d)
+2) 推送 public（先 Gitea 备份，再推 GitHub 触发 release.yml）：
      git push origin ${PUBLIC_BRANCH}
      git push github ${PUBLIC_BRANCH}:main
-     git tag sync/\$TODAY
-     git push origin sync/\$TODAY
-     git push github sync/\$TODAY
+
+   打同步书签：锚在 ${SOURCE_BRANCH} 刚同步的提交上（不是 public！），只留本地 / 可选备份 Gitea：
+     TODAY=\$(date +%Y-%m-%d)
+     git tag synced/\$TODAY ${SOURCE_BRANCH}
+     git push origin synced/\$TODAY        # 可选；不要推 github
 
 3) 切回 ${SOURCE_BRANCH} 继续开发：
      git checkout ${SOURCE_BRANCH}
