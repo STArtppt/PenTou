@@ -530,8 +530,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     results.forEach((d) => hydratedDocRef.current.add(d.id));
     setDocuments((prev) => {
       // upsert：已存在的按 id 用最新结果替换（导入合并到既有文档时刷新正文/updatedAt），其余追加
-      const byId = new Map(prev.map((d) => [d.id, d]));
-      for (const d of results) byId.set(d.id, { ...byId.get(d.id), ...d });
+      const byId = new Map<string, Document>(prev.map((d) => [d.id, d]));
+      for (const d of results) {
+        const existing = byId.get(d.id);
+        byId.set(d.id, existing ? { ...existing, ...d } : d);
+      }
       return Array.from(byId.values());
     });
     if (results.length > 0) setActiveDocId(results[0].id);
