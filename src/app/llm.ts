@@ -12,6 +12,8 @@ export const DEFAULT_PROMPT_REWRITE = `你是一个 Markdown 文档编辑助手�
 2. 如果批注与原文矛盾，按批注优先
 3. 不要附带解释，直接输出 Markdown 全文（不要只输出 diff）`.trim();
 
+export const DEFAULT_PROMPT_AI_SIDEBAR = `你是嵌入文档阅读器的 AI 助手。请优先基于给定上下文回答，保持简洁、准确、可执行。若上下文不足，请明确说明，并可基于常识给出谨慎建议。回答使用 Markdown。`.trim();
+
 export const DEFAULT_LLM_CONFIG: LLMConfig = {
   endpoint: "https://api.openai.com/v1",
   apiKey: "",
@@ -28,6 +30,12 @@ export class LLMError extends Error {
     super(message);
     this.name = "LLMError";
   }
+}
+
+export type ChatRole = "system" | "user" | "assistant";
+export interface ChatMessage {
+  role: ChatRole;
+  content: string;
 }
 
 export function serializeConversation(conv: Conversation): string {
@@ -92,27 +100,52 @@ export async function testLLMConnection(cfg: LLMConfig): Promise<{ ok: boolean; 
   }
 }
 
+export async function chatCompletion(
+  cfg: LLMConfig,
+  messages: ChatMessage[],
+  onChunk?: (chunk: string) => void,
+  signal?: AbortSignal,
+): Promise<string> {
+  return requestChatCompletions(cfg, messages, onChunk, signal);
+}
+
 async function callLLM(
   cfg: LLMConfig,
   systemPrompt: string,
   userContent: string,
   onChunk?: (chunk: string) => void,
 ): Promise<string> {
-  const res = await fetch(`${cfg.endpoint}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: cfg.model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userContent },
-      ],
-      stream: !!onChunk,
-    }),
-  });
+  return requestChatCompletions(cfg, [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userContent },
+  ], onChunk);
+}
+
+async function requestChatCompletions(
+  cfg: LLMConfig,
+  messages: ChatMessage[],
+  onChunk?: (chunk: string) => void,
+  signal?: AbortSignal,
+): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(`${cfg.endpoint}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cfg.apiKey}`,
+      },
+      signal,
+      body: JSON.stringify({
+        model: cfg.model,
+        messages,
+        stream: !!onChunk,
+      }),
+    });
+  } catch (e: any) {
+    if (e?.name === "AbortError") return "";
+    throw e;
+  }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
@@ -142,7 +175,14 @@ async function parseSSE(
   let buffer = "";
 
   while (true) {
-    const { done, value } = await reader.read();
+    let chunk: ReadableStreamReadResult<Uint8Array>;
+    try {
+      chunk = await reader.read();
+    } catch (e: any) {
+      if (e?.name === "AbortError") return fullText;
+      throw e;
+    }
+    const { done, value } = chunk;
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 

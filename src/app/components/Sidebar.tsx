@@ -12,6 +12,8 @@ import {
   Import,
   Trash2,
   Edit2,
+  Copy,
+  Download,
   FolderInput,
   FileText,
   Settings,
@@ -23,10 +25,13 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
+import { toast } from "sonner";
 import { useAppContext, Conversation, Folder, Platform, Document, DocumentFolder } from "../data";
 import logoUrl from "../../../assets/images/logo.png";
 import logoDarkUrl from "../../../assets/images/logo_dark.png";
 import { useTranslation } from "../i18n";
+import { formatDisplayDate } from "../utils/dateFormat";
+import { copyText } from "../utils/clipboard";
 
 const CONVERSATION_ITEM_TYPE = "CONVERSATION";
 const DOCUMENT_ITEM_TYPE = "DOCUMENT";
@@ -35,6 +40,7 @@ const FOLDER_SUBMENU_WIDTH = 188;
 
 type MenuPosition = { top: number; left: number; maxHeight: number };
 type MoveTarget = { id: string | null; name: string };
+type StoredItemType = "conversation" | "document";
 
 type SelectionContextValue = {
   mode: boolean;
@@ -77,17 +83,90 @@ function getSubmenuPosition(trigger: HTMLElement, itemCount: number): MenuPositi
   };
 }
 
+function escapeFrontmatterValue(value: string): string {
+  if (!value) return '""';
+  if (value.includes('"') || value.includes("\n") || value.includes(":")) {
+    return `"${value.replace(/"/g, '\\"')}"`;
+  }
+  return value;
+}
+
+function conversationToMarkdown(conversation: Conversation): string {
+  const msgBlock = (conversation.messages ?? [])
+    .map((message) => {
+      const role = message.role === "user" ? "## User" : `## ${conversation.platform ?? "AI"}`;
+      return `${role}\n\n${message.content}\n`;
+    })
+    .join("\n---\n\n");
+
+  const lines = [
+    `id: ${escapeFrontmatterValue(conversation.id)}`,
+    `title: ${escapeFrontmatterValue(conversation.title ?? "Untitled")}`,
+    `platform: ${escapeFrontmatterValue(conversation.platform ?? "ChatGPT")}`,
+    `date: ${escapeFrontmatterValue(conversation.date ?? new Date().toISOString())}`,
+    `folderId: ${conversation.folderId ? escapeFrontmatterValue(conversation.folderId) : "null"}`,
+  ];
+  if (conversation.updatedAt) lines.push(`updatedAt: ${escapeFrontmatterValue(conversation.updatedAt)}`);
+  if (conversation.currentVersionId) lines.push(`currentVersionId: ${escapeFrontmatterValue(conversation.currentVersionId)}`);
+
+  return `---\n${lines.join("\n")}\n---\n\n${msgBlock}`;
+}
+
+function documentToMarkdown(doc: Document): string {
+  const lines = [
+    "---",
+    `id: ${escapeFrontmatterValue(doc.id)}`,
+    `title: ${escapeFrontmatterValue(doc.title ?? "Untitled")}`,
+    `folderId: ${doc.folderId ? escapeFrontmatterValue(doc.folderId) : "null"}`,
+    `createdAt: ${escapeFrontmatterValue(doc.createdAt ?? new Date().toISOString())}`,
+    `updatedAt: ${escapeFrontmatterValue(doc.updatedAt ?? new Date().toISOString())}`,
+    `currentVersionId: ${escapeFrontmatterValue(doc.currentVersionId ?? "")}`,
+  ];
+  if (doc.sourceConversationId) lines.push(`sourceConversationId: ${escapeFrontmatterValue(doc.sourceConversationId)}`);
+  if (doc.sourcePlatform) lines.push(`sourcePlatform: ${escapeFrontmatterValue(doc.sourcePlatform)}`);
+  if (doc.sourceAiChatId) lines.push(`sourceAiChatId: ${escapeFrontmatterValue(doc.sourceAiChatId)}`);
+  if (doc.generatedBy) lines.push(`generatedBy: ${escapeFrontmatterValue(doc.generatedBy)}`);
+  if (doc.generatedAt) lines.push(`generatedAt: ${escapeFrontmatterValue(doc.generatedAt)}`);
+  if (doc.importedFrom) lines.push(`importedFrom: ${escapeFrontmatterValue(doc.importedFrom)}`);
+  if (doc.importedAt) lines.push(`importedAt: ${escapeFrontmatterValue(doc.importedAt)}`);
+  lines.push("---", "", doc.body ?? "");
+  return lines.join("\n");
+}
+
+function downloadMarkdownFile(fileName: string, content: string) {
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function fetchStoragePath(type: StoredItemType, id: string): Promise<string> {
+  const res = await fetch(`/api/storage-paths/${type}/${id}`, { credentials: "include" });
+  if (!res.ok) throw new Error(`Storage path request failed: ${res.status}`);
+  const data = (await res.json()) as { path: string };
+  return data.path;
+}
+
 function ItemActionMenu({
   menuPosition,
   moveTargets,
   onRename,
   onMove,
+  onCopyPath,
+  onDownloadMarkdown,
   onDelete,
 }: {
   menuPosition: MenuPosition;
   moveTargets: MoveTarget[];
   onRename: (event: React.MouseEvent) => void;
   onMove: (folderId: string | null) => void;
+  onCopyPath: (event: React.MouseEvent) => void;
+  onDownloadMarkdown: (event: React.MouseEvent) => void;
   onDelete: (event: React.MouseEvent) => void;
 }) {
   const { t } = useTranslation();
@@ -133,6 +212,21 @@ function ItemActionMenu({
           <FolderInput size={12} />
           <span className="min-w-0 flex-1 truncate">{t("sidebar.menuMove")}</span>
           <ChevronRight size={12} className="shrink-0 text-zinc-400 dark:text-zinc-500" />
+        </button>
+        <div className="my-1 h-px bg-zinc-100 dark:bg-white/10" />
+        <button
+          onMouseEnter={() => setSubmenuOpen(false)}
+          onClick={onCopyPath}
+          className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 flex items-center gap-2"
+        >
+          <Copy size={12} /> {t("sidebar.menuCopyPath")}
+        </button>
+        <button
+          onMouseEnter={() => setSubmenuOpen(false)}
+          onClick={onDownloadMarkdown}
+          className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 flex items-center gap-2"
+        >
+          <Download size={12} /> {t("sidebar.menuDownloadMd")}
         </button>
         <div className="my-1 h-px bg-zinc-100 dark:bg-white/10" />
         <button
@@ -354,8 +448,7 @@ export function Sidebar() {
     theme,
     setTheme,
     setDrawerOpen,
-    searchQuery,
-    setSearchQuery,
+    setSearchOpen,
     folders,
     conversations,
     addFolder,
@@ -392,16 +485,12 @@ export function Sidebar() {
   const [chatFolderOpen, setChatFolderOpen] = useState<Record<string, boolean>>({});
   const [docFolderOpen, setDocFolderOpen] = useState<Record<string, boolean>>({});
 
-  const platformOptions: Platform[] = ["ChatGPT", "DeepSeek", "Gemini", "Claude", "CLI", "Cursor", "Copilot", "Codex"];
+  const platformOptions: Platform[] = ["ChatGPT", "DeepSeek", "Gemini", "Claude", "CLI", "Cursor", "Copilot", "Codex", "Hermes"];
 
-  const filteredConversations = conversations.filter((c) =>
-    c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.messages.some((m) => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  const filteredDocuments = documents.filter((d) =>
-    d.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // 搜索已统一收敛到命令面板浮层（spec hybrid-search US-01 AC4）；
+  // 侧栏列表不再按 searchQuery 实时过滤，直接展示全量。
+  const filteredConversations = conversations;
+  const filteredDocuments = documents;
 
   const exitSelection = () => {
     setSelectionMode(false);
@@ -581,42 +670,40 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* View Tabs */}
-        <div className="flex bg-zinc-100 dark:bg-white/5 rounded-lg p-0.5">
+        {/* View Tabs + inline Search button (spec hybrid-search US-01) */}
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 bg-zinc-100 dark:bg-white/5 rounded-lg p-0.5">
+            <button
+              onClick={() => handleTabClick("chat")}
+              className={clsx(
+                "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors",
+                activeView === "chat"
+                  ? "bg-white dark:bg-[#2A2A2A] text-zinc-900 dark:text-zinc-100 shadow-sm"
+                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+              )}
+            >
+              {t("sidebar.tab.chat")}
+            </button>
+            <button
+              onClick={() => handleTabClick("doc")}
+              className={clsx(
+                "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors",
+                activeView === "doc"
+                  ? "bg-white dark:bg-[#2A2A2A] text-zinc-900 dark:text-zinc-100 shadow-sm"
+                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+              )}
+            >
+              {t("sidebar.tab.doc")}
+            </button>
+          </div>
           <button
-            onClick={() => handleTabClick("chat")}
-            className={clsx(
-              "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors",
-              activeView === "chat"
-                ? "bg-white dark:bg-[#2A2A2A] text-zinc-900 dark:text-zinc-100 shadow-sm"
-                : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
-            )}
+            onClick={() => setSearchOpen(true)}
+            title={t("search.button")}
+            aria-label={t("search.button")}
+            className="shrink-0 flex items-center justify-center h-8 w-8 rounded-lg border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400 hover:border-orange-500 dark:hover:border-yellow-400 transition-colors"
           >
-            {t("sidebar.tab.chat")}
+            <Search size={16} />
           </button>
-          <button
-            onClick={() => handleTabClick("doc")}
-            className={clsx(
-              "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors",
-              activeView === "doc"
-                ? "bg-white dark:bg-[#2A2A2A] text-zinc-900 dark:text-zinc-100 shadow-sm"
-                : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
-            )}
-          >
-            {t("sidebar.tab.doc")}
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="relative group">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
-          <input
-            type="text"
-            placeholder={activeView === "doc" ? t("sidebar.searchDoc") : t("sidebar.search")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-yellow-400 focus:border-transparent transition-all"
-          />
         </div>
 
         {/* Action Buttons */}
@@ -1083,7 +1170,7 @@ function ConversationUncategorizedList({ conversations }: { conversations: Conve
 }
 
 function ConversationItem({ conversation }: { conversation: Conversation }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { activeConversationId, setActiveConversationId, deleteConversation, renameConversation, moveConversation, folders } =
     useAppContext();
   const { mode: selectionMode, isSelected, toggle } = useSelection();
@@ -1124,6 +1211,25 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
     setMenuOpen(false);
   };
 
+  const handleCopyPath = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    try {
+      const storagePath = await fetchStoragePath("conversation", conversation.id);
+      if (await copyText(storagePath)) toast.success(t("sidebar.pathCopied"));
+      else toast.error(t("sidebar.pathCopyFailed"));
+    } catch (error) {
+      console.error({ module: "Sidebar", op: "copyConversationPath", err: error, context: { id: conversation.id } });
+      toast.error(t("sidebar.pathCopyFailed"));
+    }
+  };
+
+  const handleDownloadMarkdown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    downloadMarkdownFile(`${conversation.id}.md`, conversationToMarkdown(conversation));
+  };
+
   const moveTargets: MoveTarget[] = [
     { id: null, name: t("sidebar.uncategorized") },
     ...folders.map((folder) => ({ id: folder.id, name: folder.name })),
@@ -1158,7 +1264,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
       )}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 truncate pr-6">
+        <div className="flex min-w-0 items-center gap-2 truncate pr-6">
           {selectionMode && (
             checked
               ? <CheckSquare size={14} className="text-orange-500 dark:text-yellow-400 shrink-0" />
@@ -1185,7 +1291,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
       </div>
 
       <div className="flex items-center gap-2 mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">
-        <span>{new Date(conversation.date).toLocaleDateString()}</span>
+        <span>{formatDisplayDate(conversation.date, language)}</span>
         <span>•</span>
         <span>{Math.floor((conversation.messageCount ?? conversation.messages.length) / 2)} {t("sidebar.turns")}</span>
       </div>
@@ -1197,6 +1303,8 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
             moveTargets={moveTargets}
             onRename={handleRename}
             onMove={handleMove}
+            onCopyPath={handleCopyPath}
+            onDownloadMarkdown={handleDownloadMarkdown}
             onDelete={handleDelete}
           />
         )}
@@ -1223,7 +1331,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
 }
 
 function PlatformIcon({ platform }: { platform: Platform }) {
-  return <MessageSquare size={14} className="text-zinc-500 dark:text-zinc-400" />;
+  return <MessageSquare size={14} className="shrink-0 text-zinc-500 dark:text-zinc-400" />;
 }
 
 function DocumentList({
@@ -1510,6 +1618,25 @@ function DocumentItem({ document: doc }: { document: Document }) {
     setMenuOpen(false);
   };
 
+  const handleCopyPath = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    try {
+      const storagePath = await fetchStoragePath("document", doc.id);
+      if (await copyText(storagePath)) toast.success(t("sidebar.pathCopied"));
+      else toast.error(t("sidebar.pathCopyFailed"));
+    } catch (error) {
+      console.error({ module: "Sidebar", op: "copyDocumentPath", err: error, context: { id: doc.id } });
+      toast.error(t("sidebar.pathCopyFailed"));
+    }
+  };
+
+  const handleDownloadMarkdown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    downloadMarkdownFile(`${doc.id}.md`, documentToMarkdown(doc));
+  };
+
   const moveTargets: MoveTarget[] = [
     { id: null, name: t("sidebar.uncategorized") },
     ...documentFolders.map((folder) => ({ id: folder.id, name: folder.name })),
@@ -1573,6 +1700,8 @@ function DocumentItem({ document: doc }: { document: Document }) {
             moveTargets={moveTargets}
             onRename={handleRename}
             onMove={handleMove}
+            onCopyPath={handleCopyPath}
+            onDownloadMarkdown={handleDownloadMarkdown}
             onDelete={handleDelete}
           />
         )}

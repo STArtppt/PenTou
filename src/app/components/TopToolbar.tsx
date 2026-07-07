@@ -46,6 +46,8 @@ export function TopToolbar() {
     setActiveDocId,
     commitVersion,
     setAnnotationsForDoc,
+    aiSidebarOpen,
+    toggleAiSidebar,
   } = useAppContext();
   const { t } = useTranslation();
 
@@ -263,6 +265,12 @@ export function TopToolbar() {
           onClick={handleObsidian}
           tooltip={!activeDocId ? t("toolbar.noSelection") : undefined}
         />
+        <ToolButton
+          icon={MessageSquare}
+          label={t("toolbar.askAi")}
+          active={aiSidebarOpen}
+          onClick={toggleAiSidebar}
+        />
 
       </div>
 
@@ -315,6 +323,7 @@ function ToolButton({
   onClick,
   tooltip,
   loading,
+  active,
 }: {
   icon: React.ElementType;
   label: string;
@@ -322,6 +331,7 @@ function ToolButton({
   onClick?: () => void;
   tooltip?: string;
   loading?: boolean;
+  active?: boolean;
 }) {
   return (
     <button
@@ -332,6 +342,8 @@ function ToolButton({
         "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
         disabled
           ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed"
+          : active
+          ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
           : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-orange-500 dark:hover:text-yellow-400",
       )}
     >

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
 import { useAppContext, DocumentVersion, ConversationVersion, VersionType } from "../data";
 import { useTranslation } from "../i18n";
-import { format } from "date-fns";
+import { formatDisplayDateTime } from "../utils/dateFormat";
 
 // 通用版本面板：文档与会话共用（spec import-dedup-versioning 决策5）。
 // kind="document"（默认）走文档版本端点；kind="conversation" 走会话版本端点。
@@ -36,7 +36,7 @@ export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
     previewingVersionId,
     setPreviewingVersionId,
   } = useAppContext();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const isConv = kind === "conversation";
   const activeId = isConv ? activeConversationId : activeDocId;
@@ -113,7 +113,7 @@ export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
                 </h3>
                 {updatedAt && (
                   <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">
-                    {t("version.updatedAt", { time: format(new Date(updatedAt), "MMM d, yyyy h:mm a") })}
+                    {t("version.updatedAt", { time: formatDisplayDateTime(updatedAt, language) })}
                   </p>
                 )}
               </div>
@@ -147,6 +147,7 @@ export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
                     onRollback={() => handleRollback(v)}
                     onDelete={() => handleDelete(v)}
                     t={t}
+                    language={language}
                   />
                 ))}
               </div>
@@ -178,6 +179,7 @@ function VersionCard({
   onRollback,
   onDelete,
   t,
+  language,
 }: {
   version: PanelVersion;
   isCurrent: boolean;
@@ -187,6 +189,7 @@ function VersionCard({
   onRollback: () => void;
   onDelete: () => void;
   t: (key: any, p?: any) => string;
+  language: "en" | "zh";
 }) {
   const typeLabel = t(`version.type.${version.type}` as any);
 
@@ -216,7 +219,7 @@ function VersionCard({
       </div>
 
       <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mb-2">
-        {format(new Date(version.createdAt), "MMM d, yyyy h:mm a")}
+        {formatDisplayDateTime(version.createdAt, language)}
         {version.sourceAnnotationIds && version.sourceAnnotationIds.length > 0 && (
           <span className="ml-2 text-orange-500 dark:text-yellow-400">
             {t("version.basedOn", { n: version.sourceAnnotationIds.length })}

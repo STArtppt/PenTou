@@ -1,11 +1,13 @@
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
+import { Readable } from "node:stream";
 import * as cheerio from "cheerio";
 import { parseDeepSeekExport, parseChatGPTExport } from "../src/app/parsers.js";
 
-const BIN_DIR = path.resolve(process.cwd(), "bin");
-const OBSCURA_PATH = path.join(BIN_DIR, process.platform === "win32" ? "obscura.exe" : "obscura");
+const DEFAULT_BIN_DIR = path.resolve(process.cwd(), "bin");
+const OBSCURA_FILE = process.platform === "win32" ? "obscura.exe" : "obscura";
 const OBSCURA_STDOUT_MAX_BYTES = 1024 * 1024 * 50;
 const OBSCURA_STDERR_TAIL_BYTES = 1024 * 64;
 const OBSCURA_TIMEOUT_MS = 45_000;
@@ -21,7 +23,105 @@ function appendTail(current: string, chunk: Buffer, maxBytes: number): string {
   return next.slice(-maxBytes);
 }
 
-export async function fetchHtmlWithObscura(url: string): Promise<string> {
+// ── obscura 二进制解析与惰性下载（npx-launcher spec §4.5 决策 5）─────────────────
+// npx 包不含 postinstall，obscura 在首次用到分享链接导入时下载到 <data-dir>/bin/，
+// 失败沿用"功能降级、应用可用"语义。同路径并发下载用 in-flight Promise 去重。
+
+export interface ObscuraOptions {
+  /** obscura 所在目录；省略时用 <cwd>/bin（Docker / dev）。 */
+  binDir?: string;
+  /** 缺失时是否惰性下载（仅 npx 本地模式）。 */
+  allowDownload?: boolean;
+}
+
+const downloadInFlight = new Map<string, Promise<boolean>>();
+
+/** 按宿主平台/架构返回 obscura release 资产名；不支持的组合返回 null。 */
+function obscuraAssetName(): string | null {
+  const platform = os.platform();
+  let arch: string = os.arch();
+  if (arch === "amd64") arch = "x64";
+  if (arch === "aarch64") arch = "arm64";
+
+  if (platform === "win32") return "obscura-x86_64-windows.zip";
+  if (platform === "darwin") return arch === "arm64" ? "obscura-aarch64-macos.tar.gz" : "obscura-x86_64-macos.tar.gz";
+  if (platform === "linux") {
+    // 上游暂无 linux-aarch64 构建；该平台分享链接导入降级不可用。
+    if (arch === "arm64") return null;
+    return "obscura-x86_64-linux.tar.gz";
+  }
+  return null;
+}
+
+/** 下载并解压 obscura 到 binDir；成功返回 true。失败仅警告并返回 false（优雅降级）。 */
+async function downloadObscura(binDir: string, binPath: string): Promise<boolean> {
+  const assetName = obscuraAssetName();
+  if (!assetName) {
+    console.warn(`[obscura] no prebuilt binary for ${os.platform()}/${os.arch()}; share-link import disabled.`);
+    return false;
+  }
+
+  const releaseUrl = `https://github.com/h4ckf0r0day/obscura/releases/latest/download/${assetName}`;
+  const isZip = assetName.endsWith(".zip");
+  const tempFile = path.join(binDir, isZip ? "obscura-download.zip" : "obscura-download.tar.gz");
+
+  try {
+    fs.mkdirSync(binDir, { recursive: true });
+    console.warn(`[obscura] downloading from ${releaseUrl} ...`);
+    const response = await fetch(releaseUrl);
+    if (!response.ok || !response.body) {
+      console.warn(`[obscura] download failed: HTTP ${response.status}. Share-link import disabled.`);
+      return false;
+    }
+
+    const fileStream = fs.createWriteStream(tempFile);
+    await new Promise<void>((resolve, reject) => {
+      Readable.fromWeb(response.body as any)
+        .pipe(fileStream)
+        .on("finish", () => resolve())
+        .on("error", reject);
+    });
+
+    execFileSync("tar", [isZip ? "-xf" : "-xzf", tempFile, "-C", binDir], { stdio: "ignore" });
+    try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
+
+    if (os.platform() !== "win32" && fs.existsSync(binPath)) {
+      fs.chmodSync(binPath, 0o755);
+    }
+
+    if (fs.existsSync(binPath)) {
+      console.warn(`[obscura] ready at ${binPath}`);
+      return true;
+    }
+    console.warn("[obscura] archive extracted but binary not found; share-link import disabled.");
+    return false;
+  } catch (error: any) {
+    console.warn("[obscura] download error (non-fatal):", error?.message ?? error);
+    try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
+    return false;
+  }
+}
+
+/**
+ * 解析 obscura 二进制路径：已存在则直接用；缺失且 allowDownload 时惰性下载。
+ * 返回可执行路径，或 null（降级，调用方应抛出友好错误）。
+ */
+async function resolveObscuraPath(options?: ObscuraOptions): Promise<string | null> {
+  const binDir = options?.binDir ?? DEFAULT_BIN_DIR;
+  const binPath = path.join(binDir, OBSCURA_FILE);
+  if (fs.existsSync(binPath)) return binPath;
+  if (!options?.allowDownload) return null;
+
+  let pending = downloadInFlight.get(binPath);
+  if (!pending) {
+    pending = downloadObscura(binDir, binPath).finally(() => downloadInFlight.delete(binPath));
+    downloadInFlight.set(binPath, pending);
+  }
+  const ok = await pending;
+  return ok ? binPath : null;
+}
+
+export async function fetchHtmlWithObscura(url: string, options?: ObscuraOptions): Promise<string> {
   // ── Native API Interception for specific platforms ──
   // Doubao embeds the public share payload in streamed router script attrs. Obscura
   // currently fails to execute that script, so prefer the raw HTML response.
@@ -147,15 +247,16 @@ export async function fetchHtmlWithObscura(url: string): Promise<string> {
     }
   }
 
-  if (!fs.existsSync(OBSCURA_PATH)) {
-    throw new Error(`Obscura binary not found at ${OBSCURA_PATH}. Please run 'npm run postinstall' to download it.`);
+  const obscuraPath = await resolveObscuraPath(options);
+  if (!obscuraPath) {
+    throw new Error("Obscura binary unavailable; share-link import is disabled on this platform/network.");
   }
 
   const waitUntil = url.includes("metaso.cn") ? "domcontentloaded" : "networkidle0";
 
   return new Promise((resolve, reject) => {
     const child = spawn(
-      OBSCURA_PATH,
+      obscuraPath,
       ["fetch", url, "--stealth", "--wait-until", waitUntil, "--dump", "html"],
       { stdio: ["ignore", "pipe", "pipe"] },
     );
@@ -316,14 +417,67 @@ function tryParseJson(text: string): any | null {
   }
 }
 
+/** 从图片对象按优先级取 URL（spec media-assets §4.5：原图 → 预览图 → 缩略图）。 */
+function pickImageUrl(image: any, keys: string[]): string {
+  for (const key of keys) {
+    const url = image?.[key]?.url;
+    if (typeof url === "string" && url) return url;
+  }
+  return "";
+}
+
+/**
+ * Doubao 结构化图片 → markdown 图片（spec media-assets §4.5 / 决策 11）。
+ * attachment_block 上传图、creation_block 生成图与参考图；URL 缺失插入占位（解析期兜底）。
+ */
+function extractDoubaoBlockImages(parsed: any): string[] {
+  const parts: string[] = [];
+  const seen = new Set<string>();
+  const push = (url: string, alt: string, missingText: string) => {
+    if (!url) { parts.push(missingText); return; }
+    if (seen.has(url)) return; // 同一消息内按展示顺序去重
+    seen.add(url);
+    parts.push(`![${alt}](${url})`);
+  };
+
+  for (const att of parsed?.attachment_block?.attachments ?? []) {
+    push(pickImageUrl(att?.image, ["image_ori", "image_preview", "image_thumb"]), "附件图片", "[图片缺失]");
+  }
+
+  let genIndex = 0;
+  for (const creation of parsed?.creation_block?.creations ?? []) {
+    genIndex++;
+    push(
+      pickImageUrl(creation?.image, ["image_raw_b", "image_ori", "image_preview", "image_thumb"]),
+      `生成图片 ${genIndex}`,
+      "[生成图片缺失]",
+    );
+    for (const ref of creation?.gen_detail?.ref_images ?? []) {
+      const refUrl = pickImageUrl(ref, ["image_ori", "image_preview", "image_thumb"])
+        || pickImageUrl(ref?.image, ["image_ori", "image_preview", "image_thumb"]);
+      if (refUrl && !seen.has(refUrl)) {
+        seen.add(refUrl);
+        parts.push(`![参考图](${refUrl})`);
+      }
+    }
+  }
+
+  return parts;
+}
+
 function extractDoubaoBlockText(block: any): string {
   const candidates = [block?.content_v2, block?.content];
 
   for (const candidate of candidates) {
     if (!candidate) continue;
     const parsed = typeof candidate === "string" ? tryParseJson(candidate) : candidate;
+    if (!parsed) continue;
+
+    const segments: string[] = [];
     const text = parsed?.text_block?.text || parsed?.text;
-    if (typeof text === "string" && text.trim()) return text.trim();
+    if (typeof text === "string" && text.trim()) segments.push(text.trim());
+    segments.push(...extractDoubaoBlockImages(parsed));
+    if (segments.length > 0) return segments.join("\n\n");
   }
 
   return "";
@@ -393,6 +547,56 @@ function parseDoubaoShare($: cheerio.CheerioAPI): any[] | null {
   }];
 }
 
+/**
+ * Qianwen 结构化图片 → markdown 图片（spec media-assets §4.5）。
+ * 优先 result_images 原图；layout_list 经 refer_id 指向 resource_infos，避免重复抓 watermark 资源。
+ */
+function extractQianwenMessageImages(message: any): string[] {
+  const images: string[] = [];
+  const seen = new Set<string>();
+  let genIndex = 0;
+  const push = (url: string) => {
+    genIndex++;
+    if (!url) { images.push("[生成图片缺失]"); return; }
+    if (seen.has(url)) return;
+    seen.add(url);
+    images.push(`![生成图片 ${genIndex}](${url})`);
+  };
+  const resourceUrl = (resource: any) =>
+    resource?.download_url || resource?.cdn_url || resource?.url || resource?.preview_url || resource?.thumbnail_url || "";
+
+  for (const load of message?.meta_data?.multi_load ?? []) {
+    const resultImages = load?.extra_info?.content?.extra?.result_images;
+    if (Array.isArray(resultImages) && resultImages.length > 0) {
+      for (const img of resultImages) {
+        push(img?.download_url || img?.cdn_url || img?.preview_url || img?.thumbnail_url || "");
+      }
+      continue;
+    }
+
+    const resources = load?.content?.resource_infos;
+    const layouts = load?.content?.layout_list;
+    if (Array.isArray(layouts) && layouts.length > 0 && Array.isArray(resources)) {
+      for (const layout of layouts) {
+        const image = layout?.image;
+        if (!image) continue;
+        const referId = image?.refer_id ?? image?.referId;
+        const resource = resources.find(
+          (r: any) => r?.refer_id === referId || r?.id === referId || r?.resource_id === referId,
+        );
+        push(resourceUrl(resource) || (typeof image?.url === "string" ? image.url : ""));
+      }
+      continue;
+    }
+
+    if (Array.isArray(resources)) {
+      for (const resource of resources) push(resourceUrl(resource));
+    }
+  }
+
+  return images;
+}
+
 function parseQianwenApiPayload(data: any): any[] {
   const date = new Date().toISOString();
   const records = data?.session?.record_list;
@@ -413,7 +617,11 @@ function parseQianwenApiPayload(data: any): any[] {
     }
 
     const responseText = (record.response_messages || [])
-      .map((message: any) => typeof message.content === "string" ? message.content.trim() : "")
+      .map((message: any) => {
+        const text = typeof message.content === "string" ? message.content.trim() : "";
+        // 生成图紧随对应说明文字之后（spec media-assets §4.5）
+        return [text, ...extractQianwenMessageImages(message)].filter(Boolean).join("\n\n");
+      })
       .filter(Boolean)
       .join("\n\n");
     if (responseText) messages.push(makeMsg("ai", responseText, timestamp));
@@ -545,6 +753,43 @@ function extractGeminiResponseText(response: any): string {
   return "";
 }
 
+/** 深扫响应节点收集 lh3.googleusercontent.com 生成图 URL，按数组顺序去重（spec media-assets §4.5）。 */
+function collectGeminiImageUrls(node: any, out: string[] = [], seen = new Set<string>()): string[] {
+  if (typeof node === "string") {
+    if (/^https:\/\/lh3\.googleusercontent\.com\//.test(node) && !seen.has(node)) {
+      seen.add(node);
+      out.push(node);
+    }
+  } else if (Array.isArray(node)) {
+    for (const child of node) collectGeminiImageUrls(child, out, seen);
+  } else if (node && typeof node === "object") {
+    for (const child of Object.values(node)) collectGeminiImageUrls(child, out, seen);
+  }
+  return out;
+}
+
+/**
+ * Gemini 正文内联 image_generation_content/<N> 占位 token 按序号替换为对应 lh3 生成图；
+ * 无对应图片时删除 token 并插入占位；未被 token 引用的生成图按序补在正文末尾（spec §4.5）。
+ */
+function applyGeminiInlineImages(text: string, imageUrls: string[]): string {
+  const usedIndices = new Set<number>();
+  let result = text.replace(
+    /https?:\/\/googleusercontent\.com\/image_generation_content\/(\d+)/g,
+    (_match, n: string) => {
+      const idx = Number(n);
+      usedIndices.add(idx);
+      const url = imageUrls[idx];
+      return url ? `![生成图片 ${idx + 1}](${url})` : "[生成图片缺失]";
+    },
+  );
+  const extra = imageUrls
+    .map((url, i) => (usedIndices.has(i) ? null : `![生成图片 ${i + 1}](${url})`))
+    .filter(Boolean) as string[];
+  if (extra.length > 0) result = [result.trim(), ...extra].filter(Boolean).join("\n\n");
+  return result;
+}
+
 function parseGeminiApiPayload(data: any): any[] {
   const date = new Date().toISOString();
   const conversation = data?.[0];
@@ -557,7 +802,10 @@ function parseGeminiApiPayload(data: any): any[] {
   for (const turn of turns) {
     const timestamp = geminiTimestamp(turn?.[4], date);
     const userText = extractGeminiUserText(turn?.[2]);
-    const aiText = extractGeminiResponseText(turn?.[3]);
+    const aiText = applyGeminiInlineImages(
+      extractGeminiResponseText(turn?.[3]),
+      collectGeminiImageUrls(turn?.[3]),
+    );
 
     if (userText) messages.push(makeMsg("user", userText, timestamp));
     if (aiText) messages.push(makeMsg("ai", aiText, timestamp));

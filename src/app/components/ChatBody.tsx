@@ -1,8 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { format } from "date-fns";
-import { Bot, User, Terminal, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff } from "lucide-react";
+import { Bot, User, Terminal, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff, MessageSquare } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAppContext, Message, Platform } from "../data";
@@ -12,7 +11,10 @@ import { useTranslation } from "../i18n";
 import { convertConversationToDocument, LLMError } from "../llm";
 import { excerptConversationToDoc, generateDocId, mergeRewriteWithExistingBody } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
+import { locateAndFlash } from "../utils/searchJump";
 import { MermaidBlock } from "./MermaidBlock";
+import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
+import { formatDisplayDateTime, formatDisplayTime } from "../utils/dateFormat";
 
 export function ChatBody() {
   const {
@@ -32,11 +34,34 @@ export function ChatBody() {
     versionsByConv,
     previewingVersionId,
     setPreviewingVersionId,
+    searchJump,
+    setSearchJump,
+    aiSidebarOpen,
+    toggleAiSidebar,
   } = useAppContext();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const conversation = conversations.find((c) => c.id === activeConversationId);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // 搜索跳转：打开对话后用 snippetText 在已渲染消息中定位、滚动并临时高亮（spec hybrid-search US-03）。
+  useEffect(() => {
+    if (!searchJump || searchJump.type !== "conversation" || searchJump.id !== activeConversationId) return;
+    const msgs = conversation?.messages ?? [];
+    if (msgs.length === 0) return; // 等待消息 hydrate
+    const raf = requestAnimationFrame(() => {
+      const candidates = msgs
+        .map((m) => {
+          const el = document.getElementById(`msg-${m.id}`);
+          return el ? { el, text: m.content } : null;
+        })
+        .filter((c): c is { el: HTMLElement; text: string } => c !== null);
+      const ok = locateAndFlash(candidates, searchJump.snippetText);
+      if (!ok) scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      setSearchJump(null);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [searchJump, activeConversationId, conversation?.messages, setSearchJump]);
   const [converting, setConverting] = useState(false);
   const [excerpting, setExcerpting] = useState(false);
   const [previewMessages, setPreviewMessages] = useState<Message[] | null>(null);
@@ -211,7 +236,7 @@ export function ChatBody() {
               </span>
               {conversation.updatedAt && (
                 <span className="text-zinc-400 dark:text-zinc-500 hidden sm:inline">
-                  {t("version.updatedAt", { time: format(new Date(conversation.updatedAt), "MMM d, h:mm a") })}
+                  {t("version.updatedAt", { time: formatDisplayDateTime(conversation.updatedAt, language) })}
                 </span>
               )}
             </div>
@@ -231,6 +256,18 @@ export function ChatBody() {
             >
               {converting ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
               {t("toolbar.convertToDoc", { defaultValue: "转为文档" })}
+            </button>
+            <button
+              onClick={toggleAiSidebar}
+              className={clsx(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                aiSidebarOpen
+                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                  : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-orange-500 dark:hover:text-yellow-400",
+              )}
+            >
+              <MessageSquare size={14} />
+              {t("toolbar.askAi")}
             </button>
           </div>
         </header>
@@ -263,7 +300,9 @@ export function ChatBody() {
         </div>
       </div>
 
-      <RightNav messages={displayMessages} scrollContainer={scrollRef} />
+      <div className={clsx(aiSidebarOpen && "max-[1280px]:hidden")}>
+        <RightNav messages={displayMessages} scrollContainer={scrollRef} />
+      </div>
       <VersionPanel kind="conversation" />
     </div>
   );
@@ -278,7 +317,7 @@ function CodeBlock({ children, className }: any) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const text = String(children).replace(/\n$/, "");
-  const language = className ? className.replace(/language-/, "") : "snippet";
+  const codeLanguage = className ? className.replace(/language-/, "") : "snippet";
 
   const handleCopy = async () => {
     if (await copyText(text)) {
@@ -290,7 +329,7 @@ function CodeBlock({ children, className }: any) {
   return (
     <div className="relative group mt-4 mb-6">
       <div className="absolute flex items-center justify-between top-0 left-0 right-0 px-4 py-2 bg-zinc-200/50 dark:bg-[#2A2A2A] rounded-t-lg border-b border-zinc-200 dark:border-white/10">
-        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">{language}</span>
+        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">{codeLanguage}</span>
         <button
           onClick={handleCopy}
           className="text-zinc-500 hover:text-orange-500 dark:text-zinc-400 dark:hover:text-yellow-400 transition-colors flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider"
@@ -319,7 +358,7 @@ function MessageHeader({
   onExcerpt: () => void;
   excerpting: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -334,7 +373,7 @@ function MessageHeader({
       <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{name}</span>
       {timestamp && isValidDate(timestamp) && (
         <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">
-          {format(new Date(timestamp), "h:mm a")}
+          {formatDisplayTime(timestamp, language)}
         </span>
       )}
       <button
@@ -388,6 +427,7 @@ const markdownComponents = {
   a: ({ node, ...props }: any) => (
     <a className="text-blue-600 dark:text-blue-400 hover:text-orange-500 dark:hover:text-yellow-400 underline transition-colors" target="_blank" rel="noopener noreferrer" {...props} />
   ),
+  img: ({ node, src, alt }: any) => <MarkdownImage src={src} alt={alt} />,
   table: ({ node, ...props }: any) => (
     <div className="overflow-x-auto mb-4 border border-zinc-200 dark:border-white/10 rounded-lg">
       <table className="min-w-full divide-y divide-zinc-200 dark:divide-white/10" {...props} />
@@ -441,7 +481,7 @@ function MessageBubble({
             ? "bg-zinc-50 dark:bg-white/5 inline-block px-5 py-4 border border-zinc-100 dark:border-white/10 rounded-2xl rounded-tl-sm text-zinc-800 dark:text-zinc-200 shadow-sm"
             : "text-zinc-800 dark:text-zinc-200",
         )}>
-          <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
+          <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]} urlTransform={imageUrlTransform}>
             {message.content}
           </ReactMarkdown>
         </div>

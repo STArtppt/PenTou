@@ -13,16 +13,103 @@ import {
   Globe,
   FileText,
   AlertCircle,
-  RefreshCw,
-  Copy,
-  Check,
+  KeyRound,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
-import { copyText } from "../utils/clipboard";
 import { useAppContext, ImportSummary } from "../data";
-import { parseFileContent } from "../parsers";
+import { parseFileContent, parseChatGPTExport } from "../parsers";
 import { useTranslation } from "../i18n";
+
+const ZIP_ASSET_TOKEN_PREFIX = "pentou-zip-asset://";
+const ZIP_ASSET_TOKEN_RE = /!\[[^\]]*\]\(pentou-zip-asset:\/\/([^)\s]+)\)/g;
+
+/**
+ * ChatGPT 导出 ZIP 导入（spec media-assets US-04，决策 7：前端 fflate 解包）。
+ * 1. 解包并解析 conversations.json；asset_pointer 先映射为 ZIP 内文件 token
+ * 2. 仅上传被引用的图片（POST /api/assets 内容寻址去重），token 替换为 /api/assets/ URL
+ * 3. 找不到文件 / 上传失败 → [图片缺失] 占位，对话其余内容正常入库（AC2）
+ */
+async function parseChatGPTZip(file: File, t: (key: string) => string): Promise<any[]> {
+  const { unzipSync } = await import("fflate");
+  let entries: Record<string, Uint8Array>;
+  try {
+    entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
+  } catch {
+    throw new Error(t("import.zipInvalid"));
+  }
+
+  const convKey = Object.keys(entries).find(
+    (k) => k === "conversations.json" || k.endsWith("/conversations.json"),
+  );
+  if (!convKey) throw new Error(t("import.zipNoConversations"));
+
+  let json: any;
+  try {
+    json = JSON.parse(new TextDecoder().decode(entries[convKey]));
+  } catch {
+    throw new Error(t("import.zipInvalid"));
+  }
+
+  // asset_pointer（file-service://file-XXX、sediment://file_XXX）→ ZIP 内文件名。
+  // ChatGPT 导出文件名以指针 id 开头（含 - / _ 变体）；格式漂移集中在此函数兜底（spec §8 风险 3）。
+  const fileEntryNames = Object.keys(entries).filter((name) => !name.endsWith("/"));
+  const findEntryForPointer = (pointer: string): string | null => {
+    const tail = pointer.split("://").pop() ?? "";
+    const id = tail.split("/").filter(Boolean).pop()?.toLowerCase() ?? "";
+    if (!id) return null;
+    const variants = [id, id.replace(/_/g, "-"), id.replace(/-/g, "_")];
+    return (
+      fileEntryNames.find((name) => {
+        const base = name.split("/").pop()!.toLowerCase();
+        return variants.some((v) => base.startsWith(v));
+      }) ?? null
+    );
+  };
+
+  const convs = parseChatGPTExport(json, {
+    resolveAssetPointer: (pointer) => {
+      const entry = findEntryForPointer(pointer);
+      return entry ? `${ZIP_ASSET_TOKEN_PREFIX}${encodeURIComponent(entry)}` : null;
+    },
+  });
+
+  // 上传被引用的图片，换取 /api/assets/ URL（同一文件只上传一次）
+  const uploaded = new Map<string, string | null>();
+  const uploadEntry = async (entryName: string): Promise<string | null> => {
+    if (uploaded.has(entryName)) return uploaded.get(entryName)!;
+    let url: string | null = null;
+    try {
+      const baseName = entryName.split("/").pop() || "image";
+      const form = new FormData();
+      form.append("file", new Blob([entries[entryName] as BlobPart]), baseName);
+      const res = await fetch("/api/assets", { method: "POST", body: form });
+      const data = await res.json();
+      if (res.ok && typeof data?.url === "string") url = data.url;
+    } catch {
+      /* 上传失败 → 占位 */
+    }
+    uploaded.set(entryName, url);
+    return url;
+  };
+
+  for (const conv of convs) {
+    for (const msg of conv.messages) {
+      const matches = [...msg.content.matchAll(ZIP_ASSET_TOKEN_RE)];
+      for (const m of matches) {
+        const url = await uploadEntry(decodeURIComponent(m[1]));
+        msg.content = msg.content.replace(
+          m[0],
+          url ? m[0].replace(`${ZIP_ASSET_TOKEN_PREFIX}${m[1]}`, url) : "[图片缺失]",
+        );
+      }
+    }
+  }
+
+  return convs;
+}
 
 export function ImportDrawer() {
   const { isDrawerOpen, setDrawerOpen, addConversations, addDocuments, folders, activeView, setActiveView, setActiveDocId, setActiveConversationId } = useAppContext();
@@ -109,13 +196,16 @@ export function ImportDrawer() {
 
     try {
       let convsToImport = [];
+      let fileError: Error | null = null;
 
       // Process each file
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         try {
-          const text = await file.text();
-          const parsedConvs = parseFileContent(file.name, text);
+          // ChatGPT 导出 ZIP（spec media-assets US-04）
+          const parsedConvs = file.name.toLowerCase().endsWith(".zip")
+            ? await parseChatGPTZip(file, t)
+            : parseFileContent(file.name, await file.text());
           if (parsedConvs && parsedConvs.length > 0) {
             parsedConvs.forEach(conv => {
               const matchedFolder = folders.find(f => 
@@ -130,11 +220,13 @@ export function ImportDrawer() {
           }
         } catch (err: any) {
           console.warn(`Failed to parse file ${file.name}:`, err);
+          if (!fileError) fileError = err;
         }
       }
 
       if (convsToImport.length === 0) {
-        throw new Error("No valid conversations found in the selected files.");
+        // 优先展示具体的文件级错误（如 ZIP 缺 conversations.json，US-04 AC3）
+        throw fileError ?? new Error("No valid conversations found in the selected files.");
       }
 
       const summary = await addConversations(convsToImport);
@@ -231,7 +323,7 @@ export function ImportDrawer() {
                     "border-zinc-300 dark:border-white/20 bg-zinc-50 dark:bg-[#1A1A1A]/50 hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer hover:border-zinc-400 dark:hover:border-white/30"
                   )}
                 >
-                  <input type="file" multiple accept=".json,.jsonl,.md,.txt" className="hidden" ref={fileInputRef} onChange={(e) => {
+                  <input type="file" multiple accept=".json,.jsonl,.md,.txt,.zip" className="hidden" ref={fileInputRef} onChange={(e) => {
                     if (e.target.files) handleFiles(e.target.files);
                   }} />
                   
@@ -246,7 +338,7 @@ export function ImportDrawer() {
                     {isImporting ? t("import.importing") : t("import.clickOrDrag")}
                   </p>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center max-w-md">
-                    {t("import.formats")} <br/> <strong>.json, .jsonl, .md, .txt</strong>
+                    {t("import.formats")} <br/> <strong>.json, .jsonl, .md, .txt, .zip</strong>
                   </p>
                 </div>
                 {error && <div className="text-sm font-medium text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md mt-4 border border-red-100 dark:border-red-500/20">{error}</div>}
@@ -376,31 +468,72 @@ export function ImportDrawer() {
   );
 }
 
-const SUPPORTED_DOC_EXTS = [".md", ".txt", ".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".json", ".html", ".xml"];
-const BASIC_EXTS = [".md", ".txt", ".json"];
+const SUPPORTED_DOC_EXTS = [
+  ".md", ".txt", ".json", ".csv", ".xml",
+  ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".html",
+  ".png", ".jpg", ".jpeg", ".jp2", ".webp", ".gif", ".bmp",
+];
 
 function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setActiveView, t }: any) {
   const [status, setStatus] = useState<any>(null);
-  const [checking, setChecking] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+  const [savingToken, setSavingToken] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const checkStatus = useCallback(async () => {
-    setChecking(true);
     try {
-      const r = await fetch("/api/markitdown/status");
+      const r = await fetch("/api/mineru/status");
       const data = await r.json();
       setStatus(data);
     } catch {
       setStatus(null);
-    } finally {
-      setChecking(false);
     }
   }, []);
 
   useEffect(() => { checkStatus(); }, []);
+
+  const saveToken = async () => {
+    setSavingToken(true);
+    try {
+      const r = await fetch("/api/mineru/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiToken: tokenInput }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Failed to save MinerU token");
+      setStatus(data);
+      setTokenInput("");
+      toast.success(t("import.doc.tokenSaved"));
+    } catch (e: any) {
+      toast.error(e.message || String(e));
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
+  const clearToken = async () => {
+    if (!window.confirm(t("import.doc.clearConfirm"))) return;
+    setSavingToken(true);
+    try {
+      const r = await fetch("/api/mineru/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clear: true }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Failed to clear MinerU token");
+      setStatus(data);
+      setTokenInput("");
+      toast.success(t("import.doc.tokenCleared"));
+    } catch (e: any) {
+      toast.error(e.message || String(e));
+    } finally {
+      setSavingToken(false);
+    }
+  };
 
   const handleFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
@@ -426,76 +559,66 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
     }
   };
 
-  const copyHint = async (hint: string, idx: number) => {
-    await copyText(hint);
-    setCopiedIdx(idx);
-    setTimeout(() => setCopiedIdx(null), 2000);
-  };
+  const configured = !!status?.configured;
+  const tokenPlaceholder = configured ? "••••••" : t("import.doc.tokenPlaceholder");
 
-  const statusLabel = !status
-    ? t("import.doc.notInstalled")
-    : status.installed
-    ? t("import.doc.installed")
-    : status.error?.includes("Python") && status.error?.includes("3.10")
-    ? t("import.doc.pythonOld")
-    : status.installHints?.length > 0
-    ? t("import.doc.notInstalled")
-    : t("import.doc.partialDeps");
-
-  const statusColor = status?.installed
+  const statusColor = configured
     ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20"
     : "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-400/20";
 
-  const supportedExts = status?.installed ? SUPPORTED_DOC_EXTS : BASIC_EXTS;
-
   return (
     <div className="space-y-6">
-      {/* Env check */}
+      {/* MinerU token */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between gap-3 mb-2">
           <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
-            {t("import.doc.envCheck")}
+            {t("import.doc.mineruConfig")}
           </h3>
-          <button
-            onClick={checkStatus}
-            disabled={checking}
-            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={12} className={checking ? "animate-spin" : ""} />
-            {t("import.doc.recheck")}
-          </button>
         </div>
         <div className={clsx("flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium", statusColor)}>
-          {status?.installed ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
-          <span>markitdown — {statusLabel}</span>
-          {status?.version && <span className="text-xs font-normal opacity-70 ml-1">({status.version})</span>}
+          {configured ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+          <span>{configured ? t("import.doc.mineruConfigured") : t("import.doc.mineruMissing")}</span>
         </div>
-        {status && !status.installed && status.error && (
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">{status.error}</p>
-        )}
-      </div>
-
-      {/* Fix guide */}
-      {status && !status.installed && status.installHints?.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider mb-2">
-            {t("import.doc.fixGuide")}
-          </h3>
-          <div className="space-y-2">
-            {status.installHints.map((hint: string, i: number) => (
-              <div key={i} className="flex items-center gap-2 bg-zinc-900 dark:bg-[#111] rounded-lg px-3 py-2 font-mono text-xs text-zinc-300">
-                <code className="flex-1 break-all">{hint}</code>
-                <button
-                  onClick={() => copyHint(hint, i)}
-                  className="shrink-0 text-zinc-500 hover:text-zinc-200 transition-colors"
-                >
-                  {copiedIdx === i ? <Check size={12} /> : <Copy size={12} />}
-                </button>
-              </div>
-            ))}
+        <div className="mt-3 space-y-3">
+          {!configured && (
+            <ol className="list-decimal list-inside space-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+              <li>{t("import.doc.guideRegister")} <a className="text-orange-600 dark:text-yellow-400 hover:underline inline-flex items-center gap-1" href="https://mineru.net" target="_blank" rel="noreferrer">mineru.net <ExternalLink size={11} /></a></li>
+              <li>{t("import.doc.guideApply")}</li>
+              <li>{t("import.doc.guidePaste")}</li>
+            </ol>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <KeyRound size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                type="password"
+                placeholder={tokenPlaceholder}
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1A1A1A] text-sm text-zinc-800 dark:text-zinc-100 outline-none focus:border-orange-400 dark:focus:border-yellow-400"
+              />
+            </div>
+            <button
+              onClick={saveToken}
+              disabled={savingToken}
+              className="px-3 py-2 rounded-lg text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 disabled:opacity-50"
+            >
+              {savingToken ? t("import.doc.saving") : t("import.doc.saveToken")}
+            </button>
+            {configured && (
+              <button
+                onClick={clearToken}
+                disabled={savingToken}
+                title={t("import.doc.clearToken")}
+                className="p-2 rounded-lg border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-50"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
           </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">{t("import.doc.privacyNote")}</p>
         </div>
-      )}
+      </div>
 
       {/* Upload zone */}
       <div>
@@ -512,7 +635,7 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
             ref={fileInputRef}
             type="file"
             multiple
-            accept={supportedExts.join(",")}
+            accept={SUPPORTED_DOC_EXTS.join(",")}
             className="hidden"
             onChange={(e) => { if (e.target.files) handleFiles(e.target.files); }}
           />
@@ -546,10 +669,10 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
       {/* Supported formats */}
       <div>
         <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider mb-2">
-          {status?.installed ? t("import.doc.supportedFull") : t("import.doc.supportedBasic")}
+          {t("import.doc.supportedFormats")}
         </h3>
         <div className="flex flex-wrap gap-1.5">
-          {supportedExts.map((ext) => (
+          {SUPPORTED_DOC_EXTS.map((ext) => (
             <span key={ext} className="px-2 py-0.5 rounded text-xs font-mono bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-400">
               {ext}
             </span>

@@ -183,6 +183,11 @@ export interface AuthContext {
   sessionSecret: Buffer;
   trustProxy: boolean;
   sessionMaxAgeSec: number;
+  /**
+   * 本地免登录模式（npx CLI 不传 --password 时开启，见 npx-launcher spec §4.2）。
+   * 仅 startServer({ local:true }) 且无密码时为 true；Docker 路径恒为 false。
+   */
+  disabled?: boolean;
 }
 
 export type GuardResult = "pass" | "redirect-login" | "401";
@@ -196,6 +201,9 @@ const PUBLIC_EXACT = new Set([
 ]);
 
 export function authGuard(req: IncomingMessage, ctx: AuthContext): GuardResult {
+  // 本地免登录：放行所有路径（spec §4.4 本地免登录 HTTP 契约）。
+  if (ctx.disabled) return "pass";
+
   const url = req.url ?? "/";
   const pathOnly = url.split("?")[0];
   if (PUBLIC_EXACT.has(pathOnly)) return "pass";
@@ -234,6 +242,13 @@ function sleep(ms: number): Promise<void> {
 }
 
 export async function handleLogin(req: IncomingMessage, res: ServerResponse, ctx: AuthContext): Promise<void> {
+  // 本地免登录：幂等成功，不要求密码（spec §4.4）。
+  if (ctx.disabled) {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   const ip = clientIp(req, ctx.trustProxy);
   const limit = isLimited(ip);
   if (limit.limited) {
@@ -269,12 +284,24 @@ export async function handleLogin(req: IncomingMessage, res: ServerResponse, ctx
   json(res, 401, { error: "invalid_password" });
 }
 
-export function handleLogout(_req: IncomingMessage, res: ServerResponse): void {
+export function handleLogout(_req: IncomingMessage, res: ServerResponse, ctx?: AuthContext): void {
+  // 本地免登录：幂等成功，不清除必要状态（spec §4.4）。
+  if (ctx?.disabled) {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
   res.writeHead(204, { "Set-Cookie": buildClearCookie() });
   res.end();
 }
 
 export function handleMe(req: IncomingMessage, res: ServerResponse, ctx: AuthContext): void {
+  // 本地免登录：始终已认证（spec §4.4）。
+  if (ctx.disabled) {
+    json(res, 200, { authenticated: true, mode: "local" });
+    return;
+  }
+
   const cookies = parseCookie(req.headers.cookie);
   const sess = cookies["pentou_session"];
   if (sess && verifySession(sess, ctx.sessionSecret)) {

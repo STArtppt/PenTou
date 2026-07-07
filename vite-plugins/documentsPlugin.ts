@@ -4,14 +4,19 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import formidable from "formidable";
 import {
-  getMarkitdownStatusCached,
-  convertFileToMarkdownWithMarkitdown,
   DOC_IMPORT_MAX_FILE_SIZE,
   DOC_IMPORT_MAX_FILE_COUNT,
   DOC_IMPORT_MAX_TOTAL_SIZE,
   DOC_IMPORT_SUPPORTED_EXTENSIONS,
-} from "./markitdownPlugin.js";
+  LOCAL_DOC_EXTENSIONS,
+  MINERU_DOC_EXTENSIONS,
+  getMineruStatus,
+  updateMineruConfig,
+  setMineruDataDir,
+  parseFilesWithMineru,
+} from "./mineruPlugin.js";
 import { documentSignature, documentDedupable } from "../src/server/dedup.js";
+import { localizeMedia } from "../src/server/media-assets.js";
 
 // Module-level state: prod entry / vite plugin should call setDocsDataDir() at startup.
 // We use a mutable module variable rather than threading dataDir through ~30 helper
@@ -26,6 +31,7 @@ export function setDocsDataDir(dataDir: string): void {
   DATA_DIR = resolvedDataDir;
   DOCS_DIR = path.join(resolvedDataDir, "documents");
   DOC_FOLDERS_FILE = path.join(resolvedDataDir, "document-folders.json");
+  setMineruDataDir(resolvedDataDir);
 }
 
 export function ensureDocDirs(dataDir?: string): void {
@@ -82,6 +88,69 @@ function nanoid5(): string {
   return Math.random().toString(36).slice(2, 7);
 }
 
+function escapeMarkdownTableCell(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, "<br>");
+}
+
+export function csvToMarkdownTable(input: string): string {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    const next = input[i + 1];
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        cell += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        cell += ch;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (ch === "\n") {
+      row.push(cell);
+      if (row.some((part) => part.trim() !== "")) rows.push(row);
+      row = [];
+      cell = "";
+    } else if (ch !== "\r") {
+      cell += ch;
+    }
+  }
+  row.push(cell);
+  if (row.some((part) => part.trim() !== "")) rows.push(row);
+  if (rows.length === 0) return "";
+
+  const width = Math.max(...rows.map((r) => r.length));
+  const normalized = rows.map((r) => Array.from({ length: width }, (_, i) => escapeMarkdownTableCell(r[i] ?? "")));
+  const header = normalized[0];
+  const body = normalized.slice(1);
+  return [
+    `| ${header.join(" | ")} |`,
+    `| ${header.map(() => "---").join(" | ")} |`,
+    ...body.map((r) => `| ${r.join(" | ")} |`),
+  ].join("\n");
+}
+
+function localFileToMarkdown(ext: string, originalName: string, filepath: string): string {
+  const text = fs.readFileSync(filepath, "utf-8");
+  if (ext === ".md") return text;
+  if (ext === ".txt") return `---\nSource: ${originalName}\n---\n\n${text}`;
+  if (ext === ".json") return `\`\`\`json\n${text}\n\`\`\``;
+  if (ext === ".csv") return csvToMarkdownTable(text);
+  if (ext === ".xml") return `\`\`\`xml\n${text}\n\`\`\``;
+  throw new Error(`Unsupported local extension: ${ext}`);
+}
+
 // Escape frontmatter values (reuse pattern from pentouServerPlugin.ts)
 function escapeFrontmatterValue(val: string): string {
   if (!val) return '""';
@@ -101,6 +170,7 @@ function documentToMd(doc: any): string {
   lines.push(`currentVersionId: ${escapeFrontmatterValue(doc.currentVersionId ?? "")}`);
   if (doc.sourceConversationId) lines.push(`sourceConversationId: ${escapeFrontmatterValue(doc.sourceConversationId)}`);
   if (doc.sourcePlatform) lines.push(`sourcePlatform: ${escapeFrontmatterValue(doc.sourcePlatform)}`);
+  if (doc.sourceAiChatId) lines.push(`sourceAiChatId: ${escapeFrontmatterValue(doc.sourceAiChatId)}`);
   if (doc.generatedBy) lines.push(`generatedBy: ${escapeFrontmatterValue(doc.generatedBy)}`);
   if (doc.generatedAt) lines.push(`generatedAt: ${escapeFrontmatterValue(doc.generatedAt)}`);
   if (doc.importedFrom) lines.push(`importedFrom: ${escapeFrontmatterValue(doc.importedFrom)}`);
@@ -144,6 +214,7 @@ function parseDocumentMd(id: string, content: string): any {
     body: body.replace(/^\n/, ""),
     sourceConversationId: meta.sourceConversationId || undefined,
     sourcePlatform: meta.sourcePlatform || undefined,
+    sourceAiChatId: meta.sourceAiChatId || undefined,
     generatedBy: meta.generatedBy || undefined,
     generatedAt: meta.generatedAt || undefined,
     importedFrom: meta.importedFrom || undefined,
@@ -324,10 +395,19 @@ export async function documentsApiHandler(
   const url = req.url ?? "";
   const method = req.method ?? "GET";
 
-  // ── GET /api/markitdown/status ─────────────────────────────────────────────
-  if (url.startsWith("/api/markitdown/status") && method === "GET") {
-    const force = url.includes("force=true");
-    json(res, 200, getMarkitdownStatusCached(force));
+  // ── GET /api/mineru/status ────────────────────────────────────────────────
+  if (url === "/api/mineru/status" && method === "GET") {
+    json(res, 200, getMineruStatus());
+    return true;
+  }
+
+  // ── POST /api/mineru/config ───────────────────────────────────────────────
+  if (url === "/api/mineru/config" && method === "POST") {
+    try {
+      json(res, 200, updateMineruConfig(JSON.parse(await readBody(req))));
+    } catch (e) {
+      json(res, 500, { error: String(e) });
+    }
     return true;
   }
 
@@ -385,6 +465,8 @@ export async function documentsApiHandler(
         json(res, 409, { error: "Document already exists" });
         return true;
       }
+      // 媒体本地化（spec media-assets §4.4：新建文档不下载远程图片，决策 9）
+      if (typeof body.body === "string") body.body = await localizeMedia(body.body, { downloadRemote: false });
       createDocWithV1(body);
       const saved = parseDocumentMd(body.id, fs.readFileSync(docPath, "utf-8"));
       json(res, 201, { ok: true, id: body.id, document: saved });
@@ -450,6 +532,9 @@ export async function documentsApiHandler(
       const body = JSON.parse(await readBody(req));
       const existing = parseDocumentMd(docId, fs.readFileSync(docPath, "utf-8"));
       let nextVersion: any = undefined;
+
+      // 媒体本地化（spec media-assets §4.4：编辑保存不下载远程图片，决策 9）
+      if (typeof body.body === "string") body.body = await localizeMedia(body.body, { downloadRemote: false });
 
       if (body.body !== undefined && body.body !== existing.body) {
         const v = appendVersion({ docId, body: body.body, type: "manual-edit" });
@@ -554,7 +639,12 @@ export async function documentsApiHandler(
   // ── POST /api/documents/:id/commit-version ─────────────────────────────────
   if (sub === "commit-version" && method === "POST") {
     try {
-      const { body, type, sourceAnnotationIds, rolledBackFromVersionId } = JSON.parse(await readBody(req));
+      const parsed = JSON.parse(await readBody(req));
+      const { type, sourceAnnotationIds, rolledBackFromVersionId } = parsed;
+      // 媒体本地化（spec media-assets §4.4：commit-version 不下载远程图片，决策 9）
+      const body = typeof parsed.body === "string"
+        ? await localizeMedia(parsed.body, { downloadRemote: false })
+        : parsed.body;
       const v = appendVersion({ docId, body, type, sourceAnnotationIds, rolledBackFromVersionId });
 
       const SWITCH_CURRENT: string[] = ["llm-rewrite", "manual-edit", "conversation-excerpt", "rolled-back-from"];
@@ -655,88 +745,108 @@ async function handleDocumentImport(req: IncomingMessage, res: ServerResponse): 
     return;
   }
 
-  const markitdownStatus = getMarkitdownStatusCached();
-  const results: any[] = [];
+  const results: any[] = Array.from({ length: files.length });
+  const mineruFiles: Array<{ index: number; originalName: string; filepath: string }> = [];
 
-  for (const file of files) {
+  const saveImportedDocument = async (params: {
+    index: number;
+    originalName: string;
+    mdContent: string;
+    baseDir: string;
+  }) => {
+    let mdContent = await localizeMedia(params.mdContent, {
+      downloadRemote: true,
+      baseDir: params.baseDir,
+    });
+
+    const docId = `doc_${Date.now()}_${nanoid5()}`;
+    const title = params.originalName.replace(/\.[^.]+$/, "");
+    const now = new Date().toISOString();
+
+    const upserted = upsertDocument({
+      id: docId,
+      title,
+      folderId: null,
+      createdAt: now,
+      updatedAt: now,
+      body: mdContent,
+      importedFrom: params.originalName,
+      importedAt: now,
+      versionType: "import",
+    });
+
+    results[params.index] = {
+      originalName: params.originalName,
+      success: true,
+      action: upserted.action,
+      mergedIntoExisting: upserted.mergedIntoExisting,
+      document: upserted.document,
+    };
+  };
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
     const originalName = file.originalFilename ?? file.newFilename ?? "unknown";
     const ext = path.extname(originalName).toLowerCase();
 
     if (!DOC_IMPORT_SUPPORTED_EXTENSIONS.has(ext)) {
-      results.push({ originalName, success: false, error: `Unsupported file extension: ${ext}` });
+      results[i] = { originalName, success: false, error: `Unsupported file extension: ${ext}` };
       try { fs.unlinkSync(file.filepath); } catch {}
       continue;
     }
 
     try {
-      let mdContent = "";
-
-      if (ext === ".md") {
-        mdContent = fs.readFileSync(file.filepath, "utf-8");
-      } else if (ext === ".txt") {
-        const text = fs.readFileSync(file.filepath, "utf-8");
-        mdContent = `---\nSource: ${originalName}\n---\n\n${text}`;
-      } else if (ext === ".json") {
-        const text = fs.readFileSync(file.filepath, "utf-8");
-        mdContent = `\`\`\`json\n${text}\n\`\`\``;
-      } else if (!markitdownStatus.installed) {
-        results.push({
+      if (LOCAL_DOC_EXTENSIONS.has(ext)) {
+        await saveImportedDocument({
+          index: i,
           originalName,
-          success: false,
-          error: `该格式需要 markitdown，请按引导安装后重试。${markitdownStatus.error}`,
+          mdContent: localFileToMarkdown(ext, originalName, file.filepath),
+          baseDir: path.dirname(file.filepath),
         });
         try { fs.unlinkSync(file.filepath); } catch {}
-        continue;
-      } else {
-        const converted = convertFileToMarkdownWithMarkitdown({
-          command: markitdownStatus.command!,
-          args: markitdownStatus.args ?? [],
-          sourcePath: file.filepath,
-        });
-        if (converted.success === false) {
-          results.push({ originalName, success: false, error: converted.error });
-          try { fs.unlinkSync(file.filepath); } catch {}
-          continue;
-        }
-        mdContent = converted.content;
+      } else if (MINERU_DOC_EXTENSIONS.has(ext)) {
+        mineruFiles.push({ index: i, originalName, filepath: file.filepath });
       }
-
-      // Generate doc id and dedup-upsert（无匹配→新建 / 一致→跳过 / 有差异→合并）
-      const docId = `doc_${Date.now()}_${nanoid5()}`;
-      const title = originalName.replace(/\.[^.]+$/, "");
-      const now = new Date().toISOString();
-
-      const upserted = upsertDocument({
-        id: docId,
-        title,
-        folderId: null,
-        createdAt: now,
-        updatedAt: now,
-        body: mdContent,
-        importedFrom: originalName,
-        importedAt: now,
-        versionType: "import",
-      });
-
-      results.push({
-        originalName,
-        success: true,
-        action: upserted.action,
-        mergedIntoExisting: upserted.mergedIntoExisting,
-        document: upserted.document,
-      });
     } catch (e: any) {
-      results.push({ originalName, success: false, error: String(e) });
-    } finally {
+      results[i] = { originalName, success: false, error: String(e) };
       try { fs.unlinkSync(file.filepath); } catch {}
     }
   }
 
-  const successCount = results.filter((r) => r.success).length;
+  if (mineruFiles.length > 0) {
+    const parsed = await parseFilesWithMineru(mineruFiles.map((item) => ({
+      originalName: item.originalName,
+      filepath: item.filepath,
+    })));
+    for (let i = 0; i < mineruFiles.length; i++) {
+      const item = mineruFiles[i];
+      const parsedItem = parsed[i];
+      try {
+        if (parsedItem.success === false) {
+          results[item.index] = { originalName: item.originalName, success: false, error: parsedItem.error };
+        } else {
+          await saveImportedDocument({
+            index: item.index,
+            originalName: item.originalName,
+            mdContent: parsedItem.content,
+            baseDir: parsedItem.baseDir,
+          });
+        }
+      } catch (e: any) {
+        results[item.index] = { originalName: item.originalName, success: false, error: String(e) };
+      } finally {
+        if (parsedItem.success) parsedItem.cleanup();
+        try { fs.unlinkSync(item.filepath); } catch {}
+      }
+    }
+  }
+
+  const compactResults = results.filter(Boolean);
+  const successCount = compactResults.filter((r) => r.success).length;
   json(res, 200, {
     success: successCount > 0,
     successCount,
-    failedCount: results.length - successCount,
-    results,
+    failedCount: compactResults.length - successCount,
+    results: compactResults,
   });
 }

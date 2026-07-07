@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, Copy, MessageSquare, Highlighter, Trash2, X } from "lucide-react";
@@ -8,7 +8,9 @@ import { captureAnnotationFromSelection } from "../annotations";
 import { generateAnnotationId, extractHeadings, slugify } from "../doc-utils";
 import { useTranslation } from "../i18n";
 import { copyText } from "../utils/clipboard";
+import { locateAndFlash } from "../utils/searchJump";
 import { MermaidBlock } from "./MermaidBlock";
+import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 
 interface Props {
   docId: string;
@@ -26,8 +28,25 @@ const HIGHLIGHT_COLOR = "#fde68a";
 const COMMENT_COLOR = "#fed7aa";
 
 export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
-  const { upsertAnnotation, deleteAnnotation } = useAppContext();
+  const { upsertAnnotation, deleteAnnotation, searchJump, setSearchJump } = useAppContext();
   const { t } = useTranslation();
+
+  // 搜索跳转：打开文档后用 snippetText 在正文块中定位、滚动并临时高亮（spec hybrid-search US-03）。
+  useEffect(() => {
+    if (!searchJump || searchJump.type !== "document" || searchJump.id !== docId) return;
+    if (!body) return;
+    const raf = requestAnimationFrame(() => {
+      const root = document.querySelector(".markdown-body");
+      const els = root
+        ? (Array.from(root.querySelectorAll("p,li,h1,h2,h3,h4,blockquote,td,pre")) as HTMLElement[])
+        : [];
+      const candidates = els.map((el) => ({ el, text: el.textContent ?? "" }));
+      const ok = locateAndFlash(candidates, searchJump.snippetText);
+      if (!ok) document.getElementById("doc-scroll-container")?.scrollTo({ top: 0, behavior: "smooth" });
+      setSearchJump(null);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [searchJump, docId, body, setSearchJump]);
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
   const rehypePlugins = useMemo(
@@ -136,26 +155,23 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
         </div>
       )}
 
-      {/* Wrapper to center paper + TOC */}
-      <div className="flex justify-center w-full max-w-[1172px] mx-auto mt-6 mb-24 relative">
+      {/* Wrapper to center paper + reserve TOC space */}
+      <div className="flex justify-center w-full max-w-[1166px] mx-auto mt-6 mb-24 relative">
         {/* Paper Container */}
-        <div className="w-full max-w-4xl bg-white dark:bg-[#1A1A1A] shadow-sm ring-1 ring-zinc-200 dark:ring-white/10 rounded-xl min-h-[800px] relative">
+        <div className="w-full min-w-0 max-w-4xl bg-white dark:bg-[#1A1A1A] shadow-sm ring-1 ring-zinc-200 dark:ring-white/10 rounded-xl min-h-[800px] relative">
           <div
             className="px-8 sm:px-16 py-12 sm:py-16 text-[15px] leading-7 text-zinc-800 dark:text-zinc-200 markdown-body"
             onMouseUp={handleMouseUp}
             onClick={handleMarkClick}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={mdComponents}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={mdComponents} urlTransform={imageUrlTransform}>
               {body}
             </ReactMarkdown>
           </div>
         </div>
 
-        {/* Document TOC - right side fixed */}
-        <div className="hidden xl:block w-[240px] shrink-0 ml-[36px] pointer-events-none z-10">
-          <div className="sticky top-6 pointer-events-auto">
-            <DocumentTOC body={body} />
-          </div>
+        <div className="hidden xl:block w-[240px] shrink-0 ml-[30px] sticky top-6 self-start">
+          <DocumentTOC body={body} />
         </div>
       </div>
 
@@ -373,6 +389,7 @@ const mdComponents = {
   a: ({ node, ...props }: any) => (
     <a className="text-blue-600 dark:text-blue-400 hover:text-orange-500 dark:hover:text-yellow-400 underline transition-colors" target="_blank" rel="noopener noreferrer" {...props} />
   ),
+  img: ({ node, src, alt }: any) => <MarkdownImage src={src} alt={alt} />,
   code: ({ node, className, children, isBlock, ...props }: any) => {
     const language = className?.match(/language-(\S+)/)?.[1];
     if (isBlock && language === "mermaid") {
@@ -402,6 +419,8 @@ function DocumentTOC({ body }: { body: string }) {
   const { t } = useTranslation();
   const headings = useMemo(() => extractHeadings(body), [body]);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const [isTocScrolling, setIsTocScrolling] = useState(false);
+  const tocScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const container = document.getElementById("doc-scroll-container");
@@ -434,6 +453,12 @@ function DocumentTOC({ body }: { body: string }) {
     return () => container.removeEventListener("scroll", handleScroll);
   }, [body]);
 
+  useEffect(() => {
+    return () => {
+      if (tocScrollTimer.current) clearTimeout(tocScrollTimer.current);
+    };
+  }, []);
+
   if (headings.length === 0) return null;
 
   const scrollToHeading = (slug: string) => {
@@ -447,15 +472,25 @@ function DocumentTOC({ body }: { body: string }) {
     }
   };
 
+  const handleTocScroll = () => {
+    setIsTocScrolling(true);
+    if (tocScrollTimer.current) clearTimeout(tocScrollTimer.current);
+    tocScrollTimer.current = setTimeout(() => setIsTocScrolling(false), 700);
+  };
+
   return (
     <div className="w-[240px] shrink-0 relative py-2 text-sm select-none">
       <div className="font-bold text-zinc-800 dark:text-zinc-200 mb-3 pl-4">
         {t("doc.toc", { defaultValue: "目录" })}
       </div>
-      <div className="max-h-[calc(100vh-200px)] overflow-y-auto rightnav-scrollbar relative">
-        {/* 2px Divider Line */}
-        <div className="absolute left-0 top-[10px] bottom-[10px] w-[2px] bg-zinc-200 dark:bg-white/10 rounded-full" />
-        
+      <div className="absolute left-0 top-[42px] bottom-[18px] w-[2px] bg-zinc-200 dark:bg-white/10 rounded-full" />
+      <div
+        className={clsx(
+          "max-h-[calc(100vh-150px)] overflow-y-auto rightnav-scrollbar relative pr-1",
+          isTocScrolling && "toc-scrollbar-active",
+        )}
+        onScroll={handleTocScroll}
+      >
         <div className="flex flex-col gap-[2px] relative z-10">
           {headings.map((h, i) => {
             const isActive = activeSlug === h.slug;

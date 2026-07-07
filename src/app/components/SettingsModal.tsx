@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
@@ -6,7 +6,7 @@ import { useAppContext, LLMConfig } from "../data";
 import { testLLMConnection } from "../llm";
 import { useTranslation } from "../i18n";
 
-type Tab = "general" | "llm" | "obsidian" | "about";
+type Tab = "general" | "llm" | "search" | "obsidian" | "about";
 
 export function SettingsModal() {
   const { settingsOpen, setSettingsOpen, llmConfig, setLlmConfig, obsidianConfig, setObsidianConfig, theme, setTheme, language, setLanguage } = useAppContext();
@@ -42,7 +42,7 @@ export function SettingsModal() {
             </div>
 
             <div className="shrink-0 flex border-b border-zinc-200 dark:border-white/10 px-6">
-              {(["general", "llm", "obsidian", "about"] as Tab[]).map((tab) => (
+              {(["general", "llm", "search", "obsidian", "about"] as Tab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -65,6 +65,7 @@ export function SettingsModal() {
               {activeTab === "llm" && (
                 <LLMTab config={llmConfig} setConfig={setLlmConfig} t={t} />
               )}
+              {activeTab === "search" && <EmbeddingTab t={t} />}
               {activeTab === "obsidian" && (
                 <ObsidianTab
                   vaultName={obsidianConfig.vaultName}
@@ -187,6 +188,87 @@ function LLMTab({ config, setConfig, t }: { config: LLMConfig; setConfig: (c: LL
         >
           {t("settings.llm.save")}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// 语义检索 / 嵌入后端设置（spec hybrid-search §4.7）。配置服务端持久化、key 不回显。
+function EmbeddingTab({ t }: { t: any }) {
+  const { embeddingConfig, refreshEmbeddingConfig, saveEmbeddingConfig } = useAppContext();
+  const [endpoint, setEndpoint] = useState(embeddingConfig?.endpoint ?? "https://api.openai.com/v1");
+  const [model, setModel] = useState(embeddingConfig?.model ?? "text-embedding-3-small");
+  const [apiKey, setApiKey] = useState(""); // 永不回显；留空=沿用现有
+  const [enabled, setEnabled] = useState(!!embeddingConfig?.enabled);
+  const [saving, setSaving] = useState(false);
+
+  // 打开时刷新一次拿最新 phase/进度；同步表单字段（key 除外）。
+  useEffect(() => { refreshEmbeddingConfig(); }, [refreshEmbeddingConfig]);
+  useEffect(() => {
+    if (!embeddingConfig) return;
+    setEnabled(embeddingConfig.enabled);
+    if (embeddingConfig.endpoint) setEndpoint(embeddingConfig.endpoint);
+    if (embeddingConfig.model) setModel(embeddingConfig.model);
+  }, [embeddingConfig]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveEmbeddingConfig({
+        enabled,
+        endpoint: endpoint.trim(),
+        model: model.trim(),
+        ...(apiKey ? { apiKey } : {}), // 留空不改 key（§4.7）
+      });
+      setApiKey("");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const phase = embeddingConfig?.phase ?? "disabled";
+  const { done, total } = embeddingConfig?.embedding ?? { done: 0, total: 0 };
+  const phaseLabel = phase === "partial"
+    ? t("settings.embedding.phase.partial", { done, total })
+    : t(`settings.embedding.phase.${phase}` as any);
+
+  return (
+    <div className="p-6 space-y-5">
+      <div className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-lg p-3 leading-relaxed">
+        {t("settings.embedding.note")}
+      </div>
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-4 w-4 accent-orange-500 dark:accent-yellow-400" />
+        <span>
+          <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">{t("settings.embedding.enable")}</span>
+          <span className="block text-xs text-zinc-500 dark:text-zinc-400">{t("settings.embedding.enableHint")}</span>
+        </span>
+      </label>
+
+      <FieldRow label={t("settings.embedding.endpoint")}>
+        <input className={inputCls} value={endpoint} onChange={(e) => setEndpoint(e.target.value)} placeholder="https://api.openai.com/v1" />
+      </FieldRow>
+      <FieldRow label={t("settings.embedding.model")}>
+        <input className={inputCls} value={model} onChange={(e) => setModel(e.target.value)} placeholder="text-embedding-3-small" />
+      </FieldRow>
+      <FieldRow label={t("settings.embedding.apiKey")}>
+        <input className={inputCls} type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={embeddingConfig?.hasKey ? "••••••••" : "sk-..."} />
+        <span className="block text-[11px] text-zinc-400 dark:text-zinc-500">{t("settings.embedding.apiKeyKeep")}</span>
+      </FieldRow>
+
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-1.5 text-sm font-medium bg-orange-500 dark:bg-yellow-400 text-white dark:text-zinc-900 rounded-lg hover:bg-orange-600 dark:hover:bg-yellow-500 transition-colors disabled:opacity-50"
+        >
+          {saving ? t("settings.embedding.saving") : t("settings.embedding.save")}
+        </button>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          {t("settings.embedding.status")}: {phaseLabel}
+          {phase === "error" && embeddingConfig?.error ? ` — ${embeddingConfig.error}` : ""}
+        </span>
       </div>
     </div>
   );

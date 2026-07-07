@@ -1,8 +1,15 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from "react";
 import { DEFAULT_LLM_CONFIG } from "./llm";
 import { generateDocId, generateAnnotationId } from "./doc-utils";
+import {
+  AiChatSession,
+  createEmptyAiChatSession,
+  deleteSession as deleteAiChatFile,
+  listSessions as listAiChatSessions,
+  saveSession as saveAiChatFile,
+} from "./ai-chats";
 
-export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex";
+export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes";
 
 export interface Message {
   id: string;
@@ -60,6 +67,7 @@ export interface Document {
   currentVersionId: string;
   sourceConversationId?: string;
   sourcePlatform?: Platform;
+  sourceAiChatId?: string;
   generatedBy?: string;
   generatedAt?: string;
   importedFrom?: string;
@@ -106,6 +114,14 @@ export interface ConversationVersion {
   title?: string;
 }
 
+// 搜索浮层点击结果后的"待跳转目标"（spec hybrid-search US-03）：
+// 切换视图 + 打开目标后，由 ChatBody / DocViewer 用 snippetText 在已渲染内容内二次定位。
+export interface SearchJump {
+  type: "conversation" | "document";
+  id: string;
+  snippetText: string;
+}
+
 export type AnnotationType = "highlight" | "comment";
 
 export interface Annotation {
@@ -130,6 +146,20 @@ export interface LLMConfig {
 
 export interface ObsidianConfig {
   vaultName: string;
+}
+
+// 嵌入后端配置（spec hybrid-search §4.7）。区别于 LLMConfig：服务端持久化、不走 localStorage、
+// 永不回显明文 apiKey（仅 hasKey）。形状对齐服务端 EmbeddingState。
+export type EmbeddingPhase = "disabled" | "configuring" | "embedding" | "partial" | "ready" | "error";
+export interface EmbeddingClientConfig {
+  enabled: boolean;
+  endpoint: string;
+  model: string;
+  dim?: number;
+  phase: EmbeddingPhase;
+  hasKey: boolean;
+  embedding: { done: number; total: number };
+  error?: string;
 }
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -207,6 +237,10 @@ interface AppContextType {
   obsidianConfig: ObsidianConfig;
   setLlmConfig: (cfg: LLMConfig) => void;
   setObsidianConfig: (cfg: ObsidianConfig) => void;
+  // 嵌入后端配置（spec hybrid-search §4.7，经 /api/search/config 读写，不走 localStorage）
+  embeddingConfig: EmbeddingClientConfig | null;
+  refreshEmbeddingConfig: () => Promise<void>;
+  saveEmbeddingConfig: (patch: { enabled?: boolean; endpoint?: string; model?: string; apiKey?: string }) => Promise<EmbeddingClientConfig>;
   addDocuments: (docs: Document[]) => Promise<void>;
   updateDocument: (id: string, patch: Partial<Document>) => Promise<void>;
   saveDocumentBody: (id: string, newBody: string) => Promise<DocumentVersion>;
@@ -231,8 +265,23 @@ interface AppContextType {
   setLanguage: (lang: "en" | "zh") => void;
   isDrawerOpen: boolean;
   setDrawerOpen: (open: boolean) => void;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
+  // ── Search palette (spec hybrid-search) ──
+  searchOpen: boolean;
+  setSearchOpen: (open: boolean) => void;
+  searchJump: SearchJump | null;
+  setSearchJump: (jump: SearchJump | null) => void;
+  // ── AI sidebar (spec ai-sidebar Phase 1) ──
+  aiSidebarOpen: boolean;
+  setAiSidebarOpen: (open: boolean) => void;
+  toggleAiSidebar: () => void;
+  aiSessions: AiChatSession[];
+  currentAiSession: AiChatSession;
+  setCurrentAiSession: (session: AiChatSession | ((session: AiChatSession) => AiChatSession)) => void;
+  saveAiSession: (session: AiChatSession) => Promise<void>;
+  createNewAiSession: () => Promise<AiChatSession>;
+  selectAiSession: (id: string) => Promise<{ session: AiChatSession | null; didJump: boolean }>;
+  deleteAiSession: (id: string) => Promise<void>;
+  refreshAiSessions: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -264,6 +313,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [llmConfig, setLlmConfigState] = useState<LLMConfig>(loadLLMFromLocalStorage);
   const [obsidianConfig, setObsidianConfigState] = useState<ObsidianConfig>(loadObsidianFromLocalStorage);
+  const [embeddingConfig, setEmbeddingConfig] = useState<EmbeddingClientConfig | null>(null);
 
   // ── UI state ──
   const [theme, setThemeState] = useState<"light" | "dark">(() => {
@@ -273,7 +323,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem("pentou-language") as "en" | "zh") ?? "en";
   });
   const [isDrawerOpen, setDrawerOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchJump, setSearchJump] = useState<SearchJump | null>(null);
+  const [aiSidebarOpen, setAiSidebarOpen] = useState(false);
+  const [aiSessions, setAiSessions] = useState<AiChatSession[]>([]);
+  const [currentAiSession, setCurrentAiSessionState] = useState<AiChatSession>(() => createEmptyAiChatSession());
   const [isLoading, setIsLoading] = useState(true);
 
   // Hydration tracking: which ids have already been (or are being) fetched in full.
@@ -298,6 +352,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDocuments(docsData as Document[]);
       setDocumentFolders(docFoldersData as DocumentFolder[]);
     }).finally(() => setIsLoading(false));
+    // 嵌入后端配置：独立拉取（含 enabled/phase），供搜索浮层决定是否走 hybrid（spec §4.7）。
+    apiFetch("/api/search/config")
+      .then((data) => setEmbeddingConfig(data as EmbeddingClientConfig))
+      .catch((e) => console.error({ module: "data", op: "loadEmbeddingConfig", err: e }));
+
+    listAiChatSessions()
+      .then((sessions) => {
+        setAiSessions(sessions);
+      })
+      .catch((e) => console.error({ module: "data", op: "loadAiChats", err: e }));
   }, []);
 
   // On-demand hydration of the active conversation's messages.
@@ -347,6 +411,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("pentou-active-view", view);
   }, []);
 
+  const toggleAiSidebar = useCallback(() => {
+    setAiSidebarOpen((open) => !open);
+  }, []);
+
   const setLlmConfig = useCallback((cfg: LLMConfig) => {
     setLlmConfigState(cfg);
     localStorage.setItem("pentou-llm-config", JSON.stringify(cfg));
@@ -356,6 +424,110 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setObsidianConfigState(cfg);
     localStorage.setItem("pentou-obsidian-config", JSON.stringify(cfg));
   }, []);
+
+  // 嵌入后端配置：服务端权威（含 phase/进度），不走 localStorage（spec §4.7）。
+  const refreshEmbeddingConfig = useCallback(async () => {
+    try {
+      const data = await apiFetch("/api/search/config");
+      setEmbeddingConfig(data as EmbeddingClientConfig);
+    } catch (e) {
+      console.error({ module: "data", op: "refreshEmbeddingConfig", err: e });
+    }
+  }, []);
+
+  const saveEmbeddingConfig = useCallback(async (patch: { enabled?: boolean; endpoint?: string; model?: string; apiKey?: string }) => {
+    const data = (await apiFetch("/api/search/config", {
+      method: "PUT",
+      body: JSON.stringify(patch),
+    })) as EmbeddingClientConfig;
+    setEmbeddingConfig(data);
+    return data;
+  }, []);
+
+  const refreshAiSessions = useCallback(async () => {
+    const sessions = await listAiChatSessions();
+    setAiSessions(sessions);
+  }, []);
+
+  const setCurrentAiSession = useCallback((next: AiChatSession | ((session: AiChatSession) => AiChatSession)) => {
+    setCurrentAiSessionState((prevSession) => {
+      const session = typeof next === "function" ? next(prevSession) : next;
+      if (session.messages.length > 0) {
+        setAiSessions((prev) => {
+          const existing = prev.some((item) => item.id === session.id);
+          const list = existing ? prev.map((item) => (item.id === session.id ? session : item)) : [session, ...prev];
+          return list.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        });
+      }
+      return session;
+    });
+  }, []);
+
+  const saveAiSession = useCallback(async (session: AiChatSession) => {
+    if (session.messages.length === 0) {
+      setCurrentAiSessionState(session);
+      return;
+    }
+    await saveAiChatFile(session);
+    setCurrentAiSession(session);
+  }, [setCurrentAiSession]);
+
+  const createNewAiSession = useCallback(async () => {
+    if (currentAiSession.messages.length > 0) {
+      await saveAiChatFile(currentAiSession);
+    }
+    const next = createEmptyAiChatSession();
+    setCurrentAiSessionState(next);
+    await refreshAiSessions().catch(() => {});
+    return next;
+  }, [currentAiSession, refreshAiSessions]);
+
+  const jumpToAiSessionContext = useCallback((session: AiChatSession): boolean => {
+    if (session.contextType === "chat" && session.contextId) {
+      if (conversations.some((item) => item.id === session.contextId)) {
+        const didChange = activeView !== "chat" || activeConversationId !== session.contextId;
+        setActiveView("chat");
+        setActiveConversationId(session.contextId);
+        return didChange;
+      }
+      return false;
+    }
+    if (session.contextType === "doc" && session.contextId) {
+      if (documents.some((item) => item.id === session.contextId)) {
+        const didChange = activeView !== "doc" || activeDocId !== session.contextId;
+        setActiveView("doc");
+        setActiveDocId(session.contextId);
+        return didChange;
+      }
+    }
+    return false;
+  }, [activeConversationId, activeDocId, activeView, conversations, documents, setActiveView]);
+
+  const selectAiSession = useCallback(async (id: string) => {
+    const existing = aiSessions.find((session) => session.id === id);
+    if (existing) {
+      setCurrentAiSessionState(existing);
+      const didJump = jumpToAiSessionContext(existing);
+      return { session: existing, didJump };
+    }
+    const sessions = await listAiChatSessions();
+    const target = sessions.find((session) => session.id === id);
+    setAiSessions(sessions);
+    if (target) {
+      setCurrentAiSessionState(target);
+      const didJump = jumpToAiSessionContext(target);
+      return { session: target, didJump };
+    }
+    return { session: null, didJump: false };
+  }, [aiSessions, jumpToAiSessionContext]);
+
+  const deleteAiSession = useCallback(async (id: string) => {
+    await deleteAiChatFile(id);
+    setAiSessions((prev) => prev.filter((session) => session.id !== id));
+    if (currentAiSession.id === id) {
+      setCurrentAiSessionState(createEmptyAiChatSession());
+    }
+  }, [currentAiSession.id]);
 
   // ── Folder operations ───────────────────────────────────────────────────────
 
@@ -399,9 +571,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const r = await apiFetch("/api/conversations", { method: "POST", body: JSON.stringify(conv) });
         const action: ImportActionItem["action"] = r.action ?? "created";
+        const savedConv: Conversation = r.conversation ?? { ...conv, id: r.id ?? conv.id, updatedAt: now };
         items.push({ action, id: r.id ?? conv.id, title: r.title ?? conv.title });
-        if (action === "created") created.push({ ...conv, id: r.id ?? conv.id, updatedAt: now });
-        else if (action === "merged") merged.push({ id: r.id, conv });
+        if (action === "created") created.push(savedConv);
+        else if (action === "merged") merged.push({ id: r.id, conv: savedConv });
       } catch (e) {
         console.error("Failed to save conversation", conv.id, e);
       }
@@ -739,6 +912,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         obsidianConfig,
         setLlmConfig,
         setObsidianConfig,
+        embeddingConfig,
+        refreshEmbeddingConfig,
+        saveEmbeddingConfig,
         addDocuments,
         updateDocument,
         saveDocumentBody,
@@ -762,8 +938,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLanguage,
         isDrawerOpen,
         setDrawerOpen,
-        searchQuery,
-        setSearchQuery,
+        searchOpen,
+        setSearchOpen,
+        searchJump,
+        setSearchJump,
+        aiSidebarOpen,
+        setAiSidebarOpen,
+        toggleAiSidebar,
+        aiSessions,
+        currentAiSession,
+        setCurrentAiSession,
+        saveAiSession,
+        createNewAiSession,
+        selectAiSession,
+        deleteAiSession,
+        refreshAiSessions,
         isLoading,
       }}
     >

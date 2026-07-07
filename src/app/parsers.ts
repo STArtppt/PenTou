@@ -124,7 +124,16 @@ export function parseDeepSeekExport(json: any): Conversation[] {
 
 // ── 2. ChatGPT conversations.json ─────────────────────────────────────────────
 
-export function parseChatGPTExport(json: any): Conversation[] {
+export interface ChatGPTParseOptions {
+  /**
+   * ZIP 导入时把消息中的图片指针（file-service:// / sediment:// 等 asset_pointer）
+   * 解析为可嵌入的 URL；返回 null 表示找不到对应文件（插入占位，spec media-assets US-04 AC2）。
+   * 未提供时图片 part 按原有行为忽略（纯 conversations.json 导入无图片文件可用）。
+   */
+  resolveAssetPointer?: (pointer: string) => string | null;
+}
+
+export function parseChatGPTExport(json: any, opts?: ChatGPTParseOptions): Conversation[] {
   const items: any[] = Array.isArray(json) ? json : [json];
   const results: Conversation[] = [];
 
@@ -140,12 +149,19 @@ export function parseChatGPTExport(json: any): Conversation[] {
 
         const role = msg.author?.role === "user" ? "user" : "ai";
         const parts = msg.content?.parts ?? [];
-        const content = cleanChatGPTContent(
-          parts
-            .filter((p: any) => typeof p === "string")
-            .join("\n")
-            .trim()
-        );
+        const segments: string[] = [];
+        for (const p of parts) {
+          if (typeof p === "string") {
+            segments.push(p);
+            continue;
+          }
+          // 图片指针 part（image_asset_pointer 等）：映射到文件 URL 或插入占位
+          if (opts?.resolveAssetPointer && p && typeof p === "object" && typeof p.asset_pointer === "string") {
+            const url = opts.resolveAssetPointer(p.asset_pointer);
+            segments.push(url ? `![图片](${url})` : "[图片缺失]");
+          }
+        }
+        const content = cleanChatGPTContent(segments.join("\n").trim());
 
         if (!content.trim()) return;
 
@@ -201,7 +217,66 @@ export function parseChatGPTExport(json: any): Conversation[] {
   return results;
 }
 
-// ── 3. CLI JSONL ──────────────────────────────────────────────────────────────
+// ── 3. Hermes session JSON ────────────────────────────────────────────────────
+
+function normalizeTimestamp(value: unknown, fallback: string): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const ms = value > 10_000_000_000 ? value : value * 1000;
+    return new Date(ms).toISOString();
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  return fallback;
+}
+
+export function parseHermesExport(json: any): Conversation[] {
+  const items: any[] = Array.isArray(json) ? json : [json];
+  const results: Conversation[] = [];
+
+  for (const item of items) {
+    try {
+      if (!Array.isArray(item?.messages)) continue;
+
+      const defaultDate = normalizeTimestamp(item.exported_at ?? item.created_at ?? item.updated_at, new Date().toISOString());
+      const messages: Message[] = [];
+
+      for (const raw of item.messages) {
+        const role: "user" | "ai" | null =
+          raw?.role === "user" || raw?.role === "human"
+            ? "user"
+            : raw?.role === "assistant" || raw?.role === "ai"
+            ? "ai"
+            : null;
+        if (!role) continue;
+
+        const content = typeof raw.content === "string" ? raw.content.trim() : "";
+        if (!content) continue;
+
+        messages.push(makeMsg(role, content, normalizeTimestamp(raw.timestamp, defaultDate)));
+      }
+
+      if (messages.length === 0) continue;
+
+      const firstUser = messages.find((m) => m.role === "user");
+      results.push({
+        id: makeId(),
+        title: item.title || firstUser?.content.slice(0, 80).split("\n")[0] || "Hermes Conversation",
+        platform: "Hermes",
+        date: messages[0]?.timestamp || defaultDate,
+        folderId: null,
+        messages,
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  return results;
+}
+
+// ── 4. CLI JSONL ──────────────────────────────────────────────────────────────
 
 /**
  * Codex CLI / Desktop rollout-*.jsonl format.
@@ -344,7 +419,7 @@ export function parseJsonl(jsonlText: string): Conversation | null {
   };
 }
 
-// ── 4. Markdown Transcript (ai-chat-md-export, WayLog, waylog-cli) ────────────
+// ── 5. Markdown Transcript (ai-chat-md-export, WayLog, waylog-cli) ────────────
 
 export function parseMarkdown(mdText: string): Conversation | null {
   let providerStr = "";
@@ -448,7 +523,7 @@ export function parseMarkdown(mdText: string): Conversation | null {
   };
 }
 
-// ── 5. Main Dispatcher ────────────────────────────────────────────────────────
+// ── 6. Main Dispatcher ────────────────────────────────────────────────────────
 
 /**
  * Auto-detects the file format and returns parsed Conversations.
@@ -462,11 +537,16 @@ export function parseFileContent(filename: string, text: string): Conversation[]
   if (lowerName.endsWith('.json')) {
     try {
       const json = JSON.parse(text);
+      const firstItem = Array.isArray(json) ? json[0] : json;
+
+      if (firstItem?.session_id && Array.isArray(firstItem?.messages)) {
+        results.push(...parseHermesExport(json));
+        return results;
+      }
       
       // Determine if it is DeepSeek or ChatGPT by checking mapping structure
       // DeepSeek has fragments array, ChatGPT has parts array
       let isDeepSeek = false;
-      const firstItem = Array.isArray(json) ? json[0] : json;
       if (firstItem?.mapping) {
         const firstNode: any = Object.values(firstItem.mapping)[0] || {};
         if (firstNode?.message?.fragments) {

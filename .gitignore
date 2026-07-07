@@ -30,6 +30,14 @@ data/documents/*
 data/.session-secret
 data/document-folders.json
 data/folders.json
+data/ai-chats/*
+data/assets/*
+# Search index (derived from .md, rebuildable)
+data/.qmd/
+.qmd/
+# Embedding backend config (contains API key)
+data/.config/
+.config/
 
 # IDE and editors
 .idea/
@@ -43,6 +51,7 @@ data/folders.json
 .DS_Store
 *.sublime-project
 *.sublime-workspace
+.pnpm-store/
 
 # OS files
 .DS_Store
@@ -121,3 +130,6 @@ temp/
 # !assets/database/.gitkeep
 
 .waylog/
+
+# npx package staging directory
+npm-package/
