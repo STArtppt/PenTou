@@ -6,13 +6,13 @@
   "description": "Local-first AI conversation manager — pin, organize, and excerpt chats from ChatGPT / DeepSeek / Claude into native Markdown.",
   "license": "MIT",
   "author": "STArtppt",
-  "homepage": "https://github.com/STArtppt/pentou",
+  "homepage": "https://github.com/STArtppt/PenTou",
   "repository": {
     "type": "git",
-    "url": "https://github.com/STArtppt/pentou.git"
+    "url": "https://github.com/STArtppt/PenTou.git"
   },
   "bugs": {
-    "url": "https://github.com/STArtppt/pentou/issues"
+    "url": "https://github.com/STArtppt/PenTou/issues"
   },
   "keywords": [
     "ai",

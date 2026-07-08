@@ -118,6 +118,9 @@ const pkg = {
   dependencies,
   publishConfig: { access: "public" },
   license: rootPkg.license || "MIT",
+  homepage: rootPkg.homepage,
+  repository: rootPkg.repository,
+  bugs: rootPkg.bugs,
 };
 fs.writeFileSync(path.join(OUT, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
 
