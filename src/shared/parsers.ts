@@ -7,6 +7,7 @@
  * 前端入口 src/app/parsers.ts 改为 re-export，import 图不变。
  */
 import type { Conversation, Message, Platform } from "../app/data.js";
+import { cleanUserMessageContent } from "./agent-noise.js";
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
 
@@ -284,9 +285,9 @@ export function parseHermesExport(json: any): Conversation[] {
 /**
  * Codex CLI / Desktop rollout-*.jsonl format.
  * Lines wrap everything under `payload`; the clean human↔AI dialogue lives in
- * `event_msg` entries (user_message / agent_message), free of system prompts and
- * tool-call noise. Falls back to `response_item` messages when no event_msg
- * dialogue is present.
+ * `event_msg` entries (user_message / agent_message). Falls back to
+ * `response_item` messages when no event_msg dialogue is present.
+ * 用户侧：解包 <user_message>、剥离 <dynamic_context>、丢弃 # Instructions 技能注入。
  */
 function parseCodexRollout(lines: string[]): Conversation | null {
   const messages: Message[] = [];
@@ -312,7 +313,8 @@ function parseCodexRollout(lines: string[]): Conversation | null {
     // Primary source: clean user/agent dialogue.
     if (obj.type === "event_msg" && (payload.type === "user_message" || payload.type === "agent_message")) {
       const role: "user" | "ai" = payload.type === "user_message" ? "user" : "ai";
-      const content = typeof payload.message === "string" ? payload.message.trim() : "";
+      const raw = typeof payload.message === "string" ? payload.message : "";
+      const content = role === "user" ? cleanUserMessageContent(raw) : raw.trim();
       if (!content) continue;
       const ts = obj.timestamp ?? date ?? new Date().toISOString();
       if (!date) date = ts;
@@ -323,10 +325,10 @@ function parseCodexRollout(lines: string[]): Conversation | null {
     // Fallback source: response_item messages (skip developer/system instructions).
     else if (obj.type === "response_item" && payload.type === "message" && (payload.role === "user" || payload.role === "assistant")) {
       const role: "user" | "ai" = payload.role === "user" ? "user" : "ai";
-      const content = (Array.isArray(payload.content) ? payload.content : [])
+      const raw = (Array.isArray(payload.content) ? payload.content : [])
         .map((c: any) => (typeof c?.text === "string" ? c.text : ""))
-        .join("\n")
-        .trim();
+        .join("\n");
+      const content = role === "user" ? cleanUserMessageContent(raw) : raw.trim();
       if (!content) continue;
       const ts = obj.timestamp ?? date ?? new Date().toISOString();
       fallback.push(makeMsg(role, content, ts));
@@ -378,7 +380,7 @@ export function parseJsonl(jsonlText: string): Conversation | null {
         if (obj.isMeta || obj.isSidechain) continue;
         platform = "Claude";
         const role = obj.type === "assistant" ? "ai" : "user";
-        const content =
+        const raw =
           typeof obj.message?.content === "string"
             ? obj.message.content
             : Array.isArray(obj.message?.content)
@@ -387,12 +389,12 @@ export function parseJsonl(jsonlText: string): Conversation | null {
                 .map((c: any) => c.text)
                 .join("\n")
             : "";
-        const trimmed = content.trim();
-        // 斜杠命令包裹与本地命令输出不是对话内容
-        if (trimmed && !/^<(?:command-|local-command-)/.test(trimmed)) {
+        // 用户侧完整清洗（含 command / caveat / 指令倾倒）；AI 侧保留原文
+        const content = role === "user" ? cleanUserMessageContent(raw) : raw.trim();
+        if (content) {
           const ts = obj.timestamp ?? date;
           // 标题取自 trim 后内容：首字符若是换行会让 split("\n")[0] 得到空串
-          if (!title && role === "user") title = trimmed.slice(0, 80).split("\n")[0];
+          if (!title && role === "user") title = content.slice(0, 80).split("\n")[0];
           if (messages.length === 0 && obj.timestamp) date = obj.timestamp;
           messages.push(makeMsg(role, content, ts));
         }
@@ -401,13 +403,14 @@ export function parseJsonl(jsonlText: string): Conversation | null {
       // Generic {role, content} format
       if ((obj.role === "user" || obj.role === "assistant") && obj.content) {
         const role = obj.role === "user" ? "user" : "ai";
-        const content =
+        const raw =
           typeof obj.content === "string"
             ? obj.content
             : Array.isArray(obj.content)
             ? obj.content.map((c: any) => c.text ?? c).join("\n")
             : "";
-        if (content.trim()) {
+        const content = role === "user" ? cleanUserMessageContent(raw) : raw.trim();
+        if (content) {
           const ts = obj.timestamp ?? obj.created_at ?? date;
           if (!title && role === "user") title = content.slice(0, 80).split("\n")[0];
           messages.push(makeMsg(role, content, ts));
@@ -515,6 +518,8 @@ export function parseMarkdown(mdText: string): Conversation | null {
       let content = withoutFrontmatter.slice(startIdx, endIdx).trim();
       
       content = content.replace(/\s*---$/, "").trim(); // strip arbitrary dividers
+      // waylog / Claude 导出：用户段常混有 local-command-caveat 与斜杠命令回显
+      if (isUser) content = cleanUserMessageContent(content);
 
       if (!content) continue;
 

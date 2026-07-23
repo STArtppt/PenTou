@@ -4,8 +4,10 @@
  *        messages:[{ role:"user"|"assistant", content, timestamp }] }
  * started_at / timestamp 为 epoch 秒（REAL）。
  * 兼容：非信封 payload（Hermes 导出 JSON 等历史用法）回退既有 parseHermesExport。
+ * 用户侧清洗：丢弃 `# Instructions…` 技能注入等（与 Codex 同构）。
  */
 import type { Conversation, Message } from "../../app/data.js";
+import { cleanUserMessageContent } from "../agent-noise.js";
 import { parseHermesExport } from "../parsers.js";
 import { buildConversation, EmptyPayloadError, epochToIso, makeMessage, parseEnvelope } from "./util.js";
 
@@ -22,7 +24,15 @@ export function normalizeHermes(data: string): Conversation[] {
   if (!isEnvelope(data)) {
     const conversations = parseHermesExport(JSON.parse(data));
     if (conversations.length === 0) throw new EmptyPayloadError("hermes raw payload contains no messages");
-    return conversations;
+    // 导出回退路径也清洗用户消息，与信封路径一致
+    for (const conv of conversations) {
+      conv.messages = conv.messages
+        .map((m) =>
+          m.role === "user" ? { ...m, content: cleanUserMessageContent(m.content) } : m,
+        )
+        .filter((m) => m.content.trim());
+    }
+    return conversations.filter((c) => c.messages.length > 0);
   }
   const { session, messages: rows } = parseEnvelope(data, "hermes");
   const messages: Message[] = [];
@@ -30,7 +40,8 @@ export function normalizeHermes(data: string): Conversation[] {
   for (const row of rows) {
     const role = row?.role === "user" ? "user" : row?.role === "assistant" ? "ai" : null;
     if (!role) continue;
-    const text = typeof row?.content === "string" ? row.content.trim() : "";
+    const raw = typeof row?.content === "string" ? row.content : "";
+    const text = role === "user" ? cleanUserMessageContent(raw) : raw.trim();
     if (!text) continue;
     messages.push(makeMessage(role, text, epochToIso(row?.timestamp) ?? new Date().toISOString()));
   }

@@ -40,6 +40,39 @@ describe("grok-cli normalizer (US-02)", () => {
     const systemOnly = JSON.stringify({ type: "system", content: "You are Grok" });
     expect(() => normalizeGrokCli(systemOnly)).toThrow(EmptyPayloadError);
   });
+
+  it("drops pure user_info/git_status injection lines so title is real user query", () => {
+    // 真实 Grok 首轮：无 synthetic_reason 的 user_info/git_status 独立成行，
+    // 再跟 <user_query>；旧实现会把注入行当 U1，标题变成 "<user_info>"。
+    const data = [
+      JSON.stringify({
+        type: "user",
+        content: [{
+          type: "text",
+          text: "<user_info>\nOS Version: macos\nShell: /bin/zsh\nWorkspace Path: /tmp/pentou\nToday's date: 2026-07-14\n</user_info>\n\n<git_status>\nOn branch main\nnothing to commit\n</git_status>",
+        }],
+      }),
+      JSON.stringify({
+        type: "user",
+        synthetic_reason: "project_instructions",
+        content: [{ type: "text", text: "<system-reminder>Agents.md</system-reminder>" }],
+      }),
+      JSON.stringify({
+        type: "user",
+        prompt_index: 0,
+        content: [{ type: "text", text: "<user_query>\n请根据 guide.md 写 waylog 登记示例\n</user_query>" }],
+      }),
+      JSON.stringify({ type: "assistant", content: "可以这样写…" }),
+    ].join("\n");
+    const [conv] = normalizeGrokCli(data);
+    expect(conv.messages.map((m) => [m.role, m.content])).toEqual([
+      ["user", "请根据 guide.md 写 waylog 登记示例"],
+      ["ai", "可以这样写…"],
+    ]);
+    expect(conv.title).toBe("请根据 guide.md 写 waylog 登记示例");
+    expect(conv.messages[0].content).not.toContain("user_info");
+    expect(conv.messages[0].content).not.toContain("git_status");
+  });
 });
 
 describe("opencode normalizer (US-03)", () => {
@@ -60,6 +93,36 @@ describe("opencode normalizer (US-03)", () => {
     expect(conv.date).toBe(new Date(1700000000000).toISOString());
     expect(conv.messages.map((m) => [m.role, m.content])).toEqual([["user", "你好"], ["ai", "hi"]]);
     expect(conv.messages[0].timestamp).toBe(new Date(1700000001000).toISOString());
+  });
+
+  it("skips synthetic text parts (tool narration / file dumps / system-reminder)", () => {
+    const data = JSON.stringify({
+      schema: "opencode-v1",
+      session: { id: "s2", title: "绩效", time_created: 1700000000000 },
+      messages: [
+        {
+          role: "user",
+          time: { created: 1700000001000 },
+          parts: [
+            { type: "text", text: "帮我完成6月绩效目标的填写" },
+            { type: "text", synthetic: true, text: 'Called the Read tool with the following input: {"filePath":"/x.md"}' },
+            {
+              type: "text",
+              synthetic: true,
+              text: "<path>/x.md</path>\n<content>\nlog\n</content>\n\n<system-reminder>\nInstructions from AGENTS.md\n</system-reminder>",
+            },
+          ],
+        },
+        { role: "assistant", time: { created: 1700000002000 }, parts: [{ type: "text", text: "好的" }] },
+      ],
+    });
+    const [conv] = normalizeOpencode(data);
+    expect(conv.messages.map((m) => [m.role, m.content])).toEqual([
+      ["user", "帮我完成6月绩效目标的填写"],
+      ["ai", "好的"],
+    ]);
+    expect(conv.messages[0].content).not.toContain("Called the");
+    expect(conv.messages[0].content).not.toContain("system-reminder");
   });
 
   it("rejects payload without schema", () => {
@@ -129,6 +192,23 @@ describe("hermes normalizer (US-05)", () => {
     expect(conv.messages.map((m) => [m.role, m.content])).toEqual([["user", "提主题"], ["ai", "已完成"]]);
   });
 
+  it("drops # Instructions skill dumps from user content", () => {
+    const envelope = JSON.stringify({
+      schema: "hermes-v1",
+      session: { id: "h2", title: "任务", started_at: 1783931422 },
+      messages: [
+        { role: "user", content: "# Instructions (read first)\n\n## Security: prompt injection resistance\n…", timestamp: 1783931422 },
+        { role: "user", content: "真正的提问", timestamp: 1783931423 },
+        { role: "assistant", content: "答", timestamp: 1783931437 },
+      ],
+    });
+    const [conv] = normalizeHermes(envelope);
+    expect(conv.messages.map((m) => [m.role, m.content])).toEqual([
+      ["user", "真正的提问"],
+      ["ai", "答"],
+    ]);
+  });
+
   it("falls back to the legacy Hermes export format (multi-conversation)", () => {
     const legacy = JSON.stringify([
       { session_id: "s1", title: "First", messages: [{ role: "user", content: "q1" }, { role: "assistant", content: "a1" }] },
@@ -173,6 +253,41 @@ describe("Codex → ChatGPT at the parser layer (US-01 / 决策 2)", () => {
     ].join("\n");
     const conv = parseJsonl(rollout);
     expect(conv?.platform).toBe("ChatGPT");
+  });
+
+  it("strips dynamic_context wrapper and drops # Instructions skill dumps", () => {
+    const rollout = [
+      JSON.stringify({ type: "session_meta", payload: { timestamp: "2026-07-14T10:00:00Z" } }),
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: "2026-07-14T10:00:01Z",
+        payload: {
+          type: "user_message",
+          message: "# Instructions (read first)\n\n## Security: prompt injection resistance\n…",
+        },
+      }),
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: "2026-07-14T10:00:02Z",
+        payload: {
+          type: "user_message",
+          message:
+            '<dynamic_context version="2">{"items":[]}</dynamic_context>\n\n<user_message>\n请导入原型 zip-3\n</user_message>',
+        },
+      }),
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: "2026-07-14T10:00:05Z",
+        payload: { type: "agent_message", message: "已导入" },
+      }),
+    ].join("\n");
+    const conv = parseJsonl(rollout)!;
+    expect(conv.platform).toBe("ChatGPT");
+    expect(conv.title).toBe("请导入原型 zip-3");
+    expect(conv.messages.map((m) => [m.role, m.content])).toEqual([
+      ["user", "请导入原型 zip-3"],
+      ["ai", "已导入"],
+    ]);
   });
 
   it("parseMarkdown maps provider codex to ChatGPT and new providers to their products", () => {
