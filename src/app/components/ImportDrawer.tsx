@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { Drawer, DrawerBackdrop, DrawerPopup, DrawerPortal } from "@/components/ui/drawer";
 import {
   X,
@@ -7,8 +7,6 @@ import {
   Terminal,
   Loader2,
   FileJson,
-  Code2,
-  Laptop,
   Link,
   Globe,
   FileText,
@@ -16,14 +14,75 @@ import {
   KeyRound,
   Trash2,
   ExternalLink,
+  Puzzle,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAppContext, ImportSummary } from "../data";
 import { parseFileContent, parseChatGPTExport } from "../parsers";
 import { useTranslation } from "../i18n";
+import { useScrollActivity } from "../hooks/useScrollActivity";
+
+/** CLI 采集器已接入的桌面来源（不含需显式登记的 waylog） */
+const CLI_COLLECTOR_PLATFORMS = [
+  "Claude Code",
+  "Codex",
+  "Grok CLI",
+  "GitHub Copilot",
+  "Copilot VS Code",
+  "OpenCode",
+  "Hermes",
+  "Cursor",
+] as const;
+
+/** 浏览器插件 v1 支持平台 */
+const BROWSER_EXT_PLATFORMS = ["ChatGPT", "DeepSeek"] as const;
+
+/** 公开分享链接当前已适配平台（与 vite-plugins/obscura.ts 拦截 / 解析分支对齐） */
+const SHARE_LINK_PLATFORMS = [
+  "ChatGPT",
+  "DeepSeek",
+  "Claude",
+  "Gemini",
+  "Grok",
+  "Doubao",
+  "Qianwen",
+  "Metaso",
+] as const;
+
+function ScenarioCard({
+  icon,
+  iconClassName,
+  title,
+  children,
+}: {
+  icon: ReactNode;
+  iconClassName: string;
+  title: string;
+  children: ReactNode;
+}) {
+  const { isScrolling, markScrollActive } = useScrollActivity();
+  return (
+    <div className="flex max-h-64 flex-col rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#222]">
+      <div className="mb-3 flex shrink-0 items-center gap-3">
+        <div className={clsx("rounded-lg p-2", iconClassName)}>{icon}</div>
+        <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{title}</h4>
+      </div>
+      <div
+        className={clsx(
+          "min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar subtle-scrollbar pr-1",
+          isScrolling && "subtle-scrollbar-active",
+        )}
+        onScroll={markScrollActive}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 
 const ZIP_ASSET_TOKEN_PREFIX = "pentou-zip-asset://";
 const ZIP_ASSET_TOKEN_RE = /!\[[^\]]*\]\(pentou-zip-asset:\/\/([^)\s]+)\)/g;
@@ -116,6 +175,7 @@ async function parseChatGPTZip(file: File, t: (key: string) => string): Promise<
 export function ImportDrawer() {
   const { isDrawerOpen, setDrawerOpen, addConversations, addDocuments, folders, activeView, setActiveView, setActiveDocId, setActiveConversationId } = useAppContext();
   const { t } = useTranslation();
+  const { isScrolling: isDrawerScrolling, markScrollActive: markDrawerScrollActive } = useScrollActivity();
 
   // 首次滑入动画修复：App 用 `{drawerEverOpened && <ImportDrawer/>}` 门控，本组件
   // 首挂载时 isDrawerOpen 已为 true → 直接以打开态渲染，无过渡起始帧（闪现）。
@@ -316,7 +376,13 @@ export function ImportDrawer() {
               </Button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-12 custom-scrollbar">
+            <div
+              className={clsx(
+                "flex-1 overflow-y-auto overscroll-contain p-6 space-y-8 pb-12 custom-scrollbar subtle-scrollbar",
+                isDrawerScrolling && "subtle-scrollbar-active",
+              )}
+              onScroll={markDrawerScrollActive}
+            >
               {isDocMode ? (
                 <DocumentImportPanel setDrawerOpen={setDrawerOpen} addDocuments={addDocuments} setActiveDocId={setActiveDocId} setActiveView={setActiveView} t={t} />
               ) : (
@@ -361,28 +427,29 @@ export function ImportDrawer() {
                 <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-3 px-1 uppercase tracking-wider">
                   {t("import.fromUrl")}
                 </h3>
-                <form onSubmit={handleUrlImport} className="flex gap-2">
-                  <div className="relative flex-1">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-400">
-                      <Link size={18} />
+                <form onSubmit={handleUrlImport} className="flex items-center gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3 text-muted-foreground">
+                      <Link size={16} />
                     </div>
-                    <input
+                    <Input
                       type="url"
                       value={importUrl}
                       onChange={(e) => setImportUrl(e.target.value)}
                       placeholder={t("import.urlPlaceholder")}
                       disabled={isImporting}
-                      className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 text-zinc-900 dark:text-white placeholder:text-zinc-400 disabled:opacity-50 transition-all"
+                      className="h-10 pl-9"
                     />
                   </div>
-                  <button
+                  <Button
                     type="submit"
+                    variant="primary"
+                    size="lg"
                     disabled={isImporting || !importUrl.trim()}
-                    className="px-6 py-3 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 whitespace-nowrap"
                   >
-                    {isImporting ? <Loader2 size={18} className="animate-spin" /> : <Globe size={18} />}
+                    {isImporting ? <Loader2 className="animate-spin" /> : <Globe />}
                     {t("import.fetchBtn")}
-                  </button>
+                  </Button>
                 </form>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 px-1">
                   {t("import.urlNote")}
@@ -394,80 +461,119 @@ export function ImportDrawer() {
                 <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mb-4 px-1 uppercase tracking-wider">
                   {t("import.supported")}
                 </h3>
-                
-                {/* Responsive Grid for Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  
-                  {/* Card 1: Platform Exports */}
-                  <div className="bg-white dark:bg-[#222] border border-zinc-200 dark:border-white/10 rounded-xl p-5 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-muted text-muted-foreground rounded-lg">
-                        <FileJson size={20} />
-                      </div>
-                      <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{t("import.platformExports")}</h4>
-                    </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
-                      {t("import.platformDesc")} <strong className="text-zinc-700 dark:text-zinc-300">ChatGPT</strong> {t("import.or")} <strong className="text-zinc-700 dark:text-zinc-300">DeepSeek</strong>.
-                    </p>
-                    <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 list-disc pl-4 marker:text-zinc-300 dark:marker:text-zinc-600">
-                      <li>{t("import.platformStep1")}</li>
-                      <li>{t("import.platformStep2")} <code className="bg-zinc-100 dark:bg-white/10 px-1 rounded">conversations.json</code>.</li>
-                      <li>{t("import.platformStep3")} <code className="bg-zinc-100 dark:bg-white/10 px-1 rounded">ai-chat-md-export</code> {t("import.andUpload")}</li>
-                    </ul>
-                  </div>
 
-                  {/* Card: Shared Links (NEW) */}
-                  <div className="bg-white dark:bg-[#222] border border-zinc-200 dark:border-white/10 rounded-xl p-5 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg">
-                        <Globe size={20} />
-                      </div>
-                      <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{t("import.sharedLinks")}</h4>
-                    </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <ScenarioCard
+                    icon={<FileJson size={20} />}
+                    iconClassName="bg-muted text-muted-foreground"
+                    title={t("import.platformExports")}
+                  >
+                    <p className="mb-3 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                      {t("import.platformDesc")}{" "}
+                      <strong className="text-zinc-700 dark:text-zinc-300">ChatGPT</strong>{" "}
+                      {t("import.or")}{" "}
+                      <strong className="text-zinc-700 dark:text-zinc-300">DeepSeek</strong>.
+                    </p>
+                    <ul className="list-disc space-y-1.5 pl-4 text-xs text-zinc-600 marker:text-zinc-300 dark:text-zinc-400 dark:marker:text-zinc-600">
+                      <li>{t("import.platformStep1")}</li>
+                      <li>
+                        {t("import.platformStep2")}{" "}
+                        <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">conversations.json</code>.
+                      </li>
+                      <li>
+                        {t("import.platformStep3")}{" "}
+                        <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">ai-chat-md-export</code>{" "}
+                        {t("import.andUpload")}
+                      </li>
+                    </ul>
+                  </ScenarioCard>
+
+                  <ScenarioCard
+                    icon={<Globe size={20} />}
+                    iconClassName="bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400"
+                    title={t("import.sharedLinks")}
+                  >
+                    <p className="mb-3 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
                       {t("import.sharedLinksDesc")}
                     </p>
-                    <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 list-disc pl-4 marker:text-zinc-300 dark:marker:text-zinc-600">
-                      <li>{t("import.sharedLinksStep1")}</li>
-                      <li>{t("import.sharedLinksStep2")}</li>
-                    </ul>
-                  </div>
-
-                  {/* Card 2: IDE Logs */}
-                  <div className="bg-white dark:bg-[#222] border border-zinc-200 dark:border-white/10 rounded-xl p-5 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg">
-                        <Code2 size={20} />
-                      </div>
-                      <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{t("import.ideLogs")}</h4>
-                    </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
-                      {t("import.ideDesc")} <strong className="text-zinc-700 dark:text-zinc-300">WayLog</strong> for Cursor, Copilot, or RooCode.
+                    <p className="mb-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      {t("import.platformsLabel")}
                     </p>
-                    <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 list-disc pl-4 marker:text-zinc-300 dark:marker:text-zinc-600">
-                      <li>{t("import.ideStep1")} <code className="bg-zinc-100 dark:bg-white/10 px-1 rounded">.waylog/history/</code> {t("import.directory")}</li>
-                      <li>{t("import.ideStep2")} <code className="bg-zinc-100 dark:bg-white/10 px-1 rounded">.md</code> {t("import.filesAtOnce")}</li>
-                      <li>{t("import.ideStep3")}</li>
-                    </ul>
-                  </div>
-
-                  {/* Card 3: CLI Logs */}
-                  <div className="bg-white dark:bg-[#222] border border-zinc-200 dark:border-white/10 rounded-xl p-5 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 rounded-lg">
-                        <Terminal size={20} />
-                      </div>
-                      <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{t("import.cliLogs")}</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SHARE_LINK_PLATFORMS.map((name) => (
+                        <span
+                          key={name}
+                          className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-white/10 dark:text-zinc-300"
+                        >
+                          {name}
+                        </span>
+                      ))}
                     </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
-                      {t("import.cliDesc")}
-                    </p>
-                    <ul className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1.5 list-disc pl-4 marker:text-zinc-300 dark:marker:text-zinc-600">
-                      <li>{t("import.cliStep1")} <code className="bg-zinc-100 dark:bg-white/10 px-1 rounded">waylog-cli</code> {t("import.cliStep2")}</li>
-                      <li>{t("import.cliStep1")} <code className="bg-zinc-100 dark:bg-white/10 px-1 rounded">Claude Code</code> {t("import.cliStep3")}</li>
-                    </ul>
-                  </div>
+                  </ScenarioCard>
 
+                  <ScenarioCard
+                    icon={<Terminal size={20} />}
+                    iconClassName="bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400"
+                    title={t("import.cliCollector")}
+                  >
+                    <p className="mb-3 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                      {t("import.cliCollectorDesc")}
+                    </p>
+                    <p className="mb-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      {t("import.platformsLabel")}
+                    </p>
+                    <div className="mb-3 flex flex-wrap gap-1.5">
+                      {CLI_COLLECTOR_PLATFORMS.map((name) => (
+                        <span
+                          key={name}
+                          className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-white/10 dark:text-zinc-300"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                    <ul className="list-disc space-y-1.5 pl-4 text-xs text-zinc-600 marker:text-zinc-300 dark:text-zinc-400 dark:marker:text-zinc-600">
+                      <li>{t("import.cliCollectorStep1")}</li>
+                      <li>
+                        {t("import.cliCollectorStep2")}{" "}
+                        <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">npx -y @startist/pentou collect init</code>
+                      </li>
+                      <li>
+                        {t("import.cliCollectorStep3")}{" "}
+                        <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">collect pull</code>
+                        {" / "}
+                        <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">collect watch</code>
+                      </li>
+                    </ul>
+                  </ScenarioCard>
+
+                  <ScenarioCard
+                    icon={<Puzzle size={20} />}
+                    iconClassName="bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
+                    title={t("import.browserExt")}
+                  >
+                    <p className="mb-3 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                      {t("import.browserExtDesc")}
+                    </p>
+                    <p className="mb-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      {t("import.platformsLabel")}
+                    </p>
+                    <div className="mb-3 flex flex-wrap gap-1.5">
+                      {BROWSER_EXT_PLATFORMS.map((name) => (
+                        <span
+                          key={name}
+                          className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-white/10 dark:text-zinc-300"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                    <ul className="list-disc space-y-1.5 pl-4 text-xs text-zinc-600 marker:text-zinc-300 dark:text-zinc-400 dark:marker:text-zinc-600">
+                      <li>{t("import.browserExtStep1")}</li>
+                      <li>{t("import.browserExtStep2")}</li>
+                      <li>{t("import.browserExtStep3")}</li>
+                    </ul>
+                  </ScenarioCard>
                 </div>
               </div>
               </>
