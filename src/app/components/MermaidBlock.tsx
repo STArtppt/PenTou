@@ -176,6 +176,7 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
         <MermaidFullscreenModal
           svg={status.svg}
           bindFunctions={status.bindFunctions}
+          theme={theme}
           labels={{
             title: t("mermaid.fullscreen"),
             zoomIn: t("mermaid.zoomIn"),
@@ -196,6 +197,8 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
 interface MermaidFullscreenModalProps {
   svg: string;
   bindFunctions?: (el: Element) => void;
+  /** App theme — lightbox is always dark; light mermaid needs a light plate for edge contrast. */
+  theme: "light" | "dark";
   labels: {
     title: string;
     zoomIn: string;
@@ -206,8 +209,9 @@ interface MermaidFullscreenModalProps {
   onClose: () => void;
 }
 
-function MermaidFullscreenModal({ svg, bindFunctions, labels, onClose }: MermaidFullscreenModalProps) {
+function MermaidFullscreenModal({ svg, bindFunctions, theme, labels, onClose }: MermaidFullscreenModalProps) {
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const draggedRef = useRef(false);
   const wheelCleanupRef = useRef<(() => void) | null>(null);
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -235,6 +239,23 @@ function MermaidFullscreenModal({ svg, bindFunctions, labels, onClose }: Mermaid
     wheelCleanupRef.current = () => node.removeEventListener("wheel", handleWheel);
   }, [zoomBy]);
 
+  // Lightbox 遮罩恒为 dark（zinc-950/85）。default 主题 lineColor=#333，透明 SVG 直接叠上去会丢边。
+  // 给图一块与内联预览一致的底板，只包住图（不全屏铺白），随 pan/zoom 一起变换。
+  const surfaceClass =
+    theme === "dark"
+      ? "bg-[#151515]"
+      : "bg-white";
+
+  // 与 ImageLightbox 一致：Popup 被 h-full 子层铺满，仅靠 Popup 上的 target===currentTarget 永远接不到「点遮罩」。
+  // 关闭监听挂在全视口 mask 层；图本体 stopPropagation；拖拽松手不误关（spec US-04 AC3）。
+  const handleBackdropClick = (event: React.MouseEvent) => {
+    if (draggedRef.current) {
+      draggedRef.current = false;
+      return;
+    }
+    if (event.target === event.currentTarget) onClose();
+  };
+
   return (
     <Lightbox open onOpenChange={(next) => { if (!next) onClose(); }}>
       <LightboxPortal>
@@ -242,9 +263,12 @@ function MermaidFullscreenModal({ svg, bindFunctions, labels, onClose }: Mermaid
         <LightboxPopup
           onMouseMove={(event) => {
             if (!dragRef.current) return;
+            const dx = event.clientX - dragRef.current.x;
+            const dy = event.clientY - dragRef.current.y;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) draggedRef.current = true;
             setPan({
-              x: dragRef.current.panX + event.clientX - dragRef.current.x,
-              y: dragRef.current.panY + event.clientY - dragRef.current.y,
+              x: dragRef.current.panX + dx,
+              y: dragRef.current.panY + dy,
             });
           }}
           onMouseUp={() => {
@@ -253,12 +277,10 @@ function MermaidFullscreenModal({ svg, bindFunctions, labels, onClose }: Mermaid
           onMouseLeave={() => {
             dragRef.current = null;
           }}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) onClose();
-          }}
+          onClick={handleBackdropClick}
         >
           <LightboxTitle className="sr-only">{labels.title}</LightboxTitle>
-          <LightboxToolbar>
+          <LightboxToolbar onClick={(event) => event.stopPropagation()}>
             <button type="button" onClick={() => zoomBy(1 / 1.2)} className="rounded p-2 hover:bg-white/10" title={labels.zoomOut}>
               <Minus size={16} />
             </button>
@@ -293,17 +315,28 @@ function MermaidFullscreenModal({ svg, bindFunctions, labels, onClose }: Mermaid
 
           <div
             ref={attachWheel}
-            className="h-full w-full overflow-hidden"
+            data-testid="mermaid-fullscreen-mask"
+            className="flex h-full w-full items-center justify-center overflow-hidden"
+            onClick={handleBackdropClick}
           >
             <div
-              ref={bindContent}
-              className="flex h-full w-full cursor-grab items-center justify-center active:cursor-grabbing [&_svg]:max-h-[88vh] [&_svg]:max-w-[88vw]"
+              className="cursor-grab active:cursor-grabbing"
               style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}
+              onClick={(event) => event.stopPropagation()}
               onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                draggedRef.current = false;
                 dragRef.current = { x: event.clientX, y: event.clientY, panX: pan.x, panY: pan.y };
               }}
-              dangerouslySetInnerHTML={{ __html: svg }}
-            />
+            >
+              <div
+                ref={bindContent}
+                data-testid="mermaid-fullscreen-surface"
+                className={`rounded-xl p-6 shadow-2xl [&_svg]:max-h-[88vh] [&_svg]:max-w-[88vw] ${surfaceClass}`}
+                dangerouslySetInnerHTML={{ __html: svg }}
+              />
+            </div>
           </div>
         </LightboxPopup>
       </LightboxPortal>

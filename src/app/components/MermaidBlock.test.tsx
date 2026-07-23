@@ -140,6 +140,61 @@ describe("MermaidBlock", () => {
     unmount();
   });
 
+  it("clicking mask closes fullscreen; clicking diagram does not", async () => {
+    const { container, unmount } = await renderBlock();
+
+    await act(async () => {
+      (container.querySelector('button[title="Fullscreen"]') as HTMLButtonElement).click();
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid="mermaid-fullscreen-mask"]')).not.toBeNull();
+      expect(document.querySelector('[data-testid="mermaid-fullscreen-surface"]')).not.toBeNull();
+    });
+
+    const mask = document.querySelector('[data-testid="mermaid-fullscreen-mask"]') as HTMLElement;
+    const surface = document.querySelector('[data-testid="mermaid-fullscreen-surface"]') as HTMLElement;
+
+    await act(async () => {
+      surface.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(document.querySelector('button[title="Close"]')).not.toBeNull();
+
+    await act(async () => {
+      mask.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(document.querySelector('button[title="Close"]')).toBeNull();
+    unmount();
+  });
+
+  it("gives fullscreen mermaid a light surface in light mode (edge contrast vs dark lightbox)", async () => {
+    const { container, unmount } = await renderBlock();
+
+    await act(async () => {
+      (container.querySelector('button[title="Fullscreen"]') as HTMLButtonElement).click();
+    });
+
+    await waitFor(() => expect(document.querySelector('[data-testid="mermaid-fullscreen-surface"]')).not.toBeNull());
+    const surface = document.querySelector('[data-testid="mermaid-fullscreen-surface"]');
+    expect(surface?.className).toMatch(/\bbg-white\b/);
+    expect(surface?.className).not.toMatch(/bg-\[#151515\]/);
+    unmount();
+  });
+
+  it("gives fullscreen mermaid a dark surface in dark mode", async () => {
+    mocks.theme = "dark";
+    const { container, unmount } = await renderBlock();
+
+    await act(async () => {
+      (container.querySelector('button[title="Fullscreen"]') as HTMLButtonElement).click();
+    });
+
+    await waitFor(() => expect(document.querySelector('[data-testid="mermaid-fullscreen-surface"]')).not.toBeNull());
+    const surface = document.querySelector('[data-testid="mermaid-fullscreen-surface"]');
+    expect(surface?.className).toMatch(/bg-\[#151515\]/);
+    unmount();
+  });
+
   it("registers fullscreen wheel zoom as a non-passive listener", async () => {
     const addEventListenerSpy = vi.spyOn(HTMLElement.prototype, "addEventListener");
     const { container, unmount } = await renderBlock();
