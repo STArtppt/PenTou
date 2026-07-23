@@ -296,11 +296,21 @@ function generateId(prefix = "id") {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+// 初始选中恢复上次打开的会话（debugging/2026-07-16-refresh-opens-oldest-conversation.md）：
+// 存储 id 已被删除或从未存储时回退列表第一条。
+export function resolveInitialConversationId(
+  convs: Array<{ id: string }>,
+  storedId: string | null,
+): string | null {
+  if (storedId && convs.some((c) => c.id === storedId)) return storedId;
+  return convs[0]?.id ?? null;
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   // ── Conversation state ──
   const [folders, setFolders] = useState<Folder[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
 
   // ── Document state ──
   const [activeView, setActiveViewState] = useState<ActiveView>(() => {
@@ -353,7 +363,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setFolders(foldersData as Folder[]);
       const convs = convsData as Conversation[];
       setConversations(convs);
-      if (convs.length > 0) setActiveConversationId(convs[0].id);
+      setActiveConversationIdState(
+        resolveInitialConversationId(convs, localStorage.getItem("pentou-active-conversation")),
+      );
       setDocuments(docsData as Document[]);
       setDocumentFolders(docFoldersData as DocumentFolder[]);
     }).finally(() => setIsLoading(false));
@@ -414,6 +426,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setActiveView = useCallback((view: ActiveView) => {
     setActiveViewState(view);
     localStorage.setItem("pentou-active-view", view);
+  }, []);
+
+  const setActiveConversationId = useCallback((id: string | null) => {
+    setActiveConversationIdState(id);
+    if (id) localStorage.setItem("pentou-active-conversation", id);
+    else localStorage.removeItem("pentou-active-conversation");
   }, []);
 
   const toggleAiSidebar = useCallback(() => {

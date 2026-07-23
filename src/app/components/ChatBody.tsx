@@ -493,7 +493,7 @@ function MessageBubble({
           excerpting={excerpting}
         />
         <div className={clsx(
-          "max-w-none text-[15px] leading-7 mt-1 markdown-body break-words",
+          "max-w-full text-[15px] leading-7 mt-1 markdown-body break-words",
           isUser
             ? "bg-zinc-50 dark:bg-white/5 inline-block px-5 py-4 border border-zinc-100 dark:border-white/10 rounded-2xl rounded-tl-sm text-zinc-800 dark:text-zinc-200 shadow-sm"
             : "text-zinc-800 dark:text-zinc-200",
