@@ -88,7 +88,7 @@ export function LLMTab({
                 ? t("settings.llm.testFail", { status: testError })
                 : t("settings.llm.testConn")}
         </Button>
-        <Button type="button" variant="brand" onClick={handleSave}>
+        <Button type="button" variant="primary" onClick={handleSave}>
           {t("settings.llm.save")}
         </Button>
       </div>

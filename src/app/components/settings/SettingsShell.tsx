@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 import {
   Dialog,
-  DialogCloseButton,
-  DialogContent,
+  DialogBackdrop,
+  DialogClose,
+  DialogPopup,
+  DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -36,37 +39,45 @@ export function SettingsShell() {
 
   return (
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <DialogContent
-        className="flex h-[min(720px,80vh)] max-h-[80vh] w-full max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:rounded-xl"
-        aria-describedby={undefined}
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-white/10">
-          <DialogTitle>{t("settings.title")}</DialogTitle>
-          <DialogCloseButton />
-        </div>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup
+          className="flex h-[min(720px,80vh)] max-h-[80vh] w-full max-w-3xl flex-col gap-0 overflow-hidden p-0"
+          aria-describedby={undefined}
+        >
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
+            <DialogTitle>{t("settings.title")}</DialogTitle>
+            <DialogClose
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </DialogClose>
+          </div>
 
-        <div className="flex min-h-0 flex-1">
-          <SettingsNav activeTab={activeTab} onChange={setActiveTab} />
-          <ScrollArea className="min-w-0 flex-1">
-            {activeTab === "general" && (
-              <GeneralTab
-                theme={theme}
-                setTheme={setTheme}
-                language={language}
-                setLanguage={setLanguage}
-              />
-            )}
-            {activeTab === "llm" && <LLMTab config={llmConfig} setConfig={setLlmConfig} />}
-            {activeTab === "search" && <EmbeddingTab />}
-            {activeTab === "ingest" && <IngestTab />}
-            {activeTab === "migration" && <MigrationTab />}
-            {activeTab === "obsidian" && (
-              <ObsidianTab config={obsidianConfig} onSave={setObsidianConfig} />
-            )}
-            {activeTab === "about" && <AboutTab />}
-          </ScrollArea>
-        </div>
-      </DialogContent>
+          <div className="flex min-h-0 flex-1">
+            <SettingsNav activeTab={activeTab} onChange={setActiveTab} />
+            <ScrollArea className="min-w-0 flex-1">
+              {activeTab === "general" && (
+                <GeneralTab
+                  theme={theme}
+                  setTheme={setTheme}
+                  language={language}
+                  setLanguage={setLanguage}
+                />
+              )}
+              {activeTab === "llm" && <LLMTab config={llmConfig} setConfig={setLlmConfig} />}
+              {activeTab === "search" && <EmbeddingTab />}
+              {activeTab === "ingest" && <IngestTab />}
+              {activeTab === "migration" && <MigrationTab />}
+              {activeTab === "obsidian" && (
+                <ObsidianTab config={obsidianConfig} onSave={setObsidianConfig} />
+              )}
+              {activeTab === "about" && <AboutTab />}
+            </ScrollArea>
+          </div>
+        </DialogPopup>
+      </DialogPortal>
     </Dialog>
   );
 }

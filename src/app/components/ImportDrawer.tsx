@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { useAppContext, ImportSummary } from "../data";
 import { parseFileContent, parseChatGPTExport } from "../parsers";
 import { useTranslation } from "../i18n";
@@ -582,7 +583,18 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
         <div className="mt-3 space-y-3">
           {!configured && (
             <ol className="list-decimal list-inside space-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-              <li>{t("import.doc.guideRegister")} <a className="text-orange-600 dark:text-yellow-400 hover:underline inline-flex items-center gap-1" href="https://mineru.net" target="_blank" rel="noreferrer">mineru.net <ExternalLink size={11} /></a></li>
+              <li>
+                {t("import.doc.guideRegister")}{" "}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto gap-1 p-0 text-xs font-medium text-foreground underline underline-offset-2 hover:bg-transparent"
+                  render={<a href="https://mineru.net" target="_blank" rel="noreferrer" />}
+                >
+                  mineru.net
+                  <ExternalLink size={11} />
+                </Button>
+              </li>
               <li>{t("import.doc.guideApply")}</li>
               <li>{t("import.doc.guidePaste")}</li>
             </ol>
@@ -598,22 +610,21 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
                 className="w-full pl-9 pr-3 py-2 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1A1A1A] text-sm text-zinc-800 dark:text-zinc-100 outline-none focus:border-orange-400 dark:focus:border-yellow-400"
               />
             </div>
-            <button
-              onClick={saveToken}
-              disabled={savingToken}
-              className="px-3 py-2 rounded-lg text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 disabled:opacity-50"
-            >
+            <Button type="button" variant="primary" size="sm" onClick={saveToken} disabled={savingToken}>
               {savingToken ? t("import.doc.saving") : t("import.doc.saveToken")}
-            </button>
+            </Button>
             {configured && (
-              <button
+              <Button
+                type="button"
+                variant="danger"
+                size="icon"
                 onClick={clearToken}
                 disabled={savingToken}
                 title={t("import.doc.clearToken")}
-                className="p-2 rounded-lg border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-50"
+                aria-label={t("import.doc.clearToken")}
               >
                 <Trash2 size={16} />
-              </button>
+              </Button>
             )}
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{t("import.doc.privacyNote")}</p>
@@ -656,7 +667,7 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
                 {r.success ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
                 <span className="flex-1 truncate">{r.document?.title ?? r.originalName ?? r.savedName ?? r.fileName ?? r.error ?? "Unknown"}</span>
                 {r.success && r.action && r.action !== "created" && (
-                  <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-white/60 dark:bg-white/10 font-medium">
+                  <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-white/60 dark:bg-white/10 font-medium">
                     {t(`import.summary.${r.action}`, { n: 1 })}
                   </span>
                 )}

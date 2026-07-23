@@ -346,10 +346,10 @@ function CodeBlock({ children, className }: any) {
   return (
     <div className="relative group mt-4 mb-6">
       <div className="absolute flex items-center justify-between top-0 left-0 right-0 px-4 py-2 bg-zinc-200/50 dark:bg-[#2A2A2A] rounded-t-lg border-b border-zinc-200 dark:border-white/10">
-        <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">{codeLanguage}</span>
+        <span className="text-xs uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">{codeLanguage}</span>
         <button
           onClick={handleCopy}
-          className="text-zinc-500 hover:text-orange-500 dark:text-zinc-400 dark:hover:text-yellow-400 transition-colors flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider"
+          className="text-zinc-500 hover:text-orange-500 dark:text-zinc-400 dark:hover:text-yellow-400 transition-colors flex items-center gap-1 text-xs uppercase font-bold tracking-wider"
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
           {copied ? t("main.copied") : t("main.copy")}

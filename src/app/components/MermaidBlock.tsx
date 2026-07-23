@@ -88,13 +88,13 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
   return (
     <div data-testid="mermaid-block" className="relative group mt-4 mb-6 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#151515]">
       <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-100/80 px-4 py-2 dark:border-white/10 dark:bg-[#2A2A2A]">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">mermaid</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">mermaid</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setView(showSource ? "preview" : "source")}
             disabled={status.kind !== "ready" && !showSource}
-            className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-yellow-400"
+            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-yellow-400"
             title={showSource ? t("mermaid.showPreview") : t("mermaid.showSource")}
           >
             {showSource ? <Eye size={12} /> : <Code2 size={12} />}
@@ -104,7 +104,7 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-orange-500 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-yellow-400"
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-orange-500 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-yellow-400"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? t("main.copied") : t("main.copy")}

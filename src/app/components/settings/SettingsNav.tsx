@@ -8,6 +8,7 @@ import {
   Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "../../i18n";
 import type { SettingsTabDef, SettingsTabId } from "./types";
 
@@ -35,13 +36,17 @@ export function SettingsNav({
       {SETTINGS_TABS.map((tab) => {
         const Icon = tab.icon;
         const active = activeTab === tab.id;
+        // Nav item: ghost + soft accent when active (not primary — primary is too loud for sidebar tabs)
         return (
           <Button
             key={tab.id}
             type="button"
-            size="nav"
-            variant={active ? "nav-active" : "ghost"}
+            variant="ghost"
             aria-current={active ? "page" : undefined}
+            className={cn(
+              "h-9 w-full justify-start gap-2.5 px-3 text-sm font-medium text-muted-foreground",
+              active && "bg-accent text-accent-foreground",
+            )}
             onClick={() => onChange(tab.id)}
           >
             <Icon size={16} />

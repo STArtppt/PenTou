@@ -262,7 +262,7 @@ export function SearchPalette() {
               >
                 <div className="max-h-[52vh] overflow-y-auto custom-scrollbar p-2">
                   {status === "ready" && notice && (
-                    <div className="mx-1 mb-1 flex items-center gap-2 rounded-lg bg-zinc-50 dark:bg-white/5 px-3 py-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+                    <div className="mx-1 mb-1 flex items-center gap-2 rounded-lg bg-zinc-50 dark:bg-white/5 px-3 py-1.5 text-xs text-zinc-400 dark:text-zinc-500">
                       <Sparkles size={12} className="shrink-0" />
                       {t(notice === "degraded" ? "search.degraded" : "search.partial")}
                     </div>
@@ -317,14 +317,14 @@ export function SearchPalette() {
                                   />
                                 </span>
                                 {hit.date && (
-                                  <span className="shrink-0 text-[11px] text-zinc-400 dark:text-zinc-500">
+                                  <span className="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">
                                     {formatHitDate(hit.date, language)}
                                   </span>
                                 )}
                               </span>
                               <span className="mt-0.5 flex items-center gap-1.5 text-xs leading-relaxed">
                                 {hit.matchReason === "semantic" && (
-                                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-zinc-100 dark:bg-white/10 px-1 py-px text-[10px] text-zinc-400 dark:text-zinc-500">
+                                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-zinc-100 dark:bg-white/10 px-1 py-px text-xs text-zinc-400 dark:text-zinc-500">
                                     <Sparkles size={9} />
                                     {t("search.semantic")}
                                   </span>

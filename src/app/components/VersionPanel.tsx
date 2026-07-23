@@ -112,7 +112,7 @@ export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
                   {t("version.title")}
                 </h3>
                 {updatedAt && (
-                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+                  <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
                     {t("version.updatedAt", { time: formatDisplayDateTime(updatedAt, language) })}
                   </p>
                 )}
@@ -207,18 +207,18 @@ function VersionCard({
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">v{version.version}</span>
-          <span className={clsx("text-[10px] px-1.5 py-0.5 rounded font-medium", TYPE_COLORS[version.type])}>
+          <span className={clsx("text-xs px-1.5 py-0.5 rounded font-medium", TYPE_COLORS[version.type])}>
             {typeLabel}
           </span>
           {isCurrent && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-orange-500 dark:bg-yellow-400 text-white dark:text-zinc-900">
+            <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-orange-500 dark:bg-yellow-400 text-white dark:text-zinc-900">
               {t("version.current")}
             </span>
           )}
         </div>
       </div>
 
-      <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mb-2">
+      <div className="text-xs text-zinc-400 dark:text-zinc-500 mb-2">
         {formatDisplayDateTime(version.createdAt, language)}
         {version.sourceAnnotationIds && version.sourceAnnotationIds.length > 0 && (
           <span className="ml-2 text-orange-500 dark:text-yellow-400">
@@ -231,21 +231,21 @@ function VersionCard({
         <div className="flex items-center gap-1">
           <button
             onClick={onPreview}
-            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
           >
             {isPreviewing ? <EyeOff size={10} /> : <Eye size={10} />}
             {isPreviewing ? t("version.stopPreview") : t("version.preview")}
           </button>
           <button
             onClick={onRollback}
-            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400 transition-colors"
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400 transition-colors"
           >
             <RotateCcw size={10} /> {t("version.rollback")}
           </button>
           {allowDelete && (
             <button
               onClick={onDelete}
-              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors ml-auto"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors ml-auto"
             >
               <Trash2 size={10} /> {t("version.delete")}
             </button>

@@ -23,7 +23,7 @@ export function GeneralTab({
             <Button
               key={v}
               type="button"
-              variant={theme === v ? "segment-active" : "segment"}
+              variant={theme === v ? "primary" : "outline"}
               className="capitalize"
               onClick={() => setTheme(v)}
             >
@@ -38,7 +38,7 @@ export function GeneralTab({
             <Button
               key={v}
               type="button"
-              variant={language === v ? "segment-active" : "segment"}
+              variant={language === v ? "primary" : "outline"}
               onClick={() => setLanguage(v)}
             >
               {v === "en" ? t("settings.general.langEn") : t("settings.general.langZh")}

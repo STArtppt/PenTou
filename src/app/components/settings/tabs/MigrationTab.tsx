@@ -41,7 +41,7 @@ function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg border border-zinc-200 p-3 dark:border-white/10">
       <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{value}</div>
-      <div className="text-[11px] text-zinc-500 dark:text-zinc-400">{label}</div>
+      <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
     </div>
   );
 }
@@ -153,7 +153,7 @@ export function MigrationTab() {
         <div className="grid grid-cols-2 gap-2">
           <Button
             type="button"
-            variant={direction === "push" ? "segment-active" : "segment"}
+            variant={direction === "push" ? "primary" : "outline"}
             onClick={() => {
               setDirection("push");
               resetPreview();
@@ -164,7 +164,7 @@ export function MigrationTab() {
           </Button>
           <Button
             type="button"
-            variant={direction === "pull" ? "segment-active" : "segment"}
+            variant={direction === "pull" ? "primary" : "outline"}
             onClick={() => {
               setDirection("pull");
               resetPreview();
@@ -214,7 +214,7 @@ export function MigrationTab() {
           {state === "testing" && <Loader2 size={14} className="animate-spin" />}
           {t("settings.migration.test")}
         </Button>
-        <Button type="button" variant="brand" onClick={handlePlan} disabled={busy || !remoteUrl.trim()}>
+        <Button type="button" variant="primary" onClick={handlePlan} disabled={busy || !remoteUrl.trim()}>
           {state === "planning" && <Loader2 size={14} className="animate-spin" />}
           {t("settings.migration.preview")}
         </Button>
@@ -294,7 +294,7 @@ export function MigrationTab() {
                 </div>
               )}
 
-              <Button type="button" variant="brand" onClick={handleRun} disabled={busy || transferCount === 0}>
+              <Button type="button" variant="primary" onClick={handleRun} disabled={busy || transferCount === 0}>
                 {state === "running" && <Loader2 size={14} className="animate-spin" />}
                 {t("settings.migration.run", { count: transferCount })}
               </Button>
@@ -318,7 +318,7 @@ export function MigrationTab() {
             })}
           </div>
           {result.failures.length > 0 && (
-            <div className="mt-2 max-h-24 overflow-y-auto font-mono text-[11px]">
+            <div className="mt-2 max-h-24 overflow-y-auto font-mono text-xs">
               {result.failures.map((item) => (
                 <div key={`${item.path}-${item.reason}`}>
                   {item.path}: {item.reason}

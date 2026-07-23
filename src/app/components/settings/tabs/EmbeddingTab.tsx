@@ -77,11 +77,11 @@ export function EmbeddingTab() {
           onChange={(e) => setApiKey(e.target.value)}
           placeholder={embeddingConfig?.hasKey ? "••••••••" : "sk-..."}
         />
-        <span className="mt-1 block text-[11px] text-zinc-400 dark:text-zinc-500">{t("settings.embedding.apiKeyKeep")}</span>
+        <span className="mt-1 block text-xs text-zinc-400 dark:text-zinc-500">{t("settings.embedding.apiKeyKeep")}</span>
       </Field>
 
       <div className="flex items-center gap-3 pt-2">
-        <Button type="button" variant="brand" onClick={handleSave} disabled={saving}>
+        <Button type="button" variant="primary" onClick={handleSave} disabled={saving}>
           {saving ? t("settings.embedding.saving") : t("settings.embedding.save")}
         </Button>
         <span className="text-xs text-zinc-500 dark:text-zinc-400">

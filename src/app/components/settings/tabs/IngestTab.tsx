@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -82,17 +83,25 @@ export function IngestTab() {
             readOnly
             onFocus={(e) => e.target.select()}
           />
-          <Button type="button" variant="outline" className="shrink-0" onClick={handleCopy}>
-            {copied ? t("settings.ingest.copied") : t("settings.ingest.copy")}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="shrink-0"
+            onClick={handleCopy}
+            title={copied ? t("settings.ingest.copied") : t("settings.ingest.copy")}
+            aria-label={copied ? t("settings.ingest.copied") : t("settings.ingest.copy")}
+          >
+            {copied ? <Check /> : <Copy />}
           </Button>
         </div>
       </Field>
 
       <div className="space-y-1.5">
-        <Button type="button" variant="destructive" onClick={handleRotate}>
+        <Button type="button" variant="danger" onClick={handleRotate}>
           {t("settings.ingest.rotate")}
         </Button>
-        <p className="text-[11px] text-zinc-400 dark:text-zinc-500">{t("settings.ingest.rotateHint")}</p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">{t("settings.ingest.rotateHint")}</p>
       </div>
 
       <div className="flex items-start gap-3">

@@ -172,7 +172,7 @@ export function ObsidianTab({
           {feedback.text}
         </p>
       )}
-      <Button type="button" variant="brand" onClick={handleSave} disabled={!canSave}>
+      <Button type="button" variant="primary" onClick={handleSave} disabled={!canSave}>
         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
         {t("settings.obsidian.save")}
       </Button>

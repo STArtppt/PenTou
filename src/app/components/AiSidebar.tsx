@@ -58,7 +58,7 @@ const aiMarkdownComponents = {
   ),
   thead: ({ node, ...props }: any) => <thead className="bg-zinc-50 dark:bg-white/5" {...props} />,
   tbody: ({ node, ...props }: any) => <tbody className="divide-y divide-zinc-200 dark:divide-white/10 bg-white dark:bg-[#1A1A1A]" {...props} />,
-  th: ({ node, ...props }: any) => <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-700 dark:text-zinc-200" {...props} />,
+  th: ({ node, ...props }: any) => <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700 dark:text-zinc-200" {...props} />,
   td: ({ node, ...props }: any) => <td className="px-3 py-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300" {...props} />,
 };
 
@@ -459,10 +459,10 @@ function ContextPill({ context, label }: { context: ContextSnapshot; label: stri
         <span className="min-w-0 flex-1 truncate">{label}</span>
       </div>
       {context.truncated && (
-        <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{t("aiSidebar.contextTruncated")}</p>
+        <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{t("aiSidebar.contextTruncated")}</p>
       )}
       {context.savedBodyHint && (
-        <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">{t("aiSidebar.savedBodyHint")}</p>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{t("aiSidebar.savedBodyHint")}</p>
       )}
     </div>
   );
@@ -595,7 +595,7 @@ function MessageBubble({
       </div>
       {!isUser && (
         <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          {message.status === "aborted" && <span className="mr-1 text-[11px] text-zinc-400 dark:text-zinc-500">{t("aiSidebar.aborted")}</span>}
+          {message.status === "aborted" && <span className="mr-1 text-xs text-zinc-400 dark:text-zinc-500">{t("aiSidebar.aborted")}</span>}
           {streaming && <Loader2 size={13} className="animate-spin text-zinc-400 dark:text-zinc-500" />}
           <button onClick={onCopy} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-zinc-100" title={t("main.copy")}>
             {copied ? <Check size={13} /> : <Copy size={13} />}

@@ -1,5 +1,18 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogBody,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Search,
   Plus,
@@ -352,23 +365,14 @@ function RenameModal({
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative w-full max-w-sm bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-2xl rounded-xl p-5 overflow-hidden z-10"
-          >
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">{title}</h3>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
             <input
               autoFocus
               type="text"
@@ -376,29 +380,22 @@ function RenameModal({
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") submitRename();
-                if (e.key === "Escape") onClose();
               }}
               placeholder={placeholder}
-              className="w-full bg-zinc-50 dark:bg-[#151515] border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-yellow-400 focus:border-transparent transition-all mb-6"
+              className="w-full rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors"
-              >
-                {t("sidebar.cancel")}
-              </button>
-              <button
-                onClick={submitRename}
-                className="px-4 py-2 text-sm font-medium bg-orange-500 dark:bg-yellow-400 text-white dark:text-zinc-900 hover:bg-orange-600 dark:hover:bg-yellow-500 rounded-lg transition-colors shadow-sm"
-              >
-                {t("sidebar.save")}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose render={<Button variant="ghost" size="sm" />}>
+              {t("sidebar.cancel")}
+            </DialogClose>
+            <Button type="button" variant="primary" size="sm" onClick={submitRename}>
+              {t("sidebar.save")}
+            </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
   );
 }
 
@@ -423,42 +420,25 @@ function ConfirmDeleteModal({
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative w-full max-w-sm bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-2xl rounded-xl p-5 overflow-hidden z-10"
-          >
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-3">{title}</h3>
-            <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400 mb-6">{message}</p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors"
-              >
-                {t("sidebar.cancel")}
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 rounded-lg transition-colors shadow-sm"
-              >
-                {t("sidebar.menuDelete")}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription className="leading-6">{message}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="ghost" size="sm" />}>
+              {t("sidebar.cancel")}
+            </DialogClose>
+            <Button type="button" variant="danger" size="sm" onClick={confirmDelete}>
+              {t("sidebar.menuDelete")}
+            </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
   );
 }
 
@@ -815,7 +795,7 @@ export function Sidebar() {
         {activeView === "chat" ? (
           <>
             <div className="mt-2 mb-4">
-              <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
+              <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
                 <span>{t("sidebar.folders")}</span>
                 <div className="flex items-center">
                   <button
@@ -1189,7 +1169,7 @@ function FolderItem({
             />
           )}
           <span className="font-medium truncate">{folder.name}</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-200 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 ml-1">
+          <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-zinc-200 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 ml-1">
             {conversations.length}
           </span>
         </button>
@@ -1483,7 +1463,7 @@ function DocumentList({
   return (
     <>
       <div className="mt-2 mb-4">
-        <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
+        <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
           <span>{t("sidebar.folders")}</span>
           {documentFolders.length > 0 && (
             <button
@@ -1518,7 +1498,7 @@ function DocumentList({
       </div>
 
       <div className="mt-2">
-        <div className="sticky top-0 z-10 -mx-2 bg-[#FAFAFA] px-5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
+        <div className="sticky top-0 z-10 -mx-2 bg-[#FAFAFA] px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
           {t("sidebar.uncategorized")}
         </div>
         <DocumentUncategorizedList documents={uncategorized} />
@@ -1613,7 +1593,7 @@ function DocumentFolderItem({
             <FolderIcon size={14} className={clsx("text-zinc-400", isOver && "text-orange-500 dark:text-yellow-400")} />
           )}
           <span className="font-medium truncate">{folder.name}</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-200 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 ml-1">
+          <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-zinc-200 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 ml-1">
             {documents.length}
           </span>
         </button>
