@@ -1,6 +1,10 @@
+import type { IngestAction } from "@shared/ingest-types";
+
+export type { IngestAction };
 export type PlatformSlug = "chatgpt" | "deepseek";
 export type CaptureTrigger = "manual" | "auto";
-export type IngestAction = "created" | "merged" | "skipped";
+/** postCapture 的失败分类：只有 network（Pentou 不可达）允许进离线队列。 */
+export type CaptureFailureCode = "unauthorized" | "network" | "http" | "item-error";
 
 export interface PlatformConfig {
   enabled: boolean;
@@ -23,6 +27,8 @@ export interface ExtensionState {
   config: ExtensionConfig;
   platforms: Record<PlatformSlug, PlatformConfig>;
   queue: QueuedCapture[];
+  /** token 被 Pentou 拒绝（401）后置位，暂停自动采集直至重新保存配置（spec 边界 4）。 */
+  authBlocked: boolean;
 }
 
 export interface CapturePayload extends QueuedCapture {
@@ -34,6 +40,7 @@ export interface CaptureResult {
   queued?: boolean;
   actions?: Partial<Record<IngestAction, number>>;
   error?: string;
+  code?: CaptureFailureCode;
   id?: string;
 }
 

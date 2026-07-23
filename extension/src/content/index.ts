@@ -1,7 +1,7 @@
 import { findAdapter, adapters } from "./adapters";
 import { PlatformFetchError } from "./adapters/types";
 import type { BackgroundRequest, CapturePayload, ContentRequest, ContentResponse, PlatformSlug } from "../shared/types";
-import { readState } from "../shared/state";
+import { autoCaptureAllowed, readState } from "../shared/state";
 
 const AUTO_DEBOUNCE_MS = 60_000;
 let autoTimer: number | undefined;
@@ -36,7 +36,16 @@ async function capture(trigger: "manual" | "auto"): Promise<ContentResponse> {
   }
 }
 
+/** 自动采集准入：所有自动路径（防抖 / 切走 / 关页）必须先过此闸（US-02.3 / 边界 4）。 */
+async function autoAllowed(): Promise<boolean> {
+  const adapter = findAdapter();
+  if (!adapter) return false;
+  const state = await readState();
+  return autoCaptureAllowed(state, adapter.platform as PlatformSlug);
+}
+
 async function submitAuto(): Promise<void> {
+  if (!(await autoAllowed())) return;
   const response = await capture("auto");
   if (!response.ok || !response.supported || !response.payload) return;
   const key = `${response.payload.platform}:${response.payload.externalId}:${response.payload.raw.length}`;
@@ -46,11 +55,7 @@ async function submitAuto(): Promise<void> {
 }
 
 async function scheduleAuto(): Promise<void> {
-  const adapter = findAdapter();
-  if (!adapter) return;
-  const state = await readState();
-  const platform = adapter.platform as PlatformSlug;
-  if (!state.platforms[platform]?.enabled || !state.platforms[platform]?.auto) return;
+  if (!(await autoAllowed())) return;
 
   if (autoTimer !== undefined) window.clearTimeout(autoTimer);
   autoTimer = window.setTimeout(() => {

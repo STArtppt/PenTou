@@ -11,6 +11,7 @@ const DEFAULT_STATE: ExtensionState = {
     deepseek: { enabled: true, auto: false },
   },
   queue: [],
+  authBlocked: false,
 };
 
 export function normalizeServer(value: string): string {
@@ -28,7 +29,15 @@ export function mergeState(raw?: Partial<ExtensionState>): ExtensionState {
       deepseek: { ...DEFAULT_STATE.platforms.deepseek, ...(raw?.platforms?.deepseek ?? {}) },
     },
     queue: Array.isArray(raw?.queue) ? raw.queue.slice(-QUEUE_LIMIT) : [],
+    authBlocked: Boolean(raw?.authBlocked),
   };
+}
+
+/** 自动采集准入：平台开关 + auto 开关 + 未处于 401 暂停（spec US-02.3 / 边界 4）。 */
+export function autoCaptureAllowed(state: ExtensionState, platform: PlatformSlug): boolean {
+  if (state.authBlocked) return false;
+  const config = state.platforms[platform];
+  return Boolean(config?.enabled && config?.auto);
 }
 
 export async function readState(): Promise<ExtensionState> {

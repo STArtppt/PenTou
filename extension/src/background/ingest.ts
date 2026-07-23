@@ -1,13 +1,6 @@
+import type { IngestRequest, IngestResponse } from "@shared/ingest-types";
 import type { CapturePayload, CaptureResult, ExtensionConfig, IngestAction, QueuedCapture } from "../shared/types";
 import { normalizeServer } from "../shared/state";
-
-interface IngestResponse {
-  ok: boolean;
-  results: Array<{
-    conversations: Array<{ action: IngestAction; id: string; title: string }>;
-    error?: string;
-  }>;
-}
 
 function authHeaders(token: string): HeadersInit {
   return {
@@ -18,7 +11,10 @@ function authHeaders(token: string): HeadersInit {
 
 function summarizeActions(response: IngestResponse): CaptureResult {
   const firstError = response.results.find((r) => r.error)?.error;
-  if (firstError) return { ok: false, error: firstError };
+  if (firstError) {
+    // 服务端逐 item 报错 = 解析失败（平台接口可能已变更），属永久性错误，不入队
+    return { ok: false, code: "item-error", error: firstError };
+  }
 
   const actions: Partial<Record<IngestAction, number>> = {};
   let firstId: string | undefined;
@@ -31,7 +27,7 @@ function summarizeActions(response: IngestResponse): CaptureResult {
   return { ok: true, actions, id: firstId };
 }
 
-function requestBody(item: QueuedCapture) {
+function requestBody(item: QueuedCapture): IngestRequest {
   return {
     source: "extension",
     items: [{
@@ -45,14 +41,21 @@ function requestBody(item: QueuedCapture) {
 
 export async function postCapture(config: ExtensionConfig, item: CapturePayload | QueuedCapture): Promise<CaptureResult> {
   const server = normalizeServer(config.server);
-  const res = await fetch(`${server}/api/ingest`, {
-    method: "POST",
-    headers: authHeaders(config.token),
-    body: JSON.stringify(requestBody(item)),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${server}/api/ingest`, {
+      method: "POST",
+      headers: authHeaders(config.token),
+      body: JSON.stringify(requestBody(item)),
+    });
+  } catch {
+    return { ok: false, code: "network", error: "Pentou is unreachable." };
+  }
 
-  if (res.status === 401) return { ok: false, error: "Ingest token was rejected. Open options and update the token." };
-  if (!res.ok) return { ok: false, error: `Pentou returned HTTP ${res.status}` };
+  if (res.status === 401) {
+    return { ok: false, code: "unauthorized", error: "Ingest token was rejected. Open options and update the token." };
+  }
+  if (!res.ok) return { ok: false, code: "http", error: `Pentou returned HTTP ${res.status}` };
   return summarizeActions(await res.json() as IngestResponse);
 }
 

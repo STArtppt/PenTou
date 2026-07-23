@@ -5,6 +5,9 @@ const manifest: ManifestV3Export = {
   name: "Pentou Collector",
   description: "Collect logged-in AI conversations into local Pentou.",
   version: "0.1.0",
+  icons: {
+    "128": "icon-128.png",
+  },
   action: {
     default_title: "Collect to Pentou",
   },
@@ -13,7 +16,7 @@ const manifest: ManifestV3Export = {
     service_worker: "src/background/index.ts",
     type: "module",
   },
-  permissions: ["activeTab", "alarms", "scripting", "storage", "tabs"],
+  permissions: ["activeTab", "alarms", "notifications", "scripting", "storage", "tabs"],
   host_permissions: [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
