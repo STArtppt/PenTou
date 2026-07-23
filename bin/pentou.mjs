@@ -49,6 +49,7 @@ const HELP = `Pentou — 本地优先的 AI 对话管理器
 
 用法:
   npx -y @startist/pentou@latest [options]
+  npx -y @startist/pentou@latest collect <init|pull|watch> [options]
 
 选项:
   --port <n>        起始端口，默认 7766（占用时向上探测至多 +10）
@@ -165,6 +166,16 @@ function lanAddress() {
 
 // ── 主流程 ─────────────────────────────────────────────────────────────────────
 async function main() {
+  if (process.argv[2] === "collect") {
+    try {
+      const { runCollectCommand } = await import(new URL("../dist-server/src/cli/collector/command.js", import.meta.url));
+      await runCollectCommand(process.argv.slice(3));
+      return;
+    } catch (e) {
+      fail(`采集器命令失败 / collector command failed:\n    ${e?.message ?? e}`);
+    }
+  }
+
   const opts = parseArgs(process.argv.slice(2));
 
   // 安全边界：非回环 host 必须配 --password（spec US-03 AC3）。

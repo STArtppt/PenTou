@@ -18,12 +18,14 @@
     "types": ["node"]
   },
   "include": [
+    "src/cli/**/*.ts",
     "src/server/**/*.ts",
     "vite-plugins/**/*.ts",
     "src/shared/**/*.ts",
     "src/app/parsers.ts"
   ],
   "exclude": [
+    "src/cli/**/*.test.ts",
     "src/server/**/*.test.ts",
     "node_modules",
     "dist",
