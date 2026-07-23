@@ -230,6 +230,12 @@ export const translations = {
 
     // Settings
     "settings.title": "Settings",
+    "settings.general.theme": "Theme",
+    "settings.general.themeLight": "Light",
+    "settings.general.themeDark": "Dark",
+    "settings.general.language": "Language",
+    "settings.general.langEn": "English",
+    "settings.general.langZh": "中文",
     "settings.tab.general": "General",
     "settings.tab.llm": "LLM",
     "settings.tab.search": "Semantic Search",
@@ -604,6 +610,12 @@ export const translations = {
 
     // Settings
     "settings.title": "设置",
+    "settings.general.theme": "主题",
+    "settings.general.themeLight": "浅色",
+    "settings.general.themeDark": "深色",
+    "settings.general.language": "语言",
+    "settings.general.langEn": "English",
+    "settings.general.langZh": "中文",
     "settings.tab.general": "通用",
     "settings.tab.llm": "LLM",
     "settings.tab.search": "语义检索",
