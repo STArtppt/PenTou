@@ -11,10 +11,11 @@ import hermesUrl from "../assets/brand-icons/hermes.svg";
 import doubaoUrl from "../assets/brand-icons/bytedance-doubao.svg";
 import metasoUrl from "../assets/brand-icons/metaso.svg";
 import qwenUrl from "../assets/brand-icons/alibaba-qwen.svg";
+import grokUrl from "../assets/brand-icons/grok.svg";
 
 // 映射见 spec ai-brand-icons §4.3；Codex 属 OpenAI 产品复用其图标。
 // platform 是开放字符串（导入数据可超出 Platform 枚举），
-// Doubao/Metaso/Qianwen 为实际数据中存在的枚举外平台。
+// Doubao/Metaso/Qianwen/Grok 为实际数据中存在的枚举外平台。
 export const BRAND_ICON_URLS: Record<string, string> = {
   ChatGPT: chatgptUrl,
   DeepSeek: deepseekUrl,
@@ -27,6 +28,7 @@ export const BRAND_ICON_URLS: Record<string, string> = {
   Doubao: doubaoUrl,
   Metaso: metasoUrl,
   Qianwen: qwenUrl,
+  Grok: grokUrl,
 };
 
 // 资产为 #FFFFFF 单色填充（assets/icons/normalized/），直接 <img> 在深色主题

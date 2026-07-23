@@ -247,6 +247,34 @@ export async function fetchHtmlWithObscura(url: string, options?: ObscuraOptions
     }
   }
 
+  // Grok public share — conversation lives in REST, not the Next.js SPA shell.
+  if (url.includes("grok.com/share/")) {
+    const shareLinkId = url.match(/grok\.com\/share\/([^/?#]+)/)?.[1];
+    if (shareLinkId) {
+      try {
+        const apiUrl = `https://grok.com/rest/app-chat/share_links/${encodeURIComponent(shareLinkId)}`;
+        const res = await fetch(apiUrl, {
+          headers: {
+            ...BROWSER_HEADERS,
+            Accept: "application/json",
+            Referer: url,
+            Origin: "https://grok.com",
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data?.responses)) {
+            return JSON.stringify({ __GROK_API_PAYLOAD__: data });
+          }
+        } else {
+          console.warn("Native Grok share API returned", res.status);
+        }
+      } catch (e) {
+        console.warn("Native Grok API fetch failed", e);
+      }
+    }
+  }
+
   const obscuraPath = await resolveObscuraPath(options);
   if (!obscuraPath) {
     throw new Error("Obscura binary unavailable; share-link import is disabled on this platform/network.");
@@ -825,6 +853,84 @@ function parseGeminiApiPayload(data: any): any[] {
   }];
 }
 
+/** Strip Grok citation / card markup that is not valid Markdown. */
+function cleanGrokMessageContent(content: string): string {
+  return content
+    .replace(/<grok:render\b[^>]*>[\s\S]*?<\/grok:render>/gi, "")
+    .replace(/<\/?argument\b[^>]*>/gi, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function extractGrokMessageImages(response: any): string[] {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  const push = (url: unknown) => {
+    if (typeof url !== "string" || !url.trim() || seen.has(url)) return;
+    seen.add(url);
+    urls.push(url.trim());
+  };
+
+  if (Array.isArray(response?.generatedImageUrls)) {
+    for (const url of response.generatedImageUrls) push(url);
+  }
+  if (Array.isArray(response?.imageAttachments)) {
+    for (const img of response.imageAttachments) {
+      push(img?.url || img?.imageUrl || img?.src);
+    }
+  }
+  return urls;
+}
+
+function parseGrokApiPayload(data: any): any[] {
+  const responses = data?.responses;
+  if (!Array.isArray(responses) || responses.length === 0) {
+    throw new Error("Grok share content is unavailable or empty.");
+  }
+
+  const messages: any[] = [];
+  for (const response of responses) {
+    if (response?.isControl) continue;
+
+    const raw = typeof response?.message === "string" ? response.message : "";
+    const text = cleanGrokMessageContent(raw);
+    const images = extractGrokMessageImages(response).map(
+      (url, i) => `![生成图片 ${i + 1}](${url})`,
+    );
+    const content = [text, ...images].filter(Boolean).join("\n\n");
+    if (!content) continue;
+
+    const sender = String(response?.sender || "").toLowerCase();
+    const role: "user" | "ai" =
+      sender === "human" || sender === "user" ? "user" : "ai";
+    const timestamp =
+      typeof response?.createTime === "string" && response.createTime
+        ? response.createTime
+        : new Date().toISOString();
+
+    messages.push(makeMsg(role, content, timestamp));
+  }
+
+  if (messages.length === 0) {
+    throw new Error("Grok share content is unavailable or empty.");
+  }
+
+  const title =
+    data?.conversation?.title ||
+    messages.find((m) => m.role === "user")?.content?.slice(0, 80).split("\n")[0] ||
+    "Grok Shared Conversation";
+
+  return [{
+    id: makeId(),
+    title,
+    platform: "Grok",
+    date: data?.conversation?.createTime || messages[0].timestamp || new Date().toISOString(),
+    folderId: null,
+    messages,
+  }];
+}
+
 function assertNoKnownUnavailablePage(url: string, $: cheerio.CheerioAPI): void {
   const bodyText = $("body").text().replace(/\s+/g, " ").trim();
   const pageTitle = getPageTitle($);
@@ -844,6 +950,13 @@ function assertNoKnownUnavailablePage(url: string, $: cheerio.CheerioAPI): void 
   if (url.includes("gemini.google.com/share/") && bodyText.includes("Gemini 显示的信息") && bodyText.includes("登录")) {
     throw new Error("Gemini share content is not readable from the rendered shell; the structured share API returned no messages.");
   }
+
+  // Grok share pages are client-rendered; without the REST payload we only have SPA shell noise.
+  if (url.includes("grok.com/share/")) {
+    throw new Error(
+      "Grok share content is not readable from the rendered shell; the share_links API returned no messages.",
+    );
+  }
 }
 
 export async function parseSharedLinkData(url: string, html: string): Promise<any[]> {
@@ -860,6 +973,11 @@ export async function parseSharedLinkData(url: string, html: string): Promise<an
   if (html.startsWith('{"__GEMINI_API_PAYLOAD__"')) {
     const payload = JSON.parse(html);
     return parseGeminiApiPayload(payload.__GEMINI_API_PAYLOAD__);
+  }
+
+  if (html.startsWith('{"__GROK_API_PAYLOAD__"')) {
+    const payload = JSON.parse(html);
+    return parseGrokApiPayload(payload.__GROK_API_PAYLOAD__);
   }
 
   // Check if we intercepted an API payload directly (e.g. DeepSeek)

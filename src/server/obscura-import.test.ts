@@ -233,4 +233,76 @@ describe("share-link import unavailable pages", () => {
     await expect(parseSharedLinkData("https://gemini.google.com/share/dead", html))
       .rejects.toThrow("Gemini share content is not readable");
   });
+
+  it("extracts Grok share messages from the native share_links API payload", async () => {
+    const payload = {
+      __GROK_API_PAYLOAD__: {
+        conversation: {
+          conversationId: "conv-1",
+          title: "Hermes SuperGrok OAuth Setup Guide",
+          createTime: "2026-07-13T06:15:51.927363Z",
+        },
+        responses: [
+          {
+            responseId: "r1",
+            sender: "human",
+            createTime: "2026-07-13T06:15:51.956Z",
+            message: "如何在Hermes中使用我订阅的superGrok？",
+          },
+          {
+            responseId: "r2",
+            sender: "ASSISTANT",
+            createTime: "2026-07-13T06:15:59.721Z",
+            parentResponseId: "r1",
+            message:
+              '**通过 OAuth 登录即可。**<grok:render card_id="1" card_type="citation_card" type="render_inline_citation"><argument name="citation_id">1</argument></grok:render>\n\n运行 `hermes model`。',
+            generatedImageUrls: ["https://cdn.example.com/img.png"],
+          },
+        ],
+      },
+    };
+
+    const [conversation] = await parseSharedLinkData(
+      "https://grok.com/share/c2hhcmQtNQ_405ea865-a4b9-4f4f-bf12-14bc737bb6f2",
+      JSON.stringify(payload),
+    );
+
+    expect(conversation.platform).toBe("Grok");
+    expect(conversation.title).toBe("Hermes SuperGrok OAuth Setup Guide");
+    expect(conversation.messages).toMatchObject([
+      { role: "user", content: "如何在Hermes中使用我订阅的superGrok？" },
+      {
+        role: "ai",
+        content: "**通过 OAuth 登录即可。**\n\n运行 `hermes model`。\n\n![生成图片 1](https://cdn.example.com/img.png)",
+      },
+    ]);
+    // Citation markup must not leak into stored content.
+    expect(conversation.messages[1].content).not.toContain("grok:render");
+    expect(conversation.messages[1].content).not.toContain("citation_id");
+  });
+
+  it("rejects empty Grok share payloads instead of importing the SPA shell as code", async () => {
+    await expect(
+      parseSharedLinkData(
+        "https://grok.com/share/dead",
+        JSON.stringify({ __GROK_API_PAYLOAD__: { responses: [], conversation: {} } }),
+      ),
+    ).rejects.toThrow("Grok share content is unavailable");
+  });
+
+  it("rejects Grok rendered SPA shell instead of dumping scripts as a message", async () => {
+    const html = `
+      <html>
+        <head><title>Shared Grok Conversation</title></head>
+        <body>
+          <script type="application/json" id="server-client-data-experimentation">{"status":"ready","serverConfig":{}}</script>
+          <script>self.__next_f.push([1,"3c:[\\"$\\",\\"$L68\\",null,{\\"shareLinkId\\":\\"dead\\"}]\\n"])</script>
+          <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM"></iframe></noscript>
+        </body>
+      </html>
+    `;
+
+    await expect(parseSharedLinkData("https://grok.com/share/dead", html))
+      .rejects.toThrow("Grok share content is not readable");
+  });
 });

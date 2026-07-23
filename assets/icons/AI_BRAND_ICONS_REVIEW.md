@@ -61,7 +61,7 @@ python3 assets/icons/normalize_icons.py --padding 20 --force
 | Metaso / 秘塔AI搜索 | `metaso.svg` | 已下载 | 已补真矢量 SVG |
 | Meta AI / Llama | `meta.svg` | 已下载 | 使用 Meta 图标代表 Llama/Meta AI |
 | Mistral AI | `mistral-ai.svg` | 已下载 | 常见开源/商用模型厂商 |
-| xAI / Grok | `xai-grok.svg` | 已下载 | 使用 X 图标占位，需审查是否替换成 xAI/Grok 官方图标 |
+| Grok | `grok.svg` | 已下载 | Grok 产品字形；对话 `platform: "Grok"` 映射此文件。`xai-grok.svg` 为历史 X 标占位，**勿**再用于 Grok 头像 |
 | Cohere | `cohere.svg` | 已下载 | 已补真矢量 SVG |
 | Hugging Face | `huggingface.svg` | 已下载 | 常见模型社区/推理平台 |
 | Ollama | `ollama.svg` | 已下载 | 常见本地模型运行工具 |
@@ -93,6 +93,7 @@ python3 assets/icons/normalize_icons.py --padding 20 --force
 - `github-copilot.svg`
 - `google-gemini.svg`
 - `google.svg`
+- `grok.svg`
 - `hermes.svg`
 - `huggingface.svg`
 - `iflytek-spark.svg`
