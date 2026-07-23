@@ -496,6 +496,27 @@ describe("message timestamp roundtrip (spec conversation-time-and-sort US-01)", 
     expect(res.body.conversation.date).toBe("2026-07-12T09:00:00.000Z");
   });
 
+  // 回归：ChatGPT 曾对个别消息返回远早于会话本身的 create_time（平台侧过期时间戳），
+  // 最早消息时间纠正把会话日期拖回三天前（debugging/2026-07-20-chatgpt-extension-stale-message-timestamp.md）
+  it("keeps a source-provided date when a stale message timestamp predates it (US-02 AC1)", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const body = {
+      ...conv,
+      id: "conv_ts_stale_msg",
+      date: "2026-07-20T06:57:17.811Z", // 平台返回的会话创建时间（可信）
+      dateFromSource: true,
+      messages: [
+        { id: "m1", role: "user", content: "如何评价梅西", timestamp: "2026-07-20T06:57:16.656Z" },
+        // 平台对这条回复返回了三天前的 create_time
+        { id: "m2", role: "ai", content: "梅西是……", timestamp: "2026-07-17T10:58:47.957Z" },
+      ],
+    };
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body });
+    expect(res.body.conversation.date).toBe("2026-07-20T06:57:17.811Z");
+    // 消息自身的原始时间仍按 US-01 保真，不被改写
+    expect(res.body.conversation.messages[1].timestamp).toBe("2026-07-17T10:58:47.957Z");
+  });
+
   it("skips the ts line for invalid timestamps and merged same-role blocks keep the first time (§5 边界 1 / §4.4 决策 3)", () => {
     const withBad = {
       ...conv,

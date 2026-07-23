@@ -579,9 +579,12 @@ export function upsertConversation(
   // date = 原平台最早发起时间（spec conversation-time-and-sort US-02）：解析器以导入
   // 时刻兜底 date 时（如 CLI 采集落 pull 时间），用最早消息时间纠正；早于消息的
   // 源创建时间（如 ChatGPT create_time）保留；完全无消息时间则维持现状兜底。
+  // dateFromSource（解析源自带会话创建时间）时跳过纠正："优先用之"，且个别消息可能带
+  // 平台侧的过期时间戳，纠正会把会话日期拖到会话创建之前。flag 只存在于导入项，
+  // normalizeConversation 走 md 往返会丢弃，故从 incoming 读取。
   const earliest = earliestMessageTime(normalizedIncoming.messages);
   const dateMs = new Date(normalizedIncoming.date ?? "").getTime();
-  if (earliest && (Number.isNaN(dateMs) || dateMs > new Date(earliest).getTime())) {
+  if (incoming?.dateFromSource !== true && earliest && (Number.isNaN(dateMs) || dateMs > new Date(earliest).getTime())) {
     normalizedIncoming.date = earliest;
   }
   const sig = conversationSignature(normalizedIncoming);

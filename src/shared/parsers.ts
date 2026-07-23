@@ -199,11 +199,13 @@ export function parseChatGPTExport(json: any, opts?: ChatGPTParseOptions): Conve
 
       if (messages.length === 0) continue;
 
-      const date = item.create_time
-        ? new Date(item.create_time * 1000).toISOString()
-        : item.update_time 
-          ? new Date(item.update_time * 1000).toISOString() 
-          : new Date().toISOString();
+      // ChatGPT 自带会话创建时间时标记 dateFromSource：个别消息的 create_time 可能远早于
+      // 会话本身（平台侧返回过期时间戳），此时不能让"最早消息时间"把会话日期拖回过去
+      // （spec conversation-time-and-sort US-02；debugging/2026-07-20-chatgpt-extension-stale-message-timestamp.md）
+      const sourceDate = item.create_time ?? item.update_time;
+      const date = sourceDate
+        ? new Date(sourceDate * 1000).toISOString()
+        : new Date().toISOString();
 
       results.push({
         id: makeId(),
@@ -212,6 +214,7 @@ export function parseChatGPTExport(json: any, opts?: ChatGPTParseOptions): Conve
         date,
         folderId: null,
         messages,
+        ...(sourceDate ? { dateFromSource: true } : {}),
       });
     } catch {
       continue;

@@ -34,6 +34,10 @@ export interface Conversation {
   currentVersionId?: string;
   // 采集溯源（spec collector-source-expansion US-07）："cli:<form-slug>" 时顶栏渲染形态徽章
   ingestSource?: string;
+  // date 取自解析源自带的会话创建时间（而非导入时刻兜底）。仅在导入管线内传递、不落盘：
+  // upsert 据此不再用"最早消息时间"回退修正 date（spec conversation-time-and-sort US-02
+  // "解析源含会话创建时间时优先用之"）。
+  dateFromSource?: boolean;
 }
 
 // 导入去重合并的结果汇总（addConversations 返回，供 ImportDrawer 展示非阻塞提示）

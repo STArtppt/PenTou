@@ -1,0 +1,22 @@
+[
+  {
+    "id": "f1",
+    "name": "ChatGPT",
+    "platform": "ChatGPT"
+  },
+  {
+    "id": "f2",
+    "name": "DeepSeek",
+    "platform": "DeepSeek"
+  },
+  {
+    "id": "f3",
+    "name": "Gemini",
+    "platform": "Gemini"
+  },
+  {
+    "id": "f4",
+    "name": "Claude",
+    "platform": "Claude"
+  }
+]

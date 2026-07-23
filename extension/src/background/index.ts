@@ -1,6 +1,8 @@
 import { enqueueCapture, normalizeServer, readState, writeState, SUPPORTED_PLATFORMS } from "../shared/state";
-import type { BackgroundRequest, BackgroundResponse, CapturePayload, CaptureResult, ContentResponse, IngestAction, QueuedCapture } from "../shared/types";
+import type { BackgroundRequest, BackgroundResponse, CapturePayload, CaptureResult, ContentResponse, QueuedCapture } from "../shared/types";
 import { postCapture, testConnection } from "./ingest";
+import { successFeedback } from "./feedback";
+import { contentScriptFiles, sendToContentScript } from "./inject";
 
 const RETRY_ALARM = "pentou-retry-queue";
 // 通知 id 携带点击后要打开的地址，service worker 被回收后点击仍可用
@@ -24,21 +26,6 @@ function hasConfig(state: Awaited<ReturnType<typeof readState>>): boolean {
   return Boolean(state.config.server && state.config.token);
 }
 
-function actionText(actions?: Partial<Record<IngestAction, number>>): string {
-  if (!actions) return "OK";
-  if (actions.created) return "NEW";
-  if (actions.merged) return "UPD";
-  if (actions.skipped) return "SKIP";
-  return "OK";
-}
-
-function successMessage(actions?: Partial<Record<IngestAction, number>>): string {
-  if (actions?.created) return "Saved as a new conversation. Click to open Pentou.";
-  if (actions?.merged) return "Existing conversation updated. Click to open Pentou.";
-  if (actions?.skipped) return "Already up to date - nothing changed.";
-  return "Capture accepted.";
-}
-
 async function setAuthBlocked(blocked: boolean): Promise<void> {
   const state = await readState();
   if (state.authBlocked === blocked) return;
@@ -58,8 +45,10 @@ async function submit(payload: CapturePayload): Promise<BackgroundResponse> {
 
   if (result.ok) {
     await setAuthBlocked(false);
-    if (manual) notify("Saved to Pentou", successMessage(result.actions), normalizeServer(state.config.server));
-    else setBadge(actionText(result.actions), "#2563eb");
+    // badge 手动/自动都设置：通知可能被系统屏蔽，badge 是兜底反馈
+    const feedback = successFeedback(result.actions, payload.trigger);
+    setBadge(feedback.badge, feedback.badgeColor);
+    if (feedback.notify) notify("Saved to Pentou", feedback.message, normalizeServer(state.config.server));
     return result;
   }
 
@@ -145,12 +134,16 @@ chrome.notifications.onClicked.addListener((id) => {
 
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
-  let response: ContentResponse | undefined;
-  try {
-    response = await chrome.tabs.sendMessage(tab.id, { type: "PENTOU_CAPTURE", trigger: "manual" });
-  } catch {
-    // 页面没有注入 content script（非受支持平台域名），走统一的"不支持"提示
-  }
+  // 首次投递失败时按需注入 content script 再重试：覆盖"标签页早于插件安装/重载打开"的情况
+  const response: ContentResponse | undefined = await sendToContentScript(
+    tab.id,
+    { type: "PENTOU_CAPTURE", trigger: "manual" },
+    {
+      sendMessage: (tabId, request) => chrome.tabs.sendMessage(tabId, request),
+      executeScript: (opts) => chrome.scripting.executeScript(opts),
+      files: contentScriptFiles(chrome.runtime),
+    },
+  );
 
   if (!response) {
     setBadge("N/A", "#6b7280");
