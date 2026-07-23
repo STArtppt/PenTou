@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { Check, Copy, MessageSquare, Highlighter, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { useAppContext, Annotation } from "../data";
@@ -51,8 +53,10 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
   const { isScrolling: isContentScrolling, markScrollActive: markContentScrollActive } = useScrollActivity();
+  // rehype-raw 解析文档内嵌 HTML（如 minerU 转换含合并单元格的 PDF 表格时输出的 <table>），
+  // rehype-sanitize 过滤危险节点；标注插件必须排在 sanitize 之后，其生成的 mark 才不被剥离。
   const rehypePlugins = useMemo(
-    () => [createAnnotationHighlightPlugin(annotations)],
+    () => [rehypeRaw, [rehypeSanitize, htmlSanitizeSchema] as any, createAnnotationHighlightPlugin(annotations)],
     [annotations],
   );
 
@@ -257,6 +261,16 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
     </div>
   );
 }
+
+// 在默认白名单上放行合并单元格属性（minerU 表格降级为 HTML 的主要原因就是 colspan/rowspan）
+const htmlSanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    td: [...(defaultSchema.attributes?.td ?? []), "colSpan", "rowSpan"],
+    th: [...(defaultSchema.attributes?.th ?? []), "colSpan", "rowSpan"],
+  },
+};
 
 type MarkdownTreeNode = {
   type?: string;
