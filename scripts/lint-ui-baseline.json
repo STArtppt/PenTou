@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-20T02:20:41.478Z",
+  "generatedAt": "2026-07-20T08:15:54.352Z",
   "count": 95,
   "violations": [
     {
@@ -407,20 +407,14 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 698,
+      "line": 709,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 698,
+      "line": 709,
       "match": "dark:bg-[#151515]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/Sidebar.tsx",
-      "line": 737,
-      "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
@@ -431,79 +425,85 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 798,
+      "line": 759,
+      "match": "dark:bg-[#2A2A2A]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/Sidebar.tsx",
+      "line": 809,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 798,
+      "line": 809,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 842,
+      "line": 853,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 842,
+      "line": 853,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 910,
+      "line": 921,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 956,
+      "line": 967,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 970,
+      "line": 981,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1371,
+      "line": 1382,
       "match": "dark:bg-[#2C2C2E]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1466,
+      "line": 1477,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1466,
+      "line": 1477,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1501,
+      "line": 1512,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1501,
+      "line": 1512,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1817,
+      "line": 1828,
       "match": "dark:bg-[#2C2C2E]"
     },
     {
@@ -527,13 +527,13 @@
     {
       "rule": "arbitrary-z-index",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 903,
+      "line": 914,
       "match": "z-[85]"
     },
     {
       "rule": "arbitrary-z-index",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 910,
+      "line": 921,
       "match": "z-[90]"
     },
     {

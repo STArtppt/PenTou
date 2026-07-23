@@ -364,11 +364,18 @@ function RenameModal({
     onClose();
   };
 
+  // Portal content still participates in React tree bubbling (not DOM tree).
+  // These modals render under ConversationItem/DocumentItem which have root onClick —
+  // without stopPropagation, cancel/confirm/backdrop clicks re-fire item activation.
+  const stopPortalBubble = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogPortal>
-        <DialogBackdrop />
-        <DialogPopup className="max-w-sm">
+        <DialogBackdrop onClick={stopPortalBubble} />
+        <DialogPopup className="max-w-sm" onClick={stopPortalBubble}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
@@ -419,11 +426,15 @@ function ConfirmDeleteModal({
     onClose();
   };
 
+  const stopPortalBubble = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogPortal>
-        <DialogBackdrop />
-        <DialogPopup className="max-w-sm">
+        <DialogBackdrop onClick={stopPortalBubble} />
+        <DialogPopup className="max-w-sm" onClick={stopPortalBubble}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription className="leading-6">{message}</DialogDescription>

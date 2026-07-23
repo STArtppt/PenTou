@@ -33,7 +33,8 @@
     "start": "node dist-server/src/server/index.js",
     "dev": "vite",
     "postinstall": "node scripts/download-obscura.cjs",
-    "test": "vitest run",
+    "test": "vitest run && node scripts/lint-ui.mjs",
+    "test:unit": "vitest run",
     "test:watch": "vitest",
     "lint:ui": "node scripts/lint-ui.mjs"
   },
