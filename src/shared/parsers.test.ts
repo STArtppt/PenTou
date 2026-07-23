@@ -6,7 +6,7 @@
  * 见 src/docs/debugging/2026-07-13-claude-jsonl-user-type-mismatch.md。
  */
 import { describe, it, expect } from "vitest";
-import { parseJsonl, parseMarkdown } from "./parsers.js";
+import { parseChatGPTExport, parseJsonl, parseMarkdown } from "./parsers.js";
 
 /** 按真实 Claude Code session jsonl 的行结构构造 fixture。 */
 const line = (obj: unknown) => JSON.stringify(obj);
@@ -192,5 +192,149 @@ provider: claude
 > ⎿ Catch you later!
 `;
     expect(parseMarkdown(md)).toBeNull();
+  });
+});
+
+/**
+ * ChatGPT 联网/搜图回复用 private-use 标记嵌入 image_group，真实 URL 在
+ * metadata.content_references。旧实现 cleanChatGPTContent 直接剥掉标记，
+ * 分享链接与扩展采集都会丢图。
+ * 见 src/docs/debugging/2026-07-21-chatgpt-image-group-content-references.md
+ */
+describe("parseChatGPTExport · image_group content_references", () => {
+  const imageGroupMarker =
+    "\uE200image_group\uE202" +
+    JSON.stringify({
+      layout: "bento",
+      query: [
+        "Lionel Messi portrait Argentina",
+        "Lionel Messi Barcelona celebration",
+        "Lionel Messi World Cup 2022 trophy",
+        "Lionel Messi Inter Miami action",
+      ],
+    }) +
+    "\uE201";
+
+  const img1 =
+    "https://images.openai.com/static-rsc-4/img1?purpose=fullsize";
+  const img2 =
+    "https://images.openai.com/static-rsc-4/img2?purpose=fullsize";
+  const img3 =
+    "https://images.openai.com/static-rsc-4/img3?purpose=fullsize";
+  const img4 =
+    "https://images.openai.com/static-rsc-4/img4?purpose=fullsize";
+
+  function messiShareLikePayload() {
+    const entityMessi =
+      '\uE200entity\uE202["athlete","Lionel Messi","Argentine footballer"]\uE201';
+    const body =
+      `${imageGroupMarker}\n\n${entityMessi} 几乎是现代足球历史上最伟大的球员之一。`;
+    return {
+      title: "梅西评价分析",
+      create_time: 1784530637,
+      // 分享页走 linear_conversation；扩展走 mapping——两种入口都覆盖
+      linear_conversation: [
+        {
+          id: "u1",
+          message: {
+            author: { role: "user" },
+            create_time: 1784530636,
+            content: { content_type: "text", parts: ["如何评价梅西"] },
+          },
+        },
+        {
+          id: "a1",
+          message: {
+            author: { role: "assistant" },
+            create_time: 1784530638,
+            content: { content_type: "text", parts: [body] },
+            metadata: {
+              content_references: [
+                {
+                  type: "image_group",
+                  matched_text: imageGroupMarker,
+                  start_idx: 0,
+                  end_idx: imageGroupMarker.length,
+                  safe_urls: [img2, img3, img1, img4], // 顺序与展示不一致，解析应以 images 为准
+                  images: [
+                    {
+                      image_search_query: "Lionel Messi portrait Argentina",
+                      image_result: { content_url: img1, thumbnail_url: img1 + "-thumb" },
+                    },
+                    {
+                      image_search_query: "Lionel Messi Barcelona celebration",
+                      image_result: { content_url: img2 },
+                    },
+                    {
+                      image_search_query: "Lionel Messi World Cup 2022 trophy",
+                      image_result: { content_url: img3 },
+                    },
+                    {
+                      image_search_query: "Lionel Messi Inter Miami action",
+                      image_result: { content_url: img4 },
+                    },
+                  ],
+                },
+                {
+                  type: "entity",
+                  matched_text: entityMessi,
+                  alt: "Lionel Messi",
+                  name: "Lionel Messi",
+                },
+              ],
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  it("将 content_references.image_group 转为 markdown 图片并保留正文与 entity 名", () => {
+    const [conv] = parseChatGPTExport([messiShareLikePayload()]);
+    expect(conv).toBeDefined();
+    expect(conv.messages).toHaveLength(2);
+    const ai = conv.messages[1];
+    expect(ai.role).toBe("ai");
+    // 四张图按 images 顺序出现
+    expect(ai.content).toContain(`![图片 1](${img1})`);
+    expect(ai.content).toContain(`![图片 2](${img2})`);
+    expect(ai.content).toContain(`![图片 3](${img3})`);
+    expect(ai.content).toContain(`![图片 4](${img4})`);
+    // 顺序：图在正文前
+    const i1 = ai.content.indexOf(`![图片 1](${img1})`);
+    const bodyIdx = ai.content.indexOf("几乎是现代足球");
+    expect(i1).toBeGreaterThanOrEqual(0);
+    expect(bodyIdx).toBeGreaterThan(i1);
+    // entity 仍展开为人名，image_group 标记与 private-use 字符不再残留
+    expect(ai.content).toContain("Lionel Messi");
+    expect(ai.content).not.toContain("image_group");
+    expect(ai.content).not.toMatch(/\uE200|\uE201|\uE202/);
+  });
+
+  it("image_group 无可用 URL 时插入占位，不丢正文", () => {
+    const marker = "\uE200image_group\uE202{\"layout\":\"bento\",\"query\":[\"x\"]}\uE201";
+    const [conv] = parseChatGPTExport([
+      {
+        title: "t",
+        linear_conversation: [
+          {
+            message: {
+              author: { role: "assistant" },
+              content: {
+                parts: [`${marker}\n\n后面还有文字`],
+              },
+              metadata: {
+                content_references: [
+                  { type: "image_group", matched_text: marker, images: [{ image_result: {} }] },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    ]);
+    expect(conv.messages[0].content).toContain("[图片缺失]");
+    expect(conv.messages[0].content).toContain("后面还有文字");
+    expect(conv.messages[0].content).not.toContain("image_group");
   });
 });

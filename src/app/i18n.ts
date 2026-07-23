@@ -97,6 +97,8 @@ export const translations = {
     "image.zoomOut": "Zoom out",
     "image.reset": "Reset",
     "image.close": "Close",
+    "image.prev": "Previous image",
+    "image.next": "Next image",
 
     // ImportDrawer
     "import.title": "Import Conversations",
@@ -482,6 +484,8 @@ export const translations = {
     "image.zoomOut": "缩小",
     "image.reset": "重置",
     "image.close": "关闭",
+    "image.prev": "上一张",
+    "image.next": "下一张",
 
     // ImportDrawer
     "import.title": "导入对话",

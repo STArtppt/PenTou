@@ -15,7 +15,7 @@ import { locateAndFlash } from "../utils/searchJump";
 import { BrandIcon } from "./BrandIcon";
 import { topBarSourceLabel } from "./topBarSourceLabel";
 import { MermaidBlock } from "./MermaidBlock";
-import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
+import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { formatDisplayDateTime } from "../utils/dateFormat";
 import { useScrollActivity } from "../hooks/useScrollActivity";
 
@@ -300,17 +300,19 @@ export function ChatBody() {
           )}
           onScroll={markContentScrollActive}
         >
-          <div className="max-w-4xl mx-auto px-6 space-y-12">
-            {displayMessages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                platform={conversation.platform}
-                onExcerpt={() => handleExcerptMessage(msg)}
-                excerpting={excerpting}
-              />
-            ))}
-          </div>
+          <ImageGalleryProvider>
+            <div className="max-w-4xl mx-auto px-6 space-y-12">
+              {displayMessages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  platform={conversation.platform}
+                  onExcerpt={() => handleExcerptMessage(msg)}
+                  excerpting={excerpting}
+                />
+              ))}
+            </div>
+          </ImageGalleryProvider>
         </div>
       </div>
 

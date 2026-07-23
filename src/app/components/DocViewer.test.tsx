@@ -24,6 +24,7 @@ vi.mock("../data", () => ({
 }));
 
 vi.mock("./ImageLightbox", () => ({
+  ImageGalleryProvider: ({ children }: { children: React.ReactNode }) => children,
   MarkdownImage: ({ src, alt }: { src?: string; alt?: string }) => <img src={src} alt={alt} />,
   imageUrlTransform: (url: string) => url,
 }));

@@ -17,7 +17,7 @@ import { generateDocId } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
 import { useTranslation } from "../i18n";
 import { formatDisplayDate } from "../utils/dateFormat";
-import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
+import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 
 // 图片获得与对话/文档一致的渲染（spec media-assets US-01）
 const aiMarkdownComponents = {
@@ -385,19 +385,21 @@ export function AiSidebar() {
         {currentAiSession.messages.length === 0 ? (
           <EmptyState activeView={activeView} onAsk={handleSend} />
         ) : (
-          <div className="mt-5 space-y-5">
-            {currentAiSession.messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                streaming={message.id === streamingId}
-                copied={copiedId === message.id}
-                onCopy={() => handleCopy(message)}
-                onToDoc={() => handleMessageToDoc(message)}
-                onRetry={() => message.role === "assistant" && retryMessage(currentAiSession, message.id, handleSend)}
-              />
-            ))}
-          </div>
+          <ImageGalleryProvider>
+            <div className="mt-5 space-y-5">
+              {currentAiSession.messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  streaming={message.id === streamingId}
+                  copied={copiedId === message.id}
+                  onCopy={() => handleCopy(message)}
+                  onToDoc={() => handleMessageToDoc(message)}
+                  onRetry={() => message.role === "assistant" && retryMessage(currentAiSession, message.id, handleSend)}
+                />
+              ))}
+            </div>
+          </ImageGalleryProvider>
         )}
       </div>
 

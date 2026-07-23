@@ -235,7 +235,7 @@ describe("Gemini 结构化图片提取", () => {
     };
   }
 
-  it("正文内联 image_generation_content/<N> token 按序替换为对应 lh3 生成图", async () => {
+  it("正文内联 image_generation_content token 按出现顺序映射到 lh3 生成图", async () => {
     const responseNode = [
       [
         [
@@ -258,10 +258,66 @@ describe("Gemini 结构化图片提取", () => {
     expect(aiMsg.content).not.toContain("image_generation_content");
   });
 
-  it("token 无对应图片时删除并插入占位；未被引用的生成图补在正文末尾", async () => {
+  it("真实 Gemini 的 opaque content id（非数组下标）按出现顺序映射，不误插[生成图片缺失]", async () => {
+    // 实测 token 形如 image_generation_content/368，数字是内容 ID 而非 imageUrls 下标
     const responseNode = [
-      [["rc_1", ["缺图：http://googleusercontent.com/image_generation_content/5"]]],
-      ["https://lh3.googleusercontent.com/gen/orphan", "image/png"],
+      [
+        [
+          "rc_1",
+          ["http://googleusercontent.com/image_generation_content/368\n\n"],
+        ],
+      ],
+      ["https://lh3.googleusercontent.com/gg/gen-opaque-a", "image/png"],
+    ];
+
+    const [conversation] = await parseSharedLinkData(
+      "https://gemini.google.com/share/bbb60f3489ce",
+      JSON.stringify(geminiPayload(responseNode)),
+    );
+    const aiMsg = conversation.messages.find((m: any) => m.role === "ai");
+    expect(aiMsg.content).toBe("![生成图片 1](https://lh3.googleusercontent.com/gg/gen-opaque-a)");
+    expect(aiMsg.content).not.toContain("[生成图片缺失]");
+    expect(aiMsg.content).not.toContain("image_generation_content");
+  });
+
+  it("同一 opaque id 多次出现映射到同一图；多余 lh3 补在正文末尾", async () => {
+    const responseNode = [
+      [
+        [
+          "rc_1",
+          [
+            "A：http://googleusercontent.com/image_generation_content/368 B：http://googleusercontent.com/image_generation_content/368",
+          ],
+        ],
+      ],
+      ["https://lh3.googleusercontent.com/gg/primary", "image/png"],
+      ["https://lh3.googleusercontent.com/gg/extra", "image/png"],
+    ];
+
+    const [conversation] = await parseSharedLinkData(
+      "https://gemini.google.com/share/bbb60f3489ce",
+      JSON.stringify(geminiPayload(responseNode)),
+    );
+    const aiMsg = conversation.messages.find((m: any) => m.role === "ai");
+    expect(aiMsg.content).toContain(
+      "A：![生成图片 1](https://lh3.googleusercontent.com/gg/primary) B：![生成图片 1](https://lh3.googleusercontent.com/gg/primary)",
+    );
+    expect(aiMsg.content).toContain("![生成图片 2](https://lh3.googleusercontent.com/gg/extra)");
+    expect(aiMsg.content).not.toContain("[生成图片缺失]");
+  });
+
+  it("token 多于图片时插入占位；无 token 的孤立生成图补在正文末尾", async () => {
+    const responseNode = [
+      [
+        [
+          "rc_1",
+          [
+            "缺图：http://googleusercontent.com/image_generation_content/900 有图：http://googleusercontent.com/image_generation_content/901",
+          ],
+        ],
+      ],
+      // 只有一张图，对应出现顺序第 0 个 token（900）；901 应缺失
+      ["https://lh3.googleusercontent.com/gen/only-one", "image/png"],
     ];
 
     const [conversation] = await parseSharedLinkData(
@@ -269,8 +325,9 @@ describe("Gemini 结构化图片提取", () => {
       JSON.stringify(geminiPayload(responseNode)),
     );
     const aiMsg = conversation.messages.find((m: any) => m.role === "ai");
-    expect(aiMsg.content).toContain("缺图：[生成图片缺失]");
-    expect(aiMsg.content).toContain("![生成图片 1](https://lh3.googleusercontent.com/gen/orphan)");
+    expect(aiMsg.content).toContain(
+      "缺图：![生成图片 1](https://lh3.googleusercontent.com/gen/only-one) 有图：[生成图片缺失]",
+    );
     expect(aiMsg.content).not.toContain("image_generation_content");
   });
 

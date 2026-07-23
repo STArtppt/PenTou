@@ -195,10 +195,25 @@ export async function fetchHtmlWithObscura(url: string, options?: ObscuraOptions
     }
   }
 
-  if (url.includes("gemini.google.com/share/")) {
-    const shareId = url.match(/\/share\/([^/?#]+)/)?.[1];
+  // Gemini 长链 gemini.google.com/share/{id}；官网分享现多返回短链 share.gemini.google/{code}（301 → 长链）
+  if (url.includes("gemini.google.com/share/") || url.includes("share.gemini.google/")) {
+    let shareId = url.match(/gemini\.google\.com\/share\/([^/?#]+)/)?.[1] ?? null;
+    if (!shareId && url.includes("share.gemini.google/")) {
+      try {
+        // 短链本身不是 batchexecute shareId，须跟 301 Location 解析真实 id
+        const resolveRes = await fetch(url, { headers: BROWSER_HEADERS, redirect: "manual" });
+        const location = resolveRes.headers.get("location");
+        if (location) {
+          const resolved = new URL(location, url);
+          shareId = resolved.pathname.match(/\/share\/([^/?#]+)/)?.[1] ?? null;
+        }
+      } catch (e) {
+        console.warn("Gemini short share link resolve failed", e);
+      }
+    }
     if (shareId) {
       try {
+        const referer = `https://gemini.google.com/share/${shareId}`;
         const rpcPayload = [[["ujx1Bf", JSON.stringify([null, shareId, [4]]), null, "generic"]]];
         const apiUrl = new URL("https://gemini.google.com/_/BardChatUi/data/batchexecute");
         apiUrl.searchParams.set("rpcids", "ujx1Bf");
@@ -213,7 +228,7 @@ export async function fetchHtmlWithObscura(url: string, options?: ObscuraOptions
             "Accept": "application/json,text/plain,*/*",
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
             "Origin": "https://gemini.google.com",
-            "Referer": url,
+            "Referer": referer,
           },
           body: new URLSearchParams({ "f.req": JSON.stringify(rpcPayload), at: "" }),
         });
@@ -797,22 +812,27 @@ function collectGeminiImageUrls(node: any, out: string[] = [], seen = new Set<st
 }
 
 /**
- * Gemini 正文内联 image_generation_content/<N> 占位 token 按序号替换为对应 lh3 生成图；
- * 无对应图片时删除 token 并插入占位；未被 token 引用的生成图按序补在正文末尾（spec §4.5）。
+ * Gemini 正文内联 image_generation_content/<id> 占位 token → lh3 生成图 markdown。
+ * <id> 是 opaque content id（实测如 368/354），不是 imageUrls 数组下标；
+ * 按 token 首次出现顺序映射到 collectGeminiImageUrls 的去重数组下标。
+ * 无对应图片时删除 token 并插入占位；未被 token 占用的生成图按序补在正文末尾（spec §4.5）。
  */
 function applyGeminiInlineImages(text: string, imageUrls: string[]): string {
-  const usedIndices = new Set<number>();
-  let result = text.replace(
-    /https?:\/\/googleusercontent\.com\/image_generation_content\/(\d+)/g,
-    (_match, n: string) => {
-      const idx = Number(n);
-      usedIndices.add(idx);
-      const url = imageUrls[idx];
-      return url ? `![生成图片 ${idx + 1}](${url})` : "[生成图片缺失]";
-    },
-  );
+  const tokenRe = /https?:\/\/googleusercontent\.com\/image_generation_content\/(\d+)/g;
+  const idToOrd = new Map<string, number>();
+  for (const match of text.matchAll(tokenRe)) {
+    if (!idToOrd.has(match[1])) idToOrd.set(match[1], idToOrd.size);
+  }
+
+  const usedOrds = new Set<number>();
+  let result = text.replace(tokenRe, (_match, id: string) => {
+    const ord = idToOrd.get(id) ?? 0;
+    usedOrds.add(ord);
+    const url = imageUrls[ord];
+    return url ? `![生成图片 ${ord + 1}](${url})` : "[生成图片缺失]";
+  });
   const extra = imageUrls
-    .map((url, i) => (usedIndices.has(i) ? null : `![生成图片 ${i + 1}](${url})`))
+    .map((url, i) => (usedOrds.has(i) ? null : `![生成图片 ${i + 1}](${url})`))
     .filter(Boolean) as string[];
   if (extra.length > 0) result = [result.trim(), ...extra].filter(Boolean).join("\n\n");
   return result;
@@ -947,7 +967,7 @@ function assertNoKnownUnavailablePage(url: string, $: cheerio.CheerioAPI): void 
     throw new Error("Metaso share content is unavailable or not found.");
   }
 
-  if (url.includes("gemini.google.com/share/") && bodyText.includes("Gemini 显示的信息") && bodyText.includes("登录")) {
+  if ((url.includes("gemini.google.com/share/") || url.includes("share.gemini.google/")) && bodyText.includes("Gemini 显示的信息") && bodyText.includes("登录")) {
     throw new Error("Gemini share content is not readable from the rendered shell; the structured share API returned no messages.");
   }
 

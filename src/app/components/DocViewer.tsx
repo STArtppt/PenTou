@@ -12,7 +12,7 @@ import { useTranslation } from "../i18n";
 import { copyText } from "../utils/clipboard";
 import { locateAndFlash } from "../utils/searchJump";
 import { MermaidBlock } from "./MermaidBlock";
-import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
+import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { useScrollActivity } from "../hooks/useScrollActivity";
 
 interface Props {
@@ -177,9 +177,11 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
             onMouseUp={handleMouseUp}
             onClick={handleMarkClick}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={mdComponents} urlTransform={imageUrlTransform}>
-              {body}
-            </ReactMarkdown>
+            <ImageGalleryProvider>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={mdComponents} urlTransform={imageUrlTransform}>
+                {body}
+              </ReactMarkdown>
+            </ImageGalleryProvider>
           </div>
         </div>
 

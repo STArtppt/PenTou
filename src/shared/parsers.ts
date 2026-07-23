@@ -19,6 +19,56 @@ function makeMsg(role: "user" | "ai", content: string, timestamp: string): Messa
   return { id: `msg_${Math.random().toString(36).slice(2, 9)}`, role, content, timestamp };
 }
 
+/**
+ * ChatGPT 正文里的 private-use 标记：
+ *   \uE200entity\uE202["athlete","Lionel Messi",...]\uE201  → 显示名
+ *   \uE200image_group\uE202{...}\uE201                      → 需 content_references 解析
+ *   \uE200cite\uE202...\uE201 等                            → 剥离
+ *
+ * image_group 的真实 URL 不在标记内，而在 message.metadata.content_references
+ * （type:"image_group" 的 images[].image_result.content_url / safe_urls）。
+ * 分享链接与 backend-api 均为此结构；见 debugging/2026-07-21-chatgpt-image-group-content-references.md
+ */
+function formatChatGPTImageGroupMarkdown(ref: any): string {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  const push = (url: unknown) => {
+    if (typeof url !== "string" || !url || seen.has(url)) return;
+    seen.add(url);
+    urls.push(url);
+  };
+
+  if (Array.isArray(ref?.images)) {
+    for (const img of ref.images) {
+      const result = img?.image_result;
+      push(result?.content_url || result?.thumbnail_url || result?.original_content_url);
+    }
+  }
+  if (urls.length === 0 && Array.isArray(ref?.safe_urls)) {
+    for (const u of ref.safe_urls) push(u);
+  }
+  // 平台有时已预组好 markdown（alt 字段）
+  if (urls.length === 0 && typeof ref?.alt === "string" && /!\[[^\]]*\]\([^)]+\)/.test(ref.alt)) {
+    return ref.alt.trim();
+  }
+  if (urls.length === 0) return "[图片缺失]";
+  return urls.map((url, i) => `![图片 ${i + 1}](${url})`).join("\n\n");
+}
+
+/** 把 content_references 中的 image_group 按 matched_text 替换为 markdown 图片。 */
+function resolveChatGPTImageGroups(content: string, contentReferences: unknown): string {
+  if (!Array.isArray(contentReferences) || !content) return content;
+  let result = content;
+  for (const ref of contentReferences) {
+    if (ref?.type !== "image_group") continue;
+    const matched = ref.matched_text;
+    if (typeof matched !== "string" || !matched) continue;
+    if (!result.includes(matched)) continue;
+    result = result.split(matched).join(formatChatGPTImageGroupMarkdown(ref));
+  }
+  return result;
+}
+
 function cleanChatGPTContent(content: string): string {
   return content
     .replace(/\uE200entity\uE202([^\uE201]+)\uE201/g, (_match, rawJson) => {
@@ -29,6 +79,8 @@ function cleanChatGPTContent(content: string): string {
         return "";
       }
     })
+    // 未解析到 content_references 的 image_group 留占位，避免静默丢图
+    .replace(/\uE200image_group\uE202[^\uE201]*\uE201/g, "[图片缺失]")
     .replace(/\uE200[a-z_]+\uE202[^\uE201]*\uE201/g, "");
 }
 
@@ -165,7 +217,12 @@ export function parseChatGPTExport(json: any, opts?: ChatGPTParseOptions): Conve
             segments.push(url ? `![图片](${url})` : "[图片缺失]");
           }
         }
-        const content = cleanChatGPTContent(segments.join("\n").trim());
+        // image_group 先从 content_references 落成 markdown，再清洗其余 private-use 标记
+        const withImages = resolveChatGPTImageGroups(
+          segments.join("\n").trim(),
+          msg.metadata?.content_references,
+        );
+        const content = cleanChatGPTContent(withImages);
 
         if (!content.trim()) return;
 
