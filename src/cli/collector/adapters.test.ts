@@ -30,6 +30,20 @@ describe("collector adapters", () => {
     });
   });
 
+  it("excludes subagent transcripts (subagents/agent-*.jsonl) from discovery and toItem", async () => {
+    const root = tmpDir("pentou-claude-");
+    const project = path.join(root, "proj");
+    const subagents = path.join(project, "session-1", "subagents");
+    fs.mkdirSync(subagents, { recursive: true });
+    fs.writeFileSync(path.join(project, "main.jsonl"), "{\"type\":\"user\"}\n");
+    fs.writeFileSync(path.join(subagents, "agent-abc.jsonl"), "{\"type\":\"user\",\"isSidechain\":true}\n");
+
+    const adapter = createClaudeCodeAdapter(root);
+    const files = await adapter.discover();
+    expect(files.map((file) => file.path)).toEqual([path.join(project, "main.jsonl")]);
+    expect(await adapter.toItem(path.join(subagents, "agent-abc.jsonl"))).toBeNull();
+  });
+
   it("discovers waylog markdown under .waylog from parent dirs", async () => {
     const project = tmpDir("pentou-waylog-");
     const root = path.join(project, ".waylog", "sessions");

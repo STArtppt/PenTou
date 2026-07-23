@@ -369,10 +369,13 @@ export function parseJsonl(jsonlText: string): Conversation | null {
     try {
       const obj = JSON.parse(line);
 
-      // Claude Code format
-      if (obj.type === "human" || obj.type === "assistant") {
+      // Claude Code session format: { type: "user"|"assistant", message: { role, content } }
+      // （旧导出格式用户侧为 type:"human"，保留兼容）
+      if ((obj.type === "user" || obj.type === "human" || obj.type === "assistant") && obj.message) {
+        // isMeta：本地命令 caveat 等元信息；isSidechain：子代理支线对话
+        if (obj.isMeta || obj.isSidechain) continue;
         platform = "Claude";
-        const role = obj.type === "human" ? "user" : "ai";
+        const role = obj.type === "assistant" ? "ai" : "user";
         const content =
           typeof obj.message?.content === "string"
             ? obj.message.content
@@ -382,9 +385,12 @@ export function parseJsonl(jsonlText: string): Conversation | null {
                 .map((c: any) => c.text)
                 .join("\n")
             : "";
-        if (content.trim()) {
+        const trimmed = content.trim();
+        // 斜杠命令包裹与本地命令输出不是对话内容
+        if (trimmed && !/^<(?:command-|local-command-)/.test(trimmed)) {
           const ts = obj.timestamp ?? date;
-          if (!title && role === "user") title = content.slice(0, 80).split("\n")[0];
+          // 标题取自 trim 后内容：首字符若是换行会让 split("\n")[0] 得到空串
+          if (!title && role === "user") title = trimmed.slice(0, 80).split("\n")[0];
           if (messages.length === 0 && obj.timestamp) date = obj.timestamp;
           messages.push(makeMsg(role, content, ts));
         }
