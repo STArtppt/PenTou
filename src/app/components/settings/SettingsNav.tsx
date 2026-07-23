@@ -7,8 +7,7 @@ import {
   BookOpen,
   Info,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "../../i18n";
 import type { SettingsTabDef, SettingsTabId } from "./types";
 
@@ -32,28 +31,32 @@ export function SettingsNav({
   const { t } = useTranslation();
 
   return (
-    <nav className="flex w-48 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-zinc-200 bg-muted/30 p-2 dark:border-white/10" aria-label={t("settings.title")}>
-      {SETTINGS_TABS.map((tab) => {
-        const Icon = tab.icon;
-        const active = activeTab === tab.id;
-        // Nav item: ghost + soft accent when active (not primary — primary is too loud for sidebar tabs)
-        return (
-          <Button
-            key={tab.id}
-            type="button"
-            variant="ghost"
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "h-9 w-full justify-start gap-2.5 px-3 text-sm font-medium text-muted-foreground",
-              active && "bg-accent text-accent-foreground",
-            )}
-            onClick={() => onChange(tab.id)}
-          >
-            <Icon size={16} />
-            <span className="truncate">{t(tab.labelKey as any)}</span>
-          </Button>
-        );
-      })}
+    <nav
+      className="flex w-48 shrink-0 flex-col overflow-y-auto"
+      aria-label={t("settings.title")}
+    >
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => onChange(v as SettingsTabId)}
+        orientation="vertical"
+        className="min-h-0 flex-1 gap-0"
+      >
+        <TabsList variant="vertical" className="h-full w-full rounded-none border-r border-border">
+          {SETTINGS_TABS.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                icon={<Icon size={16} />}
+                aria-current={activeTab === tab.id ? "page" : undefined}
+              >
+                {t(tab.labelKey as any)}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
     </nav>
   );
 }

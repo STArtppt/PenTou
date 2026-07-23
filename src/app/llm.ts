@@ -1,4 +1,7 @@
-import type { Conversation, Document, Annotation, LLMConfig } from "./data";
+import type { Conversation, Document, Annotation } from "./data";
+import type { LLMConfig } from "./llm-settings";
+
+export type { LLMConfig };
 
 export const DEFAULT_PROMPT_CONVERT = `你是一个 Markdown 文档编辑助手。请把以下 AI 对话内容整理为结构化的 Markdown 文档。要求：
 1. 提炼一个清晰的标题作为 H1
@@ -14,10 +17,11 @@ export const DEFAULT_PROMPT_REWRITE = `你是一个 Markdown 文档编辑助手�
 
 export const DEFAULT_PROMPT_AI_SIDEBAR = `你是嵌入文档阅读器的 AI 助手。请优先基于给定上下文回答，保持简洁、准确、可执行。若上下文不足，请明确说明，并可基于常识给出谨慎建议。回答使用 Markdown。`.trim();
 
+/** Product default for new installs (DeepSeek). Prefer LLMSettings via llm-settings. */
 export const DEFAULT_LLM_CONFIG: LLMConfig = {
-  endpoint: "https://api.openai.com/v1",
+  endpoint: "https://api.deepseek.com/v1",
   apiKey: "",
-  model: "gpt-4o-mini",
+  model: "deepseek-chat",
   systemPromptConvertConv: DEFAULT_PROMPT_CONVERT,
   systemPromptRewriteByAnnotations: DEFAULT_PROMPT_REWRITE,
 };

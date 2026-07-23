@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogBackdrop,
@@ -742,32 +743,22 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* View Tabs + inline Search button (spec hybrid-search US-01) */}
+        {/* View Tabs + inline Search button (spec hybrid-search US-01; tabs-primitive segmented) */}
         <div className="flex items-center gap-2">
-          <div className="flex flex-1 bg-zinc-100 dark:bg-white/5 rounded-lg p-0.5">
-            <button
-              onClick={() => handleTabClick("chat")}
-              className={clsx(
-                "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors",
-                activeView === "chat"
-                  ? "bg-white dark:bg-[#2A2A2A] text-zinc-900 dark:text-zinc-100 shadow-sm"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
-              )}
-            >
-              {t("sidebar.tab.chat")}
-            </button>
-            <button
-              onClick={() => handleTabClick("doc")}
-              className={clsx(
-                "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors",
-                activeView === "doc"
-                  ? "bg-white dark:bg-[#2A2A2A] text-zinc-900 dark:text-zinc-100 shadow-sm"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
-              )}
-            >
-              {t("sidebar.tab.doc")}
-            </button>
-          </div>
+          <Tabs
+            value={activeView}
+            onValueChange={(v) => handleTabClick(v as typeof activeView)}
+            className="min-w-0 flex-1 gap-0"
+          >
+            <TabsList variant="segmented" className="h-auto w-full">
+              <TabsTrigger value="chat" className="flex-1 py-1.5 text-xs">
+                {t("sidebar.tab.chat")}
+              </TabsTrigger>
+              <TabsTrigger value="doc" className="flex-1 py-1.5 text-xs">
+                {t("sidebar.tab.doc")}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Button
             variant="outline"
             size="icon"

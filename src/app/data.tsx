@@ -1,5 +1,10 @@
-import { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from "react";
-import { DEFAULT_LLM_CONFIG } from "./llm";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback, useMemo } from "react";
+import {
+  type LLMConfig,
+  type LLMSettings,
+  getActiveLLMConfig as deriveActiveLLMConfig,
+  loadLLMSettingsFromLocalStorage,
+} from "./llm-settings";
 import { generateDocId, generateAnnotationId } from "./doc-utils";
 import {
   AiChatSession,
@@ -143,13 +148,8 @@ export interface Annotation {
   orphanedAt?: string;
 }
 
-export interface LLMConfig {
-  endpoint: string;
-  apiKey: string;
-  model: string;
-  systemPromptConvertConv: string;
-  systemPromptRewriteByAnnotations: string;
-}
+/** @deprecated Prefer LLMSettings; kept as runtime shape for llm.ts call sites. */
+export type { LLMConfig, LLMSettings };
 
 export interface ObsidianConfig {
   vaultName: string;
@@ -188,14 +188,6 @@ async function apiFetch(path: string, opts?: RequestInit) {
   }
   if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
   return res.json();
-}
-
-function loadLLMFromLocalStorage(): LLMConfig {
-  try {
-    const raw = localStorage.getItem("pentou-llm-config");
-    if (raw) return { ...DEFAULT_LLM_CONFIG, ...JSON.parse(raw) };
-  } catch {}
-  return { ...DEFAULT_LLM_CONFIG };
 }
 
 function loadObsidianFromLocalStorage(): ObsidianConfig {
@@ -242,9 +234,12 @@ interface AppContextType {
   setVersionPanelOpen: (open: boolean) => void;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
+  /** Derived from active provider + global prompts (read-only convenience). */
   llmConfig: LLMConfig;
+  llmSettings: LLMSettings;
+  setLlmSettings: (s: LLMSettings) => void;
+  getActiveLLMConfig: () => LLMConfig;
   obsidianConfig: ObsidianConfig;
-  setLlmConfig: (cfg: LLMConfig) => void;
   setObsidianConfig: (cfg: ObsidianConfig) => void;
   // 嵌入后端配置（spec hybrid-search §4.7，经 /api/search/config 读写，不走 localStorage）
   embeddingConfig: EmbeddingClientConfig | null;
@@ -331,8 +326,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [previewingVersionId, setPreviewingVersionId] = useState<string | null>(null);
   const [versionPanelOpen, setVersionPanelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [llmConfig, setLlmConfigState] = useState<LLMConfig>(loadLLMFromLocalStorage);
+  const [llmSettings, setLlmSettingsState] = useState<LLMSettings>(loadLLMSettingsFromLocalStorage);
   const [obsidianConfig, setObsidianConfigState] = useState<ObsidianConfig>(loadObsidianFromLocalStorage);
+  const llmConfig = useMemo(() => deriveActiveLLMConfig(llmSettings), [llmSettings]);
+  const getActiveLLMConfig = useCallback(
+    () => deriveActiveLLMConfig(llmSettings),
+    [llmSettings],
+  );
   const [embeddingConfig, setEmbeddingConfig] = useState<EmbeddingClientConfig | null>(null);
 
   // ── UI state ──
@@ -443,9 +443,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAiSidebarOpen((open) => !open);
   }, []);
 
-  const setLlmConfig = useCallback((cfg: LLMConfig) => {
-    setLlmConfigState(cfg);
-    localStorage.setItem("pentou-llm-config", JSON.stringify(cfg));
+  const setLlmSettings = useCallback((s: LLMSettings) => {
+    setLlmSettingsState(s);
+    localStorage.setItem("pentou-llm-config", JSON.stringify(s));
   }, []);
 
   const setObsidianConfig = useCallback((cfg: ObsidianConfig) => {
@@ -967,8 +967,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         settingsOpen,
         setSettingsOpen,
         llmConfig,
+        llmSettings,
+        setLlmSettings,
+        getActiveLLMConfig,
         obsidianConfig,
-        setLlmConfig,
         setObsidianConfig,
         embeddingConfig,
         refreshEmbeddingConfig,

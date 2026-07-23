@@ -25,8 +25,8 @@ export function SettingsShell() {
   const {
     settingsOpen,
     setSettingsOpen,
-    llmConfig,
-    setLlmConfig,
+    llmSettings,
+    setLlmSettings,
     obsidianConfig,
     setObsidianConfig,
     theme,
@@ -66,7 +66,9 @@ export function SettingsShell() {
                   setLanguage={setLanguage}
                 />
               )}
-              {activeTab === "llm" && <LLMTab config={llmConfig} setConfig={setLlmConfig} />}
+              {activeTab === "llm" && (
+                <LLMTab settings={llmSettings} setSettings={setLlmSettings} />
+              )}
               {activeTab === "search" && <EmbeddingTab />}
               {activeTab === "ingest" && <IngestTab />}
               {activeTab === "migration" && <MigrationTab />}
