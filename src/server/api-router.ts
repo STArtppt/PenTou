@@ -60,6 +60,7 @@ import { createMigrationManifest, readManifestFile } from "./migrate/manifest.js
 import { readFolderBundle } from "./migrate/merge-folders.js";
 import { cleanupMigrationTmp, finalizeMigrationReceiver, mergeMigrationFolders, receiveMigrationFile } from "./migrate/receiver.js";
 import { createMigrationPlan, getMigrationProgress, runMigration, testMigrationPeer } from "./migrate/orchestrator.js";
+import { detectVaults, exportNoteToVault, validateVaultPath, ObsidianExportError } from "./obsidian-export.js";
 
 export interface RouterContext {
   dataDir: string;
@@ -114,11 +115,13 @@ export function ensureDirs(dataDir: string): void {
 
 // ── Generic helpers ───────────────────────────────────────────────────────────
 
+// 必须整体聚合 Buffer 再解码：逐 chunk 隐式 toString 会把跨 chunk 边界的
+// 多字节 UTF-8 字符打碎成 U+FFFD（debugging/2026-07-13-readbody-utf8-chunk-split.md）
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", (chunk: any) => (data += chunk));
-    req.on("end", () => resolve(data));
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: any) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
     req.on("error", reject);
   });
 }
@@ -1017,6 +1020,34 @@ export async function handleApiRequest(
 
   if (pathOnly === "/api/migrate/progress" && method === "GET") {
     json(res, 200, getMigrationProgress());
+    return true;
+  }
+
+  // ── /api/obsidian 族（vault 直写导出；spec obsidian-vault-export §4.4）────
+  if (pathOnly === "/api/obsidian/vaults" && method === "GET") {
+    json(res, 200, { vaults: detectVaults() });
+    return true;
+  }
+
+  if (pathOnly === "/api/obsidian/export" && method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      json(res, 200, exportNoteToVault(String(body?.vaultPath ?? ""), String(body?.title ?? ""), String(body?.content ?? "")));
+    } catch (e) {
+      const status = e instanceof ObsidianExportError ? e.status : 400;
+      json(res, status, { error: String((e as Error)?.message ?? e) });
+    }
+    return true;
+  }
+
+  if (pathOnly === "/api/obsidian/validate-vault" && method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      json(res, 200, validateVaultPath(String(body?.vaultPath ?? "")));
+    } catch (e) {
+      const status = e instanceof ObsidianExportError ? e.status : 400;
+      json(res, status, { error: String((e as Error)?.message ?? e) });
+    }
     return true;
   }
 

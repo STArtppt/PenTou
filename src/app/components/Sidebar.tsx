@@ -26,6 +26,7 @@ import {
   ArrowDownNarrowWide,
   ArrowUpNarrowWide,
   LogOut,
+  Send,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
@@ -37,6 +38,7 @@ import { useScrollActivity } from "../hooks/useScrollActivity";
 import { useTranslation } from "../i18n";
 import { formatDisplayDate } from "../utils/dateFormat";
 import { copyText } from "../utils/clipboard";
+import { batchExportToVault, buildObsidianOpenUri } from "../obsidian";
 
 const CONVERSATION_ITEM_TYPE = "CONVERSATION";
 const DOCUMENT_ITEM_TYPE = "DOCUMENT";
@@ -473,6 +475,7 @@ export function Sidebar() {
     setActiveDocId,
     deleteDocument,
     moveDocument,
+    obsidianConfig,
   } = useAppContext();
 
   const { t } = useTranslation();
@@ -653,6 +656,33 @@ export function Sidebar() {
         try { await moveDocument(id, folderId); }
         catch (e) { console.error({ module: "Sidebar", op: "batchMoveDoc", id, folderId, err: e }); }
       }
+    }
+    exitSelection();
+  };
+
+  // 批量导出到 Obsidian：顺序循环单篇直写，打开第一篇成功文档（spec obsidian-vault-export US-04）
+  const runBatchObsidianExport = async () => {
+    if (!obsidianConfig.vaultPath || !obsidianConfig.vaultName) {
+      toast.error(t("sidebar.obsidianNeedVault"));
+      setSettingsOpen(true);
+      return;
+    }
+    // 按侧栏显示顺序导出（spec §4.5 决策 7）；逐篇取服务端全文，见 batchExportToVault 注释
+    const ordered = filteredDocuments.filter((d) => selectedIds.has(d.id));
+    const { succeeded, failed } = await batchExportToVault(ordered, {
+      vaultName: obsidianConfig.vaultName,
+      vaultPath: obsidianConfig.vaultPath,
+    });
+    for (const f of failed) {
+      console.error({ module: "Sidebar", op: "batchObsidianExport", id: f.id, err: f.error });
+    }
+    if (failed.length === 0) {
+      toast.success(t("sidebar.obsidianBatchDone", { n: succeeded.length }));
+    } else {
+      toast.error(t("sidebar.obsidianBatchPartial", { ok: succeeded.length, fail: failed.length, titles: failed.map((f) => f.title).join(", ") }));
+    }
+    if (succeeded.length > 0) {
+      window.open(buildObsidianOpenUri(obsidianConfig.vaultName, succeeded[0].fileName), "_self");
     }
     exitSelection();
   };
@@ -862,6 +892,11 @@ export function Sidebar() {
               if (!hasSelection) return;
               setBatchDeleteOpen(true);
             }}
+            showObsidian={activeView === "doc"}
+            onObsidianClick={() => {
+              if (!hasSelection) return;
+              runBatchObsidianExport();
+            }}
             onCancel={exitSelection}
           />
         )}
@@ -978,6 +1013,8 @@ function BatchToolbar({
   onToggleSelectAll,
   onMoveClick,
   onDeleteClick,
+  showObsidian,
+  onObsidianClick,
   onCancel,
 }: {
   selectedCount: number;
@@ -987,6 +1024,8 @@ function BatchToolbar({
   onToggleSelectAll: () => void;
   onMoveClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onDeleteClick: () => void;
+  showObsidian: boolean;
+  onObsidianClick: () => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -1016,6 +1055,15 @@ function BatchToolbar({
         >
           <FolderInput size={12} /> {t("sidebar.moveTo", { n: selectedCount })}
         </button>
+        {showObsidian && (
+          <button
+            onClick={onObsidianClick}
+            disabled={!hasSelection}
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-orange-500 hover:text-orange-500 dark:hover:border-yellow-400 dark:hover:text-yellow-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-200 disabled:hover:text-zinc-700 dark:disabled:hover:border-white/10 dark:disabled:hover:text-zinc-300"
+          >
+            <Send size={12} /> {t("sidebar.obsidianExport")}
+          </button>
+        )}
         <button
           onClick={onDeleteClick}
           disabled={!hasSelection}

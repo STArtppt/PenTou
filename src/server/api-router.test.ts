@@ -27,10 +27,14 @@ async function callApi(params: {
   url: string;
   body?: unknown;
   rawBody?: Buffer;
+  /** 模拟分块到达的请求体（如需覆盖跨 chunk 的 UTF-8 边界场景） */
+  rawChunks?: Buffer[];
   headers?: Record<string, string>;
 }): Promise<{ status: number; body: any }> {
-  const rawBuffer = params.rawBody ?? Buffer.from(params.body === undefined ? "" : JSON.stringify(params.body));
-  const req = Readable.from(rawBuffer.length ? [rawBuffer] : []) as any;
+  const rawBuffer = params.rawChunks
+    ? Buffer.concat(params.rawChunks)
+    : params.rawBody ?? Buffer.from(params.body === undefined ? "" : JSON.stringify(params.body));
+  const req = Readable.from(params.rawChunks ?? (rawBuffer.length ? [rawBuffer] : [])) as any;
   req.method = params.method ?? "GET";
   req.url = params.url;
   req.headers = params.headers ?? (rawBuffer.length ? { "content-type": "application/json", "content-length": String(rawBuffer.length) } : {});
@@ -725,5 +729,28 @@ describe("/api/search/config route (spec hybrid-search §4.7)", () => {
     const get = await callApi({ dataDir: rel, url: "/api/search/config" });
     expect(get.body.hasKey).toBe(true);
     expect(get.body.apiKey).toBeUndefined();
+  });
+});
+
+describe("/api/obsidian/export（spec obsidian-vault-export）", () => {
+  it("keeps multi-byte UTF-8 chars intact when body arrives in split chunks", async () => {
+    const { abs } = makeRelativeTempDataDir();
+    const vault = path.join(abs, "vault");
+    fs.mkdirSync(vault);
+
+    const content = "供应链安全 → Flux";
+    const payload = Buffer.from(JSON.stringify({ vaultPath: vault, title: "chunked", content }));
+    // 在「→」(E2 86 92) 的第一个字节后切开，模拟跨 chunk 的多字节字符
+    const splitAt = payload.indexOf(Buffer.from("→")) + 1;
+    const { status, body } = await callApi({
+      dataDir: abs,
+      method: "POST",
+      url: "/api/obsidian/export",
+      rawChunks: [payload.subarray(0, splitAt), payload.subarray(splitAt)],
+    });
+
+    expect(status).toBe(200);
+    expect(body.fileName).toBe("chunked");
+    expect(fs.readFileSync(path.join(vault, "chunked.md"), "utf-8")).toBe(content);
   });
 });

@@ -14,7 +14,8 @@ import {
   MessageCircle,
 } from "lucide-react";
 import clsx from "clsx";
-import { useAppContext } from "../data";
+import { toast } from "sonner";
+import { useAppContext, type ObsidianConfig } from "../data";
 import { useTranslation } from "../i18n";
 import { convertConversationToDocument, LLMError } from "../llm";
 import { exportToObsidian } from "../obsidian";
@@ -140,17 +141,25 @@ export function TopToolbar() {
       setPendingObsidianExport(true);
       return;
     }
-    await doObsidianExport(activeDoc.body, activeDoc.title, cfg.vaultName);
+    await doObsidianExport(activeDoc.body, activeDoc.title, cfg);
   };
 
-  const doObsidianExport = async (body: string, title: string, vaultName: string) => {
+  const doObsidianExport = async (body: string, title: string, cfg: ObsidianConfig) => {
     const docForExport = { ...activeDoc!, body, title };
-    const result = await exportToObsidian(docForExport, { vaultName });
-    if (result.mode === "clipboard") {
-      alert(t("obsidian.copied", { n: result.charCount ?? 0 }));
-    } else {
-      // toast shown by browser
+    const result = await exportToObsidian(docForExport, cfg);
+    if (result.mode === "vault") {
+      toast.success(t("obsidian.exported", { name: result.fileName }));
+      return;
     }
+    if (result.fallbackError) {
+      toast.error(t("obsidian.vaultFailed", { error: result.fallbackError }));
+    }
+    if (result.mode === "clipboard") {
+      toast.info(t("obsidian.copied", { n: result.charCount ?? 0 }), {
+        description: t("obsidian.configureHint"),
+      });
+    }
+    // uri 模式无回退错误时无需提示：浏览器会直接唤起 Obsidian
   };
 
   const handleVaultSave = async () => {
@@ -159,7 +168,7 @@ export function TopToolbar() {
     setObsidianConfig({ vaultName: name });
     setVaultPromptOpen(false);
     if (pendingObsidianExport && activeDoc) {
-      await doObsidianExport(activeDoc.body, activeDoc.title, name);
+      await doObsidianExport(activeDoc.body, activeDoc.title, { vaultName: name });
     }
     setPendingObsidianExport(false);
     setVaultInput("");

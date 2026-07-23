@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { X, Loader2, CheckCircle2, XCircle, UploadCloud, DownloadCloud, ShieldAlert } from "lucide-react";
+import { X, Loader2, CheckCircle2, XCircle, UploadCloud, DownloadCloud, ShieldAlert, RefreshCw, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
-import { useAppContext, LLMConfig } from "../data";
+import { useAppContext, LLMConfig, type ObsidianConfig } from "../data";
 import { testLLMConnection } from "../llm";
 import { useTranslation } from "../i18n";
 
@@ -69,11 +70,7 @@ export function SettingsModal() {
               {activeTab === "ingest" && <IngestTab t={t} />}
               {activeTab === "migration" && <MigrationTab t={t} />}
               {activeTab === "obsidian" && (
-                <ObsidianTab
-                  vaultName={obsidianConfig.vaultName}
-                  onSave={(name) => setObsidianConfig({ vaultName: name })}
-                  t={t}
-                />
+                <ObsidianTab config={obsidianConfig} onSave={setObsidianConfig} t={t} />
               )}
               {activeTab === "about" && <AboutTab t={t} />}
             </div>
@@ -651,19 +648,152 @@ function IngestTab({ t }: { t: any }) {
   );
 }
 
-function ObsidianTab({ vaultName, onSave, t }: { vaultName: string; onSave: (n: string) => void; t: any }) {
-  const [draft, setDraft] = useState(vaultName);
+const MANUAL_VAULT = "__manual__";
+
+function ObsidianTab({ config, onSave, t }: { config: ObsidianConfig; onSave: (cfg: ObsidianConfig) => void; t: any }) {
+  const [vaults, setVaults] = useState<{ name: string; path: string }[]>([]);
+  const [loadingVaults, setLoadingVaults] = useState(false);
+  const [selected, setSelected] = useState<string>(config.vaultPath ?? "");
+  const [manualPath, setManualPath] = useState(config.vaultPath ?? "");
+  const [feedback, setFeedback] = useState<{ kind: "ok" | "warn" | "error"; text: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const fetchVaults = async (notify = false) => {
+    setLoadingVaults(true);
+    try {
+      const res = await fetch("/api/obsidian/vaults");
+      const data = await res.json();
+      const list: { name: string; path: string }[] = Array.isArray(data?.vaults) ? data.vaults : [];
+      setVaults(list);
+      // 已保存路径不在探测列表中 → 切到手动输入项，保持配置可见
+      if (config.vaultPath && !list.some((v) => v.path === config.vaultPath)) {
+        setSelected(MANUAL_VAULT);
+      }
+      if (notify) toast.success(t("settings.obsidian.refreshed", { n: list.length }));
+    } catch {
+      setVaults([]);
+      if (notify) toast.error(t("settings.obsidian.refreshFailed"));
+    } finally {
+      setLoadingVaults(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const basename = (p: string) => p.replace(/[/\\]+$/, "").split(/[/\\]/).pop() ?? p;
+
+  const handleSave = async () => {
+    setFeedback(null);
+    if (selected && selected !== MANUAL_VAULT) {
+      const vault = vaults.find((v) => v.path === selected);
+      if (!vault) return;
+      onSave({ vaultName: vault.name, vaultPath: vault.path });
+      setFeedback({ kind: "ok", text: t("settings.obsidian.saved") });
+      return;
+    }
+    // 手动输入路径：保存前经服务端校验（spec US-01 AC-3）
+    const path = manualPath.trim();
+    if (!path) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/obsidian/validate-vault", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vaultPath: path }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setFeedback({ kind: "error", text: t("settings.obsidian.invalidPath", { error: String(data?.error ?? `HTTP ${res.status}`) }) });
+        return;
+      }
+      onSave({ vaultName: basename(path), vaultPath: path });
+      setFeedback(
+        data?.isVault
+          ? { kind: "ok", text: t("settings.obsidian.saved") }
+          : { kind: "warn", text: t("settings.obsidian.notVaultWarning") },
+      );
+    } catch (e) {
+      setFeedback({ kind: "error", text: t("settings.obsidian.invalidPath", { error: String(e) }) });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="p-6 space-y-5">
       <p className="text-sm text-zinc-500 dark:text-zinc-400">{t("settings.obsidian.hint")}</p>
-      <FieldRow label={t("settings.obsidian.vaultName")}>
-        <input className={inputCls} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="My Vault" />
+      <FieldRow label={t("settings.obsidian.vault")}>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <select
+              className={clsx(inputCls, "appearance-none pr-9 cursor-pointer")}
+              value={selected}
+              onChange={(e) => {
+                setSelected(e.target.value);
+                setFeedback(null);
+              }}
+            >
+              <option value="" disabled>
+                {loadingVaults
+                  ? t("settings.obsidian.detecting")
+                  : vaults.length === 0
+                  ? t("settings.obsidian.noneDetected")
+                  : t("settings.obsidian.selectVault")}
+              </option>
+              {vaults.map((v) => (
+                <option key={v.path} value={v.path}>
+                  {v.name} — {v.path}
+                </option>
+              ))}
+              <option value={MANUAL_VAULT}>{t("settings.obsidian.manualEntry")}</option>
+            </select>
+            <ChevronDown
+              size={16}
+              className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400 dark:text-zinc-500"
+            />
+          </div>
+          <button
+            onClick={() => fetchVaults(true)}
+            disabled={loadingVaults}
+            className="shrink-0 p-2.5 rounded-lg border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 hover:border-orange-500 dark:hover:text-yellow-400 dark:hover:border-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={t("settings.obsidian.refresh")}
+            aria-label={t("settings.obsidian.refresh")}
+          >
+            <RefreshCw size={16} className={clsx(loadingVaults && "animate-spin")} />
+          </button>
+        </div>
       </FieldRow>
+      {selected === MANUAL_VAULT && (
+        <FieldRow label={t("settings.obsidian.vaultPath")}>
+          <input
+            className={inputCls}
+            value={manualPath}
+            onChange={(e) => setManualPath(e.target.value)}
+            placeholder="/Users/me/My Vault"
+          />
+        </FieldRow>
+      )}
+      {feedback && (
+        <p
+          className={clsx(
+            "text-xs",
+            feedback.kind === "ok" && "text-green-600 dark:text-green-400",
+            feedback.kind === "warn" && "text-amber-600 dark:text-amber-400",
+            feedback.kind === "error" && "text-red-600 dark:text-red-400",
+          )}
+        >
+          {feedback.text}
+        </p>
+      )}
       <button
-        onClick={() => onSave(draft.trim())}
-        className="px-4 py-1.5 text-sm font-medium bg-orange-500 dark:bg-yellow-400 text-white dark:text-zinc-900 rounded-lg hover:bg-orange-600 dark:hover:bg-yellow-500 transition-colors"
+        onClick={handleSave}
+        disabled={saving || (!selected && !manualPath.trim()) || (selected === MANUAL_VAULT && !manualPath.trim())}
+        className={primaryButtonCls}
       >
+        {saving && <Loader2 className="w-4 h-4 animate-spin" />}
         {t("settings.obsidian.save")}
       </button>
     </div>

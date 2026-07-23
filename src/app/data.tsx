@@ -146,6 +146,8 @@ export interface LLMConfig {
 
 export interface ObsidianConfig {
   vaultName: string;
+  /** vault 根目录绝对路径；空/未设 = 维持 URI 唤起行为（spec obsidian-vault-export） */
+  vaultPath?: string;
 }
 
 // 嵌入后端配置（spec hybrid-search §4.7）。区别于 LLMConfig：服务端持久化、不走 localStorage、
