@@ -9,6 +9,15 @@ export interface CollectorConfig {
   adapters: {
     "claude-code": { enabled: boolean; root?: string };
     waylog: { enabled: boolean; dirs: string[] };
+    // 文件型（spec collector-source-expansion §4.3）
+    codex: { enabled: boolean; root?: string };
+    "grok-cli": { enabled: boolean; root?: string };
+    "copilot-vscode": { enabled: boolean; root?: string };
+    // SQLite 查询型
+    opencode: { enabled: boolean; db?: string };
+    copilot: { enabled: boolean; db?: string };
+    hermes: { enabled: boolean; db?: string };
+    cursor: { enabled: boolean; db?: string };
   };
   exclude: string[];
   debounceMs: number;
@@ -30,9 +39,16 @@ export interface IngestItem {
 
 export interface CollectorAdapter {
   platform: string;
+  /**
+   * "query" = SQLite 查询型：discover 返回 sqlite://<db>#<sessionId> 虚拟键，
+   * 快照由 snapshot() 提供；缺省 "files"（spec collector-source-expansion §4.3）。
+   */
+  kind?: "files" | "query";
   discover(): Promise<SessionFile[]>;
   watchRoots(): string[];
-  toItem(file: string): Promise<IngestItem | null>;
+  toItem(fileOrKey: string): Promise<IngestItem | null>;
+  /** 查询型必备：虚拟键 → 快照（mtimeMs=会话更新时间，size=消息数） */
+  snapshot?(fileOrKey: string): Promise<FileSnapshot | null>;
 }
 
 export type IngestAction = "created" | "merged" | "skipped";

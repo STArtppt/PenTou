@@ -22,7 +22,60 @@ export function defaultClaudeRoot(): string {
   return path.join(os.homedir(), ".claude", "projects");
 }
 
+export function defaultCodexRoot(): string {
+  return path.join(os.homedir(), ".codex", "sessions");
+}
+
+export function defaultGrokRoot(): string {
+  return path.join(os.homedir(), ".grok", "sessions");
+}
+
+export function defaultOpencodeDb(): string {
+  return path.join(os.homedir(), ".local", "share", "opencode", "opencode.db");
+}
+
+export function defaultCopilotDb(): string {
+  return path.join(os.homedir(), ".copilot", "session-store.db");
+}
+
+export function defaultHermesDb(): string {
+  return path.join(os.homedir(), ".hermes", "state.db");
+}
+
+/** VS Code / Cursor 的用户数据目录按平台定位（spec §5 边界 4：仅默认 stable 路径） */
+function editorUserDir(app: "Code" | "Cursor"): string {
+  if (process.platform === "darwin") {
+    return path.join(os.homedir(), "Library", "Application Support", app, "User");
+  }
+  if (process.platform === "win32") {
+    return path.join(process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming"), app, "User");
+  }
+  return path.join(os.homedir(), ".config", app, "User");
+}
+
+export function defaultVscodeChatRoot(): string {
+  return path.join(editorUserDir("Code"), "workspaceStorage");
+}
+
+export function defaultCursorDb(): string {
+  return path.join(editorUserDir("Cursor"), "globalStorage", "state.vscdb");
+}
+
 export function defaultConfig(overrides: Partial<CollectorConfig> = {}): CollectorConfig {
+  const rootAdapter = (
+    name: "codex" | "grok-cli" | "copilot-vscode",
+    defaultRoot: string,
+  ): { enabled: boolean; root: string } => ({
+    enabled: overrides.adapters?.[name]?.enabled ?? true,
+    root: overrides.adapters?.[name]?.root ?? defaultRoot,
+  });
+  const dbAdapter = (
+    name: "opencode" | "copilot" | "hermes" | "cursor",
+    defaultDb: string,
+  ): { enabled: boolean; db: string } => ({
+    enabled: overrides.adapters?.[name]?.enabled ?? true,
+    db: overrides.adapters?.[name]?.db ?? defaultDb,
+  });
   return {
     server: overrides.server ?? DEFAULT_SERVER,
     token: overrides.token ?? "",
@@ -38,6 +91,13 @@ export function defaultConfig(overrides: Partial<CollectorConfig> = {}): Collect
         enabled: overrides.adapters?.waylog?.enabled ?? false,
         dirs: overrides.adapters?.waylog?.dirs ?? [],
       },
+      codex: rootAdapter("codex", defaultCodexRoot()),
+      "grok-cli": rootAdapter("grok-cli", defaultGrokRoot()),
+      "copilot-vscode": rootAdapter("copilot-vscode", defaultVscodeChatRoot()),
+      opencode: dbAdapter("opencode", defaultOpencodeDb()),
+      copilot: dbAdapter("copilot", defaultCopilotDb()),
+      hermes: dbAdapter("hermes", defaultHermesDb()),
+      cursor: dbAdapter("cursor", defaultCursorDb()),
     },
   };
 }
@@ -51,22 +111,33 @@ export function normalizeConfig(raw: any): CollectorConfig {
   if (typeof raw.server !== "string" || !raw.server.trim()) throw new Error("collector config missing server");
   if (typeof raw.token !== "string" || !raw.token.trim()) throw new Error("collector config missing token");
 
+  const rootAdapter = (name: string, defaultRoot: string) => ({
+    enabled: raw.adapters?.[name]?.enabled !== false,
+    root: raw.adapters?.[name]?.root ? resolveUserPath(String(raw.adapters[name].root)) : defaultRoot,
+  });
+  const dbAdapter = (name: string, defaultDb: string) => ({
+    enabled: raw.adapters?.[name]?.enabled !== false,
+    db: raw.adapters?.[name]?.db ? resolveUserPath(String(raw.adapters[name].db)) : defaultDb,
+  });
+
   const cfg = defaultConfig({
     server: normalizeServer(raw.server.trim()),
     token: raw.token.trim(),
     adapters: {
-      "claude-code": {
-        enabled: raw.adapters?.["claude-code"]?.enabled !== false,
-        root: raw.adapters?.["claude-code"]?.root
-          ? resolveUserPath(String(raw.adapters["claude-code"].root))
-          : defaultClaudeRoot(),
-      },
+      "claude-code": rootAdapter("claude-code", defaultClaudeRoot()),
       waylog: {
         enabled: raw.adapters?.waylog?.enabled === true,
         dirs: Array.isArray(raw.adapters?.waylog?.dirs)
           ? raw.adapters.waylog.dirs.map((dir: string) => resolveUserPath(String(dir)))
           : [],
       },
+      codex: rootAdapter("codex", defaultCodexRoot()),
+      "grok-cli": rootAdapter("grok-cli", defaultGrokRoot()),
+      "copilot-vscode": rootAdapter("copilot-vscode", defaultVscodeChatRoot()),
+      opencode: dbAdapter("opencode", defaultOpencodeDb()),
+      copilot: dbAdapter("copilot", defaultCopilotDb()),
+      hermes: dbAdapter("hermes", defaultHermesDb()),
+      cursor: dbAdapter("cursor", defaultCursorDb()),
     },
     exclude: Array.isArray(raw.exclude) ? raw.exclude.map(String) : [],
     debounceMs: Number.isFinite(raw.debounceMs) && raw.debounceMs > 0

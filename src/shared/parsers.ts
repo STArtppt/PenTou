@@ -344,7 +344,9 @@ function parseCodexRollout(lines: string[]): Conversation | null {
   return {
     id: makeId(),
     title: title || "Codex Conversation",
-    platform: "Codex",
+    // Codex 归 ChatGPT 在解析层完成，手动导入与 ingest 两路一致
+    // （spec collector-source-expansion §4.5 决策 2）
+    platform: "ChatGPT",
     date: date || finalMessages[0].timestamp,
     folderId: null,
     messages: finalMessages,
@@ -466,7 +468,11 @@ export function parseMarkdown(mdText: string): Conversation | null {
   else if (providerStr.includes("deepseek")) platform = "DeepSeek";
   else if (providerStr.includes("cursor")) platform = "Cursor";
   else if (providerStr.includes("copilot")) platform = "Copilot";
-  else if (providerStr.includes("codex")) platform = "Codex";
+  // Codex 归 ChatGPT（spec collector-source-expansion §4.5 决策 2）
+  else if (providerStr.includes("codex")) platform = "ChatGPT";
+  else if (providerStr.includes("grok")) platform = "Grok";
+  else if (providerStr.includes("opencode")) platform = "OpenCode";
+  else if (providerStr.includes("hermes")) platform = "Hermes";
 
   // Split only by recognized role headers. Normal Markdown headings inside
   // message bodies must not create new messages.

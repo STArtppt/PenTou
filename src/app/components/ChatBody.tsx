@@ -237,6 +237,13 @@ export function ChatBody() {
                 <BrandIcon platform={conversation.platform} size={12} />
                 {conversation.platform}
               </span>
+              {/* 采集形态徽章：仅 cli:<form-slug> 显示，旧值 "cli"/"extension" 不猜来源
+                  （spec collector-source-expansion US-07） */}
+              {conversation.ingestSource?.startsWith("cli:") && (
+                <span className="px-2 py-1 rounded-md bg-zinc-50 dark:bg-white/[0.03] text-zinc-500 dark:text-zinc-400 border border-dashed border-zinc-200 dark:border-white/10 font-mono">
+                  {conversation.ingestSource.slice(4)}
+                </span>
+              )}
               {conversation.updatedAt && (
                 <span className="text-zinc-400 dark:text-zinc-500 hidden sm:inline">
                   {t("version.updatedAt", { time: formatDisplayDateTime(conversation.updatedAt, language) })}

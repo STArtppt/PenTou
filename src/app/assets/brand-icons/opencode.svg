@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" viewBox="0 0 200 200" width="200" height="200">
+  <title>opencode</title>
+  <g fill="#FFFFFF" color="#FFFFFF">
+    <path fill-rule="evenodd" d="M40 24h120c13.255 0 24 10.745 24 24v104c0 13.255-10.745 24-24 24H40c-13.255 0-24-10.745-24-24V48c0-13.255 10.745-24 24-24Zm0 16c-4.418 0-8 3.582-8 8v104c0 4.418 3.582 8 8 8h120c4.418 0 8-3.582 8-8V48c0-4.418-3.582-8-8-8H40Z"/>
+    <path d="M56 70l34 30-34 30v-20l14-10-14-10V70Z"/>
+    <rect x="100" y="120" width="44" height="14" rx="4"/>
+  </g>
+</svg>

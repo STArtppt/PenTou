@@ -9,7 +9,8 @@ import {
   saveSession as saveAiChatFile,
 } from "./ai-chats";
 
-export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes";
+// "Codex" 仅存量数据兼容：新解析一律输出 "ChatGPT"（spec collector-source-expansion 决策 2）
+export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode";
 
 export interface Message {
   id: string;
@@ -31,6 +32,8 @@ export interface Conversation {
   // 导入去重合并后写入：最近一次合并/回滚时间 + 当前版本指针（spec import-dedup-versioning）
   updatedAt?: string;
   currentVersionId?: string;
+  // 采集溯源（spec collector-source-expansion US-07）："cli:<form-slug>" 时顶栏渲染形态徽章
+  ingestSource?: string;
 }
 
 // 导入去重合并的结果汇总（addConversations 返回，供 ImportDrawer 展示非阻塞提示）

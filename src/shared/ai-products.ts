@@ -13,18 +13,20 @@ export interface AiProduct {
 }
 
 export const DEFAULT_AI_PRODUCTS: AiProduct[] = [
-  { name: "ChatGPT" },
+  // Codex ← 一厂商一主产品：Codex 会话归 ChatGPT 文件夹，旧 platform 值作 alias 兼容
+  // （spec collector-source-expansion US-08 / §4.5 决策 2）
+  { name: "ChatGPT", aliases: ["Codex"] },
   { name: "DeepSeek" },
   { name: "Gemini" },
   { name: "Claude" },
   { name: "Cursor" },
   { name: "Copilot" },
-  { name: "Codex" },
   { name: "Hermes" },
   { name: "Doubao" },
   { name: "Metaso" },
   { name: "Qwen", aliases: ["Qianwen"] },
   { name: "Grok" },
+  { name: "OpenCode" },
 ];
 
 /** platform 与标准名或 alias 精确匹配（不折叠大小写）；未命中返回 null → 未分类。 */

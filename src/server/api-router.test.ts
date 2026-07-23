@@ -572,6 +572,45 @@ describe("import auto-classify (spec import-auto-classify)", () => {
     expect(readFolders(abs)).toHaveLength(1);
   });
 
+  // ── 采集源扩展：Codex → ChatGPT alias 与 name 优先查找（spec collector-source-expansion US-08 / 决策 4）──
+
+  it("maps legacy platform Codex into the ChatGPT folder (US-08 AC1)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, []);
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base({ platform: "Codex" }) });
+    const folders = readFolders(abs);
+    expect(folders[0]).toMatchObject({ name: "ChatGPT", platform: "ChatGPT" });
+    expect(res.body.conversation.folderId).toBe(folders[0].id);
+  });
+
+  it("prefers the canonical-name folder when both ChatGPT and Codex folders exist (US-08 AC2)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, [
+      { id: "f_codex", name: "Codex", platform: "Codex" },
+      { id: "f_chatgpt", name: "ChatGPT", platform: "ChatGPT" },
+    ]);
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base({ platform: "Codex" }) });
+    expect(res.body.conversation.folderId).toBe("f_chatgpt");
+    expect(readFolders(abs)).toHaveLength(2);
+  });
+
+  it("reuses an existing alias folder only when no canonical folder exists (US-08 AC2)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, [{ id: "f_codex", name: "Codex", platform: "Codex" }]);
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base({ platform: "Codex" }) });
+    expect(res.body.conversation.folderId).toBe("f_codex");
+    expect(readFolders(abs)).toHaveLength(1);
+  });
+
+  it("classifies OpenCode as a first-class product (US-08 AC1)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, []);
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base({ platform: "OpenCode" }) });
+    const folders = readFolders(abs);
+    expect(folders[0]).toMatchObject({ name: "OpenCode", platform: "OpenCode" });
+    expect(res.body.conversation.folderId).toBe(folders[0].id);
+  });
+
   it("falls back to matching by folder name when platform tag is absent (§5 边界 2)", async () => {
     const { abs, rel } = makeRelativeTempDataDir();
     writeFolders(abs, [{ id: "f_manual", name: "Claude" }]);

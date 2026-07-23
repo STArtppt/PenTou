@@ -155,6 +155,7 @@ function toConversationMeta(conv: any) {
     folderId: conv.folderId,
     updatedAt: conv.updatedAt,
     currentVersionId: conv.currentVersionId,
+    ingestSource: conv.ingestSource,
     messageCount: conv.messages?.length ?? 0,
     messages: [],
   };
@@ -483,9 +484,11 @@ function resolveAutoFolderId(convDir: string, platform: unknown): string | null 
   try {
     const folders = JSON.parse(fs.readFileSync(foldersFile, "utf-8"));
     if (!Array.isArray(folders)) return null;
-    const names = [product.name, ...(product.aliases ?? [])];
+    // 标准名文件夹优先，alias 文件夹仅在无标准名文件夹时沿用，避免新旧两处分裂
+    // （spec collector-source-expansion §4.5 决策 4）
     const existing =
-      folders.find((f: any) => f && names.includes(f.platform)) ??
+      folders.find((f: any) => f && f.platform === product.name) ??
+      folders.find((f: any) => f && (product.aliases ?? []).includes(f.platform)) ??
       folders.find((f: any) => f && f.name === product.name);
     if (existing?.id) return existing.id;
     const folder = {
@@ -872,9 +875,12 @@ async function handleIngestRequest(
       const externalKey = externalId && conversations.length === 1
         ? `${item.platform}:${encodeURIComponent(externalId)}`
         : undefined;
+      // cli 源细化到形态粒度（"cli:<form-slug>"），供顶栏形态徽章消费
+      // （spec collector-source-expansion §4.4 / US-07）
+      const ingestSource = source === "cli" ? `cli:${item.platform}` : source;
       for (const conv of conversations) {
         await localizeMessages(conv.messages, { downloadRemote: true, urlCache });
-        const upserted = upsertConversation(convDir, conv, { externalKey, ingestSource: source });
+        const upserted = upsertConversation(convDir, conv, { externalKey, ingestSource });
         if (upserted.action !== "skipped") changed = true;
         result.conversations.push({ action: upserted.action, id: upserted.id, title: upserted.title });
       }

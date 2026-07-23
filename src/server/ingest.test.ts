@@ -332,7 +332,8 @@ describe("externalId-first idempotent upsert", () => {
     expect(created.action).toBe("created");
     const md = fs.readFileSync(path.join(dataDir, "conversations", `${created.id}.md`), "utf-8");
     expect(md).toContain('externalKey: "claude-code:sess-42"'); // 含冒号 → frontmatter 加引号
-    expect(md).toContain("ingestSource: cli");
+    // cli 源细化为 cli:<form-slug>（spec collector-source-expansion §4.4）
+    expect(md).toContain('ingestSource: "cli:claude-code"');
 
     // 2. 追加轮次重传（标题不变场景由 JSONL 决定；再用 conversation 格式验标题漂移）
     const second = await post(CLAUDE_JSONL_GROWN);

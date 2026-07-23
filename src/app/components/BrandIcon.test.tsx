@@ -42,7 +42,7 @@ describe("BrandIcon", () => {
 
   it("映射表覆盖预期平台且 URL 非空", () => {
     expect(Object.keys(BRAND_ICON_URLS).sort()).toEqual(
-      ["ChatGPT", "Claude", "Codex", "Copilot", "Cursor", "DeepSeek", "Doubao", "Gemini", "Grok", "Hermes", "Metaso", "Qianwen", "Qwen"],
+      ["ChatGPT", "Claude", "Codex", "Copilot", "Cursor", "DeepSeek", "Doubao", "Gemini", "Grok", "Hermes", "Metaso", "OpenCode", "Qianwen", "Qwen"],
     );
     for (const [platform, url] of Object.entries(BRAND_ICON_URLS)) {
       // 构建产物可能是文件路径或内联 data URI（Vite assetsInlineLimit）

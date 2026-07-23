@@ -14,6 +14,7 @@ import type {
 } from "./types.js";
 import { IngestClient, isAuthIngestError, isRetryableIngestError } from "./ingest-client.js";
 import { writeConfig } from "./config.js";
+import { isVirtualKey, parseSessionKey } from "./sqlite.js";
 
 const INGEST_MAX_BODY_BYTES = 10 * 1024 * 1024;
 const INGEST_BODY_OVERHEAD_BYTES = 4096;
@@ -120,8 +121,9 @@ export function backoffDelay(attempt: number, maxMs = 300_000): number {
   return Math.min(base, maxMs);
 }
 
+/** 查询型虚拟键按其 db 路径参与 watchRoots 前缀匹配 */
 function adapterForFile(adapters: CollectorAdapter[], file: string): CollectorAdapter | null {
-  const normalized = path.resolve(file);
+  const normalized = path.resolve(isVirtualKey(file) ? parseSessionKey(file)?.dbPath ?? file : file);
   let best: { adapter: CollectorAdapter; rootLength: number } | null = null;
   for (const adapter of adapters) {
     for (const root of adapter.watchRoots()) {
@@ -138,7 +140,7 @@ function uniqueFiles(files: SessionFile[]): SessionFile[] {
   const seen = new Set<string>();
   const out: SessionFile[] = [];
   for (const file of files) {
-    const resolved = path.resolve(file.path);
+    const resolved = isVirtualKey(file.path) ? file.path : path.resolve(file.path);
     if (seen.has(resolved)) continue;
     seen.add(resolved);
     out.push({ ...file, path: resolved });
@@ -146,10 +148,18 @@ function uniqueFiles(files: SessionFile[]): SessionFile[] {
   return out;
 }
 
-export async function discoverAll(adapters: CollectorAdapter[]): Promise<SessionFile[]> {
+/** 单 adapter 的 discover 失败（如 db 被锁）只隔离该源，不影响其余（spec §5 异常 1） */
+export async function discoverAll(
+  adapters: CollectorAdapter[],
+  onError?: (platform: string, message: string) => void,
+): Promise<SessionFile[]> {
   const all: SessionFile[] = [];
   for (const adapter of adapters) {
-    all.push(...await adapter.discover());
+    try {
+      all.push(...await adapter.discover());
+    } catch (error: any) {
+      onError?.(adapter.platform, error?.message ?? String(error));
+    }
   }
   return uniqueFiles(all).sort((a, b) => a.path.localeCompare(b.path));
 }
@@ -185,18 +195,20 @@ async function prepareItems(
   const logger = options.logger ?? DEFAULT_LOGGER;
 
   for (const file of files) {
-    const excludedBy = exclude(file.path);
+    // exclude 是文件路径黑名单；查询型虚拟键无路径语义，不参与（spec §4.3）
+    const excludedBy = isVirtualKey(file.path) ? null : exclude(file.path);
     if (excludedBy) {
       skippedByExclude += 1;
       if (options.verbose) logger.log(`skip ${file.path} (exclude: ${excludedBy})`);
       continue;
     }
-    const nextSnapshot = await snapshotFile(file.path);
-    if (!snapshotChanged(options.onlyChanged ? options.snapshots[file.path] : undefined, nextSnapshot)) continue;
-    if (!nextSnapshot) continue;
-    const adapter = adapterForFile(adapters, file.path);
+    // discover 产物自带 platform，优先精确匹配；watch 事件路径回退前缀匹配
+    const adapter = adapters.find((a) => a.platform === file.platform) ?? adapterForFile(adapters, file.path);
     if (!adapter) continue;
     try {
+      const nextSnapshot = adapter.snapshot ? await adapter.snapshot(file.path) : await snapshotFile(file.path);
+      if (!snapshotChanged(options.onlyChanged ? options.snapshots[file.path] : undefined, nextSnapshot)) continue;
+      if (!nextSnapshot) continue;
       const item = await adapter.toItem(file.path);
       if (!item) continue;
       items.push({ file: file.path, item, snapshot: nextSnapshot });
@@ -230,7 +242,10 @@ export async function pullOnce(
     throw new Error(`unknown or disabled adapter: ${options.adapterName}`);
   }
 
-  const files = await discoverAll(selectedAdapters);
+  const discoverErrors: CollectorFileError[] = [];
+  const files = await discoverAll(selectedAdapters, (platform, message) =>
+    discoverErrors.push({ file: `adapter:${platform}`, error: message }),
+  );
   const exclude = createExcludeMatcher(config.exclude);
   const prepared = await prepareItems(files, selectedAdapters, exclude, {
     onlyChanged: false,
@@ -238,6 +253,7 @@ export async function pullOnce(
     verbose: options.verbose,
     logger,
   });
+  prepared.errors.unshift(...discoverErrors);
 
   const summary: PullSummary = {
     scanned: files.length,
@@ -371,8 +387,15 @@ export class CollectorWatchEngine {
   }
 
   async backfill(): Promise<void> {
-    const files = await discoverAll(this.adapters);
-    const prepared = await prepareItems(files, this.adapters, this.exclude, {
+    await this.syncAdapters(this.adapters);
+  }
+
+  /** 差量同步一组 adapter：discover → 快照对比 → 逐条上报（backfill 与查询型 watch 共用） */
+  private async syncAdapters(adapters: CollectorAdapter[]): Promise<void> {
+    const files = await discoverAll(adapters, (platform, message) =>
+      this.logger.warn(`discover failed ${platform}: ${message}`),
+    );
+    const prepared = await prepareItems(files, adapters, this.exclude, {
       onlyChanged: true,
       snapshots: this.config.snapshots,
       verbose: this.verbose,
@@ -388,16 +411,29 @@ export class CollectorWatchEngine {
     const resolved = path.resolve(file);
     const adapter = adapterForFile(this.adapters, resolved);
     if (!adapter) return;
+    // 查询型：db/-wal 的任意写入事件聚合为一次该源的差量拉取（spec US-03 AC2）
+    if (adapter.kind === "query") {
+      this.scheduleTimer(`query:${adapter.platform}`, () =>
+        this.syncAdapters([adapter]).catch((error) => this.logger.error(error?.message ?? String(error))),
+      );
+      return;
+    }
     const excludedBy = this.exclude(resolved);
     if (excludedBy) {
       if (this.verbose) this.logger.log(`skip ${resolved} (exclude: ${excludedBy})`);
       return;
     }
-    const existing = this.timers.get(resolved);
+    this.scheduleTimer(resolved, () =>
+      this.sendFile(resolved, adapter).catch((error) => this.logger.error(error?.message ?? String(error))),
+    );
+  }
+
+  private scheduleTimer(key: string, fire: () => void): void {
+    const existing = this.timers.get(key);
     if (existing) clearTimeout(existing);
-    this.timers.set(resolved, setTimeout(() => {
-      this.timers.delete(resolved);
-      this.sendFile(resolved, adapter).catch((error) => this.logger.error(error?.message ?? String(error)));
+    this.timers.set(key, setTimeout(() => {
+      this.timers.delete(key);
+      fire();
     }, this.config.debounceMs));
   }
 
@@ -419,7 +455,7 @@ export class CollectorWatchEngine {
   }
 
   private async sendFile(file: string, adapter: CollectorAdapter): Promise<boolean> {
-    const snapshot = await snapshotFile(file);
+    const snapshot = adapter.snapshot ? await adapter.snapshot(file) : await snapshotFile(file);
     if (!snapshot) return true;
     const item = await adapter.toItem(file);
     if (!item) return true;

@@ -202,4 +202,45 @@ describe("collector engine", () => {
     expect(backoffDelay(3)).toBe(4000);
     expect(backoffDelay(99)).toBe(300000);
   });
+
+  // 查询型 watch：db 写入事件聚合为一次该源的差量拉取，仅变化会话重传
+  // （spec collector-source-expansion US-03 AC2）
+  it("query adapter watch events coalesce into one differential sync", async () => {
+    const root = tmpDir("pentou-query-");
+    const dbPath = path.join(root, "fake.db");
+    fs.writeFileSync(dbPath, "");
+    const key = (id: string) => `sqlite://${dbPath}#${id}`;
+    const metas = new Map([
+      ["s1", { mtimeMs: 100, size: 2 }],
+      ["s2", { mtimeMs: 200, size: 3 }],
+    ]);
+    const fakeQuery = {
+      platform: "fakeq",
+      kind: "query" as const,
+      async discover() {
+        return [...metas.keys()].map((id) => ({ path: key(id), platform: "fakeq" }));
+      },
+      watchRoots: () => [root],
+      async snapshot(fileOrKey: string) {
+        return metas.get(fileOrKey.split("#")[1]) ?? null;
+      },
+      async toItem(fileOrKey: string) {
+        const id = fileOrKey.split("#")[1];
+        return { platform: "fakeq", externalId: id, format: "raw" as const, data: `{"id":"${id}"}` };
+      },
+    };
+    const config = defaultConfig({ server: "http://x", token: "t", debounceMs: 10 });
+    config.snapshots[key("s1")] = { mtimeMs: 100, size: 2 }; // s1 未变化
+    const client = new FakeClient();
+    const engine = new CollectorWatchEngine(config, [fakeQuery], { client: client as any });
+
+    engine.schedule(dbPath);
+    engine.schedule(`${dbPath}-wal`); // 防抖窗口内的第二个事件合并
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    expect(client.calls).toHaveLength(1);
+    expect(client.calls[0].map((item) => item.externalId)).toEqual(["s2"]);
+    expect(config.snapshots[key("s2")]).toEqual({ mtimeMs: 200, size: 3 });
+    engine.stop();
+  });
 });

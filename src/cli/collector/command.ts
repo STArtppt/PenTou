@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { defaultConfig, normalizeServer, readConfig, resolveUserPath, writeConfig, CONFIG_PATH } from "./config.js";
@@ -20,7 +21,8 @@ Options:
   --waylog-dir <path>  Register a .waylog directory or its parent project directory (repeatable)
   --exclude <glob>     Exclude path pattern (repeatable)
   --debounce-ms <n>    Watch debounce window, default 15000
-  --adapter <name>     Limit pull to claude-code or waylog
+  --adapter <name>     Limit pull to one adapter: claude-code, waylog, codex,
+                       grok-cli, copilot, copilot-vscode, opencode, hermes, cursor
   --dry-run            List files without uploading
   --config <path>      Collector config path, default ~/.pentou/collector.json
   --verbose            Print skipped paths and watch roots
@@ -142,6 +144,25 @@ async function initCollector(flags: ParsedArgs["flags"]): Promise<void> {
   const cfg = buildInitConfig(existing, { server, token, flags });
   writeConfig(cfg, configPath);
   console.log(`collector config written: ${configPath}`);
+  printDetectedSources(cfg);
+}
+
+/** 按本机目录/库文件存在性提示各来源状态（spec collector-source-expansion §4.3） */
+function printDetectedSources(cfg: CollectorConfig): void {
+  const sources: Array<[string, string | undefined]> = [
+    ["claude-code", cfg.adapters["claude-code"].root],
+    ["codex", cfg.adapters.codex.root],
+    ["grok-cli", cfg.adapters["grok-cli"].root],
+    ["copilot-vscode", cfg.adapters["copilot-vscode"].root],
+    ["opencode", cfg.adapters.opencode.db],
+    ["copilot", cfg.adapters.copilot.db],
+    ["hermes", cfg.adapters.hermes.db],
+    ["cursor", cfg.adapters.cursor.db],
+  ];
+  for (const [name, target] of sources) {
+    const found = target ? fs.existsSync(target) : false;
+    console.log(`  ${found ? "✓" : "-"} ${name}: ${found ? target : "not found (will be skipped)"}`);
+  }
 }
 
 function unique(values: string[]): string[] {
@@ -161,6 +182,7 @@ function buildInitConfig(
     server: params.server,
     token: params.token,
     adapters: {
+      ...base.adapters,
       "claude-code": {
         enabled: base.adapters["claude-code"].enabled,
         root: flagString(flags, "--claude-root")
