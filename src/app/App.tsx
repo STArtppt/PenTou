@@ -91,6 +91,54 @@ function AppContent() {
             background-color: rgba(255, 255, 255, 0.2);
           }
 
+          .subtle-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+          .subtle-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .subtle-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(161, 161, 170, 0);
+            border-radius: 999px;
+            border-left: 2px solid transparent;
+            border-right: 2px solid transparent;
+            background-clip: padding-box;
+            transition:
+              background-color 220ms ease,
+              border-left-width 220ms ease,
+              opacity 220ms ease;
+            opacity: 0;
+          }
+          .dark .subtle-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0);
+          }
+          .subtle-scrollbar.subtle-scrollbar-active::-webkit-scrollbar-thumb,
+          .subtle-scrollbar:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(161, 161, 170, 0.34);
+            opacity: 1;
+          }
+          .dark .subtle-scrollbar.subtle-scrollbar-active::-webkit-scrollbar-thumb,
+          .dark .subtle-scrollbar:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.18);
+            opacity: 1;
+          }
+          .subtle-scrollbar:hover::-webkit-scrollbar-thumb {
+            border-left-width: 0;
+          }
+          .subtle-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+          }
+          .subtle-scrollbar.subtle-scrollbar-active,
+          .subtle-scrollbar:hover {
+            scrollbar-color: rgba(161, 161, 170, 0.34) transparent;
+          }
+          .dark .subtle-scrollbar.subtle-scrollbar-active,
+          .dark .subtle-scrollbar:hover {
+            scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+          }
+
           /* 搜索结果跳转后的临时高亮（spec hybrid-search US-03） */
           .search-hit-flash {
             animation: searchHitFlash 2.2s ease-out;

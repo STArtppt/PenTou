@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { useAppContext, Conversation, Folder, Platform, Document, DocumentFolder } from "../data";
 import logoUrl from "../../../assets/images/logo.png";
 import logoDarkUrl from "../../../assets/images/logo_dark.png";
+import { useScrollActivity } from "../hooks/useScrollActivity";
 import { useTranslation } from "../i18n";
 import { formatDisplayDate } from "../utils/dateFormat";
 import { copyText } from "../utils/clipboard";
@@ -484,6 +485,7 @@ export function Sidebar() {
   // 折叠状态提升到 Sidebar，让 selectAll 能准确计算"当前可见叶子" (spec US-02.3)
   const [chatFolderOpen, setChatFolderOpen] = useState<Record<string, boolean>>({});
   const [docFolderOpen, setDocFolderOpen] = useState<Record<string, boolean>>({});
+  const { isScrolling: isListScrolling, markScrollActive: markListScrollActive } = useScrollActivity();
 
   const platformOptions: Platform[] = ["ChatGPT", "DeepSeek", "Gemini", "Claude", "CLI", "Cursor", "Copilot", "Codex", "Hermes"];
 
@@ -727,7 +729,13 @@ export function Sidebar() {
       </div>
 
       {/* Lists */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 custom-scrollbar space-y-1">
+      <div
+        className={clsx(
+          "flex-1 overflow-y-auto overflow-x-hidden p-2 custom-scrollbar subtle-scrollbar space-y-1",
+          isListScrolling && "subtle-scrollbar-active",
+        )}
+        onScroll={markListScrollActive}
+      >
         {activeView === "chat" ? (
           <>
             <div className="mt-2 mb-4">

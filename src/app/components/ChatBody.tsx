@@ -15,6 +15,7 @@ import { locateAndFlash } from "../utils/searchJump";
 import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { formatDisplayDateTime, formatDisplayTime } from "../utils/dateFormat";
+import { useScrollActivity } from "../hooks/useScrollActivity";
 
 export function ChatBody() {
   const {
@@ -65,6 +66,7 @@ export function ChatBody() {
   const [converting, setConverting] = useState(false);
   const [excerpting, setExcerpting] = useState(false);
   const [previewMessages, setPreviewMessages] = useState<Message[] | null>(null);
+  const { isScrolling: isContentScrolling, markScrollActive: markContentScrollActive } = useScrollActivity();
 
   // 预览历史版本时拉取该版本的 messages（spec US-03）
   useEffect(() => {
@@ -285,7 +287,14 @@ export function ChatBody() {
         )}
 
         {/* Message List */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar pb-32 pt-8">
+        <div
+          ref={scrollRef}
+          className={clsx(
+            "flex-1 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar subtle-scrollbar pb-32 pt-8",
+            isContentScrolling && "subtle-scrollbar-active",
+          )}
+          onScroll={markContentScrollActive}
+        >
           <div className="max-w-4xl mx-auto px-6 space-y-12">
             {displayMessages.map((msg) => (
               <MessageBubble

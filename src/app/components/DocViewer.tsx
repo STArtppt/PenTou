@@ -11,6 +11,7 @@ import { copyText } from "../utils/clipboard";
 import { locateAndFlash } from "../utils/searchJump";
 import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
+import { useScrollActivity } from "../hooks/useScrollActivity";
 
 interface Props {
   docId: string;
@@ -49,6 +50,7 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
   }, [searchJump, docId, body, setSearchJump]);
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
+  const { isScrolling: isContentScrolling, markScrollActive: markContentScrollActive } = useScrollActivity();
   const rehypePlugins = useMemo(
     () => [createAnnotationHighlightPlugin(annotations)],
     [annotations],
@@ -146,7 +148,14 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
   }, [popup]);
 
   return (
-    <div id="doc-scroll-container" className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar pb-24 px-4 sm:px-8">
+    <div
+      id="doc-scroll-container"
+      className={clsx(
+        "relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar subtle-scrollbar pb-24 px-4 sm:px-8",
+        isContentScrolling && "subtle-scrollbar-active",
+      )}
+      onScroll={markContentScrollActive}
+    >
       {orphanedCount > 0 && (
         <div className="mx-auto max-w-4xl pt-6">
           <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg px-3 py-2">
@@ -419,10 +428,11 @@ function DocumentTOC({ body }: { body: string }) {
   const { t } = useTranslation();
   const headings = useMemo(() => extractHeadings(body), [body]);
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
-  const [isTocScrolling, setIsTocScrolling] = useState(false);
+  const { isScrolling: isTocScrolling, markScrollActive: markTocScrollActive } = useScrollActivity();
   const tocScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    tocScrollTimer.current = null;
     const container = document.getElementById("doc-scroll-container");
     if (!container) return;
 
@@ -472,12 +482,6 @@ function DocumentTOC({ body }: { body: string }) {
     }
   };
 
-  const handleTocScroll = () => {
-    setIsTocScrolling(true);
-    if (tocScrollTimer.current) clearTimeout(tocScrollTimer.current);
-    tocScrollTimer.current = setTimeout(() => setIsTocScrolling(false), 700);
-  };
-
   return (
     <div className="w-[240px] shrink-0 relative py-2 text-sm select-none">
       <div className="font-bold text-zinc-800 dark:text-zinc-200 mb-3 pl-4">
@@ -489,7 +493,7 @@ function DocumentTOC({ body }: { body: string }) {
           "max-h-[calc(100vh-150px)] overflow-y-auto rightnav-scrollbar relative pr-1",
           isTocScrolling && "toc-scrollbar-active",
         )}
-        onScroll={handleTocScroll}
+        onScroll={markTocScrollActive}
       >
         <div className="flex flex-col gap-[2px] relative z-10">
           {headings.map((h, i) => {

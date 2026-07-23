@@ -133,7 +133,7 @@ export function RightNav({ messages, scrollContainer }: RightNavProps) {
         className={clsx(
           "relative flex flex-col box-border max-h-[300px]",
           isHovered 
-            ? "w-[260px] bg-white dark:bg-[#1A1A1A] rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] border border-zinc-100 dark:border-white/10 opacity-100 py-[15px] pl-[24px] pr-[10px] overflow-y-auto rightnav-scrollbar" 
+            ? "w-[260px] bg-white dark:bg-[#1A1A1A] rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] border border-zinc-100 dark:border-white/10 opacity-100 py-[15px] pl-[24px] pr-[19px] overflow-y-auto rightnav-scrollbar" 
             : "w-[53px] bg-transparent border border-transparent opacity-80 py-[15px] pr-[19px] overflow-hidden"
         )}
         style={{ 
