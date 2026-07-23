@@ -13,7 +13,6 @@ import {
   Paperclip,
   MessageCircle,
 } from "lucide-react";
-import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -371,15 +370,14 @@ function ToolButton({
 }) {
   return (
     <Button
-      variant="ghost"
+      // 选中态改 primary，避免 ghost 的 hover:bg-accent 与手写 primary 类在 CSS 源序中打架，
+      // 导致 hover 落到近背景的 accent（ai-sidebar 打开时「问问 AI」尤其明显）。
+      variant={active ? "primary" : "ghost"}
       size="sm"
       onClick={onClick}
       disabled={disabled}
       title={tooltip}
-      className={clsx(
-        "gap-1.5 px-2.5",
-        active && "bg-primary text-primary-foreground hover:bg-primary/90",
-      )}
+      className="gap-1.5 px-2.5"
     >
       <Icon size={14} className={loading ? "animate-spin" : ""} />
       {label}

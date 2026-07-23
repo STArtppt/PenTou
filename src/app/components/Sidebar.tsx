@@ -216,7 +216,7 @@ function ItemActionMenu({
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.1 }}
         style={{ top: menuPosition.top, left: menuPosition.left, width: ITEM_MENU_WIDTH, maxHeight: menuPosition.maxHeight }}
-        className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-[80] overflow-y-auto custom-scrollbar"
+        className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-30 overflow-y-auto custom-scrollbar"
       >
         <button
           onMouseEnter={() => setSubmenuOpen(false)}
@@ -279,7 +279,7 @@ function ItemActionMenu({
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
             style={{ top: submenuPosition.top, left: submenuPosition.left, width: FOLDER_SUBMENU_WIDTH, maxHeight: submenuPosition.maxHeight }}
-            className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-[90] overflow-y-auto custom-scrollbar"
+            className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-30 overflow-y-auto custom-scrollbar"
           >
             {moveTargets.map((target) => (
               <button
@@ -315,7 +315,7 @@ function FolderManagementMenu({
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.1 }}
       style={{ top: menuPosition.top, left: menuPosition.left, width: ITEM_MENU_WIDTH, maxHeight: menuPosition.maxHeight }}
-      className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-[80] overflow-y-auto custom-scrollbar"
+      className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-30 overflow-y-auto custom-scrollbar"
     >
       <button
         onClick={(e) => { e.stopPropagation(); onRename(); }}
@@ -928,14 +928,14 @@ export function Sidebar() {
       <AnimatePresence>
         {batchMoveMenu && (
           <>
-            <div className="fixed inset-0 z-[85]" onClick={() => setBatchMoveMenu(null)} />
+            <div className="fixed inset-0 z-30" onClick={() => setBatchMoveMenu(null)} />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.1 }}
               style={{ top: batchMoveMenu.top, left: batchMoveMenu.left, width: FOLDER_SUBMENU_WIDTH, maxHeight: batchMoveMenu.maxHeight }}
-              className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-[90] overflow-y-auto custom-scrollbar"
+              className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-30 overflow-y-auto custom-scrollbar"
             >
               {moveTargets.map((target) => (
                 <button

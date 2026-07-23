@@ -148,7 +148,10 @@ describe("MermaidBlock", () => {
       (container.querySelector('button[title="Fullscreen"]') as HTMLButtonElement).click();
     });
 
-    expect(addEventListenerSpy).toHaveBeenCalledWith("wheel", expect.any(Function), expect.objectContaining({ passive: false }));
+    // 迁 @startist/lightbox 后 Popup 内容经 Base UI Portal 异步挂载，wheel 监听在其后注册。
+    await waitFor(() =>
+      expect(addEventListenerSpy).toHaveBeenCalledWith("wheel", expect.any(Function), expect.objectContaining({ passive: false })),
+    );
 
     addEventListenerSpy.mockRestore();
     unmount();

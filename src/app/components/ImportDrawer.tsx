@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { Drawer, DrawerBackdrop, DrawerPopup, DrawerPortal } from "@/components/ui/drawer";
 import {
   X,
   UploadCloud,
@@ -116,6 +116,20 @@ async function parseChatGPTZip(file: File, t: (key: string) => string): Promise<
 export function ImportDrawer() {
   const { isDrawerOpen, setDrawerOpen, addConversations, addDocuments, folders, activeView, setActiveView, setActiveDocId, setActiveConversationId } = useAppContext();
   const { t } = useTranslation();
+
+  // 首次滑入动画修复：App 用 `{drawerEverOpened && <ImportDrawer/>}` 门控，本组件
+  // 首挂载时 isDrawerOpen 已为 true → 直接以打开态渲染，无过渡起始帧（闪现）。
+  // 解法：本地 open 首帧为 false（关闭态先绘制一帧），下一帧再置真值 → 有可插值的 from。
+  // 配合 DrawerPortal keepMounted（Popup 在那一关闭帧已挂载）。见 debug 2026-07-21。
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!isDrawerOpen) {
+      setOpen(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, [isDrawerOpen]);
 
   // 导入完成后以非阻塞 toast 汇总「新建 / 并入 / 跳过」，并入项给出可点击定位入口（US-04）
   const showImportSummary = (summary: ImportSummary) => {
@@ -271,24 +285,18 @@ export function ImportDrawer() {
   const subtitle = isDocMode ? t("import.subtitleDoc") : t("import.subtitle");
 
   return (
-    <AnimatePresence>
-      {isDrawerOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => !isImporting && setDrawerOpen(false)}
-            className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm z-40"
-          />
-
-          <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed left-0 top-0 bottom-0 w-full max-w-2xl bg-white dark:bg-[#151515] shadow-2xl z-50 flex flex-col border-r border-zinc-200 dark:border-white/10"
-          >
+    <Drawer
+      open={open}
+      onOpenChange={(next) => {
+        if (next) return;
+        if (isImporting) return; // 导入进行中禁止关闭（外点 / Escape 均拦截）
+        setDrawerOpen(false);
+      }}
+    >
+      {/* keepMounted：Popup 在关闭帧即挂载(左移出屏)，配合上面的延迟 open 让首次打开也有滑入起始帧 */}
+      <DrawerPortal keepMounted>
+        <DrawerBackdrop />
+        <DrawerPopup side="left" className="max-w-2xl">
             <div className="flex items-center justify-between p-6 border-b border-zinc-200 dark:border-white/10 shrink-0 bg-zinc-50/50 dark:bg-[#1A1A1A]/50">
               <div>
                 <h2 className="text-xl font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
@@ -297,13 +305,15 @@ export function ImportDrawer() {
                 </h2>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{subtitle}</p>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => !isImporting && setDrawerOpen(false)}
                 disabled={isImporting}
-                className="p-2 rounded-md hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-500 transition-colors disabled:opacity-50"
+                className="size-9 text-zinc-500"
               >
                 <X size={20} />
-              </button>
+              </Button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-12 custom-scrollbar">
@@ -463,10 +473,9 @@ export function ImportDrawer() {
               </>
               )}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+        </DrawerPopup>
+      </DrawerPortal>
+    </Drawer>
   );
 }
 

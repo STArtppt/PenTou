@@ -5,6 +5,14 @@ import { useTranslation } from "../i18n";
 import { copyText } from "../utils/clipboard";
 import { renderMermaid, type MermaidTheme } from "../utils/mermaid";
 import { Button } from "@/components/ui/button";
+import {
+  Lightbox,
+  LightboxBackdrop,
+  LightboxPopup,
+  LightboxPortal,
+  LightboxTitle,
+  LightboxToolbar,
+} from "@/components/ui/lightbox";
 
 type RenderStatus =
   | { kind: "idle" | "loading" }
@@ -169,6 +177,7 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
           svg={status.svg}
           bindFunctions={status.bindFunctions}
           labels={{
+            title: t("mermaid.fullscreen"),
             zoomIn: t("mermaid.zoomIn"),
             zoomOut: t("mermaid.zoomOut"),
             reset: t("mermaid.reset"),
@@ -188,6 +197,7 @@ interface MermaidFullscreenModalProps {
   svg: string;
   bindFunctions?: (el: Element) => void;
   labels: {
+    title: string;
     zoomIn: string;
     zoomOut: string;
     reset: string;
@@ -197,119 +207,106 @@ interface MermaidFullscreenModalProps {
 }
 
 function MermaidFullscreenModal({ svg, bindFunctions, labels, onClose }: MermaidFullscreenModalProps) {
-  const contentRef = useRef<HTMLDivElement>(null);
-  const wheelAreaRef = useRef<HTMLDivElement>(null);
-  const lastActiveRef = useRef<Element | null>(null);
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const wheelCleanupRef = useRef<(() => void) | null>(null);
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
 
-  useEffect(() => {
-    lastActiveRef.current = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-      if (lastActiveRef.current instanceof HTMLElement) lastActiveRef.current.focus();
-    };
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!contentRef.current) return;
-    bindFunctions?.(contentRef.current);
-  }, [bindFunctions, svg]);
+  // Escape / focus-restore / body-scroll-lock 交给 @startist/lightbox (Base UI Dialog)。
 
   const zoomBy = useCallback((factor: number) => {
     setScale((current) => Math.min(4, Math.max(0.25, Number((current * factor).toFixed(3)))));
   }, []);
 
-  useEffect(() => {
-    const wheelArea = wheelAreaRef.current;
-    if (!wheelArea) return;
+  // Popup 内容经 Base UI Portal 挂载（晚于父 effect），改用回调 ref：节点挂上即绑定。
+  const bindContent = useCallback((node: HTMLDivElement | null) => {
+    if (node) bindFunctions?.(node);
+  }, [bindFunctions]);
 
+  const attachWheel = useCallback((node: HTMLDivElement | null) => {
+    wheelCleanupRef.current?.();
+    wheelCleanupRef.current = null;
+    if (!node) return;
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
       zoomBy(event.deltaY > 0 ? 1 / 1.2 : 1.2);
     };
-
-    wheelArea.addEventListener("wheel", handleWheel, { passive: false });
-    return () => wheelArea.removeEventListener("wheel", handleWheel);
+    node.addEventListener("wheel", handleWheel, { passive: false });
+    wheelCleanupRef.current = () => node.removeEventListener("wheel", handleWheel);
   }, [zoomBy]);
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-zinc-950/85 p-4 backdrop-blur-sm"
-      onMouseMove={(event) => {
-        if (!dragRef.current) return;
-        setPan({
-          x: dragRef.current.panX + event.clientX - dragRef.current.x,
-          y: dragRef.current.panY + event.clientY - dragRef.current.y,
-        });
-      }}
-      onMouseUp={() => {
-        dragRef.current = null;
-      }}
-      onMouseLeave={() => {
-        dragRef.current = null;
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded-lg border border-white/10 bg-zinc-900/90 p-1 text-zinc-100 shadow-2xl">
-        <button type="button" onClick={() => zoomBy(1 / 1.2)} className="rounded p-2 hover:bg-white/10" title={labels.zoomOut}>
-          <Minus size={16} />
-        </button>
-        <span className="w-14 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
-        <button type="button" onClick={() => zoomBy(1.2)} className="rounded p-2 hover:bg-white/10" title={labels.zoomIn}>
-          <Plus size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setScale(1);
-            setPan({ x: 0, y: 0 });
+    <Lightbox open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <LightboxPortal>
+        <LightboxBackdrop />
+        <LightboxPopup
+          onMouseMove={(event) => {
+            if (!dragRef.current) return;
+            setPan({
+              x: dragRef.current.panX + event.clientX - dragRef.current.x,
+              y: dragRef.current.panY + event.clientY - dragRef.current.y,
+            });
           }}
-          className="rounded p-2 hover:bg-white/10"
-          title={labels.reset}
-        >
-          <RotateCcw size={16} />
-        </button>
-        <button
-          type="button"
-          onMouseDown={(event) => {
-            event.stopPropagation();
-            onClose();
+          onMouseUp={() => {
+            dragRef.current = null;
           }}
-          onClick={(event) => event.stopPropagation()}
-          className="rounded p-2 hover:bg-white/10"
-          title={labels.close}
+          onMouseLeave={() => {
+            dragRef.current = null;
+          }}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) onClose();
+          }}
         >
-          <X size={16} />
-        </button>
-      </div>
+          <LightboxTitle className="sr-only">{labels.title}</LightboxTitle>
+          <LightboxToolbar>
+            <button type="button" onClick={() => zoomBy(1 / 1.2)} className="rounded p-2 hover:bg-white/10" title={labels.zoomOut}>
+              <Minus size={16} />
+            </button>
+            <span className="w-14 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
+            <button type="button" onClick={() => zoomBy(1.2)} className="rounded p-2 hover:bg-white/10" title={labels.zoomIn}>
+              <Plus size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setScale(1);
+                setPan({ x: 0, y: 0 });
+              }}
+              className="rounded p-2 hover:bg-white/10"
+              title={labels.reset}
+            >
+              <RotateCcw size={16} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(event) => {
+                event.stopPropagation();
+                onClose();
+              }}
+              onClick={(event) => event.stopPropagation()}
+              className="rounded p-2 hover:bg-white/10"
+              title={labels.close}
+            >
+              <X size={16} />
+            </button>
+          </LightboxToolbar>
 
-      <div
-        ref={wheelAreaRef}
-        className="h-full w-full overflow-hidden"
-      >
-        <div
-          ref={contentRef}
-          className="flex h-full w-full cursor-grab items-center justify-center active:cursor-grabbing [&_svg]:max-h-[88vh] [&_svg]:max-w-[88vw]"
-          style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}
-          onMouseDown={(event) => {
-            dragRef.current = { x: event.clientX, y: event.clientY, panX: pan.x, panY: pan.y };
-          }}
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
-      </div>
-    </div>
+          <div
+            ref={attachWheel}
+            className="h-full w-full overflow-hidden"
+          >
+            <div
+              ref={bindContent}
+              className="flex h-full w-full cursor-grab items-center justify-center active:cursor-grabbing [&_svg]:max-h-[88vh] [&_svg]:max-w-[88vw]"
+              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}
+              onMouseDown={(event) => {
+                dragRef.current = { x: event.clientX, y: event.clientY, panX: pan.x, panY: pan.y };
+              }}
+              dangerouslySetInnerHTML={{ __html: svg }}
+            />
+          </div>
+        </LightboxPopup>
+      </LightboxPortal>
+    </Lightbox>
   );
 }

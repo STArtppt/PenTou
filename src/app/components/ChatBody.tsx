@@ -272,14 +272,12 @@ export function ChatBody() {
               {t("toolbar.convertToDoc", { defaultValue: "转为文档" })}
             </Button>
             <Button
-              variant="ghost"
+              variant={aiSidebarOpen ? "primary" : "ghost"}
               size="sm"
               onClick={toggleAiSidebar}
               className={clsx(
                 "h-auto gap-1.5 rounded-md px-3 py-1.5 text-xs",
-                aiSidebarOpen
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "text-muted-foreground",
+                !aiSidebarOpen && "text-muted-foreground",
               )}
             >
               <MessageSquare size={14} />

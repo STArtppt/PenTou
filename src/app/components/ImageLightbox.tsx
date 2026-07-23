@@ -11,6 +11,13 @@ import React, {
 import { ChevronLeft, ChevronRight, ImageOff, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { defaultUrlTransform } from "react-markdown";
 import { useTranslation } from "../i18n";
+import {
+  Lightbox,
+  LightboxBackdrop,
+  LightboxPopup,
+  LightboxPortal,
+  LightboxTitle,
+} from "@/components/ui/lightbox";
 
 /**
  * 图片渲染与全屏查看（spec media-assets US-01 / §4.7 v0.5）。
@@ -152,8 +159,7 @@ interface ImageLightboxProps {
 
 export function ImageLightbox({ items, initialIndex, onClose }: ImageLightboxProps) {
   const { t } = useTranslation();
-  const wheelAreaRef = useRef<HTMLDivElement>(null);
-  const lastActiveRef = useRef<Element | null>(null);
+  const wheelCleanupRef = useRef<(() => void) | null>(null);
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const draggedRef = useRef(false);
   const [index, setIndex] = useState(() =>
@@ -192,50 +198,40 @@ export function ImageLightbox({ items, initialIndex, onClose }: ImageLightboxPro
     resetView();
   }, [index, resetView]);
 
+  // Escape / focus-restore / body-scroll-lock 交给 @startist/lightbox；此处仅保留左右翻页键。
+  // 必须用 capture：Base UI DialogPopup 在冒泡阶段对 COMPOSITE_KEYS（含 ArrowLeft/Right）
+  // 调用 stopPropagation，document 冒泡监听永远收不到（焦点落在工具栏按钮时更明显）。
   useEffect(() => {
-    lastActiveRef.current = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-        return;
-      }
       if (event.key === "ArrowLeft") {
         event.preventDefault();
+        event.stopPropagation();
         goPrev();
-        return;
-      }
-      if (event.key === "ArrowRight") {
+      } else if (event.key === "ArrowRight") {
         event.preventDefault();
+        event.stopPropagation();
         goNext();
       }
     };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-      if (lastActiveRef.current instanceof HTMLElement) lastActiveRef.current.focus();
-    };
-  }, [onClose, goPrev, goNext]);
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [goPrev, goNext]);
 
   const zoomBy = useCallback((factor: number) => {
     setScale((currentScale) => Math.min(4, Math.max(0.25, Number((currentScale * factor).toFixed(3)))));
   }, []);
 
-  useEffect(() => {
-    const wheelArea = wheelAreaRef.current;
-    if (!wheelArea) return;
-
+  // Popup 内容经 Base UI Portal 挂载（晚于父 effect），wheel 用回调 ref 保证节点挂上即绑定。
+  const attachWheel = useCallback((node: HTMLDivElement | null) => {
+    wheelCleanupRef.current?.();
+    wheelCleanupRef.current = null;
+    if (!node) return;
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
       zoomBy(event.deltaY > 0 ? 1 / 1.2 : 1.2);
     };
-
-    wheelArea.addEventListener("wheel", handleWheel, { passive: false });
-    return () => wheelArea.removeEventListener("wheel", handleWheel);
+    node.addEventListener("wheel", handleWheel, { passive: false });
+    wheelCleanupRef.current = () => node.removeEventListener("wheel", handleWheel);
   }, [zoomBy]);
 
   /** 点击遮罩关闭；拖拽松手不误关（US-01 AC2 / §4.7）。 */
@@ -250,27 +246,30 @@ export function ImageLightbox({ items, initialIndex, onClose }: ImageLightboxPro
   if (!current) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-zinc-950/85 p-4 backdrop-blur-sm"
-      data-testid="image-lightbox"
-      onMouseMove={(event) => {
-        if (!dragRef.current) return;
-        const dx = event.clientX - dragRef.current.x;
-        const dy = event.clientY - dragRef.current.y;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) draggedRef.current = true;
-        setPan({
-          x: dragRef.current.panX + dx,
-          y: dragRef.current.panY + dy,
-        });
-      }}
-      onMouseUp={() => {
-        dragRef.current = null;
-      }}
-      onMouseLeave={() => {
-        dragRef.current = null;
-      }}
-      onClick={handleBackdropClick}
-    >
+    <Lightbox open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <LightboxPortal>
+        <LightboxBackdrop />
+        <LightboxPopup
+          data-testid="image-lightbox"
+          onMouseMove={(event) => {
+            if (!dragRef.current) return;
+            const dx = event.clientX - dragRef.current.x;
+            const dy = event.clientY - dragRef.current.y;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) draggedRef.current = true;
+            setPan({
+              x: dragRef.current.panX + dx,
+              y: dragRef.current.panY + dy,
+            });
+          }}
+          onMouseUp={() => {
+            dragRef.current = null;
+          }}
+          onMouseLeave={() => {
+            dragRef.current = null;
+          }}
+          onClick={handleBackdropClick}
+        >
+          <LightboxTitle className="sr-only">{current.alt || (multi ? `${index + 1} / ${total}` : "​")}</LightboxTitle>
       <div
         className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded-lg border border-white/10 bg-zinc-900/90 p-1 text-zinc-100 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
@@ -346,7 +345,7 @@ export function ImageLightbox({ items, initialIndex, onClose }: ImageLightboxPro
       )}
 
       <div
-        ref={wheelAreaRef}
+        ref={attachWheel}
         className="flex h-full w-full items-center justify-center overflow-hidden"
         onClick={handleBackdropClick}
       >
@@ -370,6 +369,8 @@ export function ImageLightbox({ items, initialIndex, onClose }: ImageLightboxPro
           />
         </div>
       </div>
-    </div>
+        </LightboxPopup>
+      </LightboxPortal>
+    </Lightbox>
   );
 }

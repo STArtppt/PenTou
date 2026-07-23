@@ -10,6 +10,11 @@ import { cn } from "@/lib/utils";
  * the shadcn "Sheet" pattern; Base UI Drawer's swipe/snap gestures are
  * intentionally out of scope (desktop side panels don't need them).
  *
+ * First-open animation: a controlled drawer's Popup isn't mounted until the
+ * first open, so the first slide-in can snap (no "from" frame). Pass
+ * `keepMounted` on DrawerPortal to pre-mount the closed state and animate on
+ * first open too.
+ *
  * Composition:
  *   Drawer > DrawerTrigger + DrawerPortal > DrawerBackdrop
  *     + DrawerPopup(side) > DrawerHeader/DrawerTitle/DrawerDescription

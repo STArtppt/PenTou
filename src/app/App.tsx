@@ -25,6 +25,10 @@ function AppContent() {
   const [settingsEverOpened, setSettingsEverOpened] = useState(false);
   const [searchEverOpened, setSearchEverOpened] = useState(false);
   const [aiSidebarEverOpened, setAiSidebarEverOpened] = useState(false);
+  // 首开动画修复（通用/B 方案）：空闲后以「关闭态」预挂四个懒加载面板，
+  // 使首次打开有过渡起始帧（否则组件首挂载即打开态 → 闪现）。
+  // 见 src/docs/debugging/2026-07-21-drawer-first-open-no-slide.md
+  const [primed, setPrimed] = useState(false);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -50,6 +54,19 @@ function AppContent() {
     if (aiSidebarOpen) setAiSidebarEverOpened(true);
   }, [aiSidebarOpen]);
 
+  useEffect(() => {
+    const ric = (window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    });
+    if (ric.requestIdleCallback) {
+      const id = ric.requestIdleCallback(() => setPrimed(true), { timeout: 2000 });
+      return () => ric.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(() => setPrimed(true), 1200);
+    return () => window.clearTimeout(id);
+  }, []);
+
   // 全局快捷键 Cmd/Ctrl+K 唤起搜索浮层（spec hybrid-search US-01 AC1）。
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -68,7 +85,7 @@ function AppContent() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex h-screen w-full bg-white dark:bg-[#1A1A1A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans selection:bg-accent selection:text-accent-foreground transition-colors duration-200">
+      <div className="flex h-screen w-full bg-white dark:bg-[#1A1A1A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans selection:bg-foreground/25 selection:text-foreground transition-colors duration-200">
         <style dangerouslySetInnerHTML={{ __html: `
           .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
@@ -208,10 +225,10 @@ function AppContent() {
         <Sidebar />
         <MainContent />
         <Suspense fallback={null}>
-          {drawerEverOpened && <ImportDrawer />}
-          {settingsEverOpened && <SettingsModal />}
-          {searchEverOpened && <SearchPalette />}
-          {aiSidebarEverOpened && <AiSidebar />}
+          {(primed || drawerEverOpened) && <ImportDrawer />}
+          {(primed || settingsEverOpened) && <SettingsModal />}
+          {(primed || searchEverOpened) && <SearchPalette />}
+          {(primed || aiSidebarEverOpened) && <AiSidebar />}
         </Suspense>
         <Toaster position="bottom-right" richColors />
       </div>

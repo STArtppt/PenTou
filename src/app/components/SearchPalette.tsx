@@ -210,7 +210,7 @@ export function SearchPalette() {
     <AnimatePresence>
       <motion.div
         key="search-overlay"
-        className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[14vh] bg-zinc-900/40 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[14vh] bg-black/50 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
