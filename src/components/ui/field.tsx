@@ -19,7 +19,7 @@ type FieldProps = {
 
 function Field({ label, description, children, className, htmlFor }: FieldProps) {
   return (
-    <div data-slot="field" className={cn("space-y-1.5", className)}>
+    <div data-slot="field" className={cn("flex flex-col gap-2", className)}>
       {label ? (
         <label
           htmlFor={htmlFor}

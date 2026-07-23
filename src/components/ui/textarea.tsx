@@ -1,18 +1,26 @@
 import * as React from "react";
+
 import { cn } from "@/lib/utils";
 
-const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<"textarea">>(
+type TextareaProps = React.ComponentProps<"textarea">;
+
+/**
+ * Multi-line text input. Native <textarea>, token-only styling matched to
+ * Input: neutral surface + gray focus ring with an offset gap. No dependency.
+ */
+const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, ...props }, ref) => (
     <textarea
+      data-slot="textarea"
+      ref={ref}
       className={cn(
-        "flex min-h-[80px] w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 transition-colors placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-zinc-100 resize-none",
+        "flex min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
-      ref={ref}
       {...props}
     />
   ),
 );
 Textarea.displayName = "Textarea";
 
-export { Textarea };
+export { Textarea, type TextareaProps };

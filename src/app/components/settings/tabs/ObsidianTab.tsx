@@ -116,7 +116,7 @@ export function ObsidianTab({
           <Select
             value={selected}
             onValueChange={(v) => {
-              setSelected(v);
+              setSelected(v ?? EMPTY_VALUE);
               setFeedback(null);
             }}
           >

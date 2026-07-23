@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-22T01:52:43.149Z",
-  "count": 81,
+  "generatedAt": "2026-07-22T09:32:50.681Z",
+  "count": 80,
   "violations": [
     {
       "rule": "hardcoded-hex",
@@ -481,12 +481,6 @@
       "file": "src/app/components/VersionPanel.tsx",
       "line": 243,
       "match": "dark:bg-[#1A1A1A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/components/ui/select.tsx",
-      "line": 66,
-      "match": "dark:bg-[#1F1F1F]"
     }
   ]
 }
