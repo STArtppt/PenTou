@@ -13,6 +13,7 @@ import { excerptConversationToDoc, generateDocId, mergeRewriteWithExistingBody }
 import { copyText } from "../utils/clipboard";
 import { locateAndFlash } from "../utils/searchJump";
 import { BrandIcon } from "./BrandIcon";
+import { topBarSourceLabel } from "./topBarSourceLabel";
 import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { formatDisplayDateTime } from "../utils/dateFormat";
@@ -233,17 +234,13 @@ export function ChatBody() {
               {conversation.title}
             </h1>
             <div className="flex items-center gap-2 text-xs font-medium shrink-0">
+              {/* 单一来源徽章：cli 采集显示形态段（grok-cli），否则回退品牌名。
+                  合并原「品牌名 + 形态标签」双徽章（debug 2026-07-21，见
+                  src/docs/debugging；spec collector-source-expansion US-07） */}
               <span className="px-2 py-1 rounded-md bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 flex items-center gap-1.5">
                 <BrandIcon platform={conversation.platform} size={12} />
-                {conversation.platform}
+                {topBarSourceLabel(conversation.platform, conversation.ingestSource)}
               </span>
-              {/* 采集形态徽章：仅 cli:<form-slug> 显示，旧值 "cli"/"extension" 不猜来源
-                  （spec collector-source-expansion US-07） */}
-              {conversation.ingestSource?.startsWith("cli:") && (
-                <span className="px-2 py-1 rounded-md bg-zinc-50 dark:bg-white/[0.03] text-zinc-500 dark:text-zinc-400 border border-dashed border-zinc-200 dark:border-white/10 font-mono">
-                  {conversation.ingestSource.slice(4)}
-                </span>
-              )}
               {conversation.updatedAt && (
                 <span className="text-zinc-400 dark:text-zinc-500 hidden sm:inline">
                   {t("version.updatedAt", { time: formatDisplayDateTime(conversation.updatedAt, language) })}
