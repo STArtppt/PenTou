@@ -582,6 +582,23 @@ describe("two-level raw dispatch", () => {
     });
     expect(res.body.results[0].conversations[0].action).toBe("created");
   });
+
+  it("auto-classifies ingested claude-code sessions into the Claude folder (spec import-auto-classify US-02)", async () => {
+    const dataDir = makeDataDir();
+    fs.writeFileSync(path.join(dataDir, "folders.json"), JSON.stringify([]));
+    const res = await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: { source: "cli", items: [ingestItem()] },
+      headers: authed(dataDir),
+    });
+    const created = res.body.results[0].conversations[0];
+    expect(created.action).toBe("created");
+    const folders = JSON.parse(fs.readFileSync(path.join(dataDir, "folders.json"), "utf-8"));
+    expect(folders).toHaveLength(1);
+    expect(folders[0]).toMatchObject({ name: "Claude", platform: "Claude" });
+    const conv = parseMdFile(created.id, fs.readFileSync(path.join(dataDir, "conversations", `${created.id}.md`), "utf-8"));
+    expect(conv.folderId).toBe(folders[0].id);
+  });
 });
 
 // ── 脱敏集成（US-06）──────────────────────────────────────────────────────────

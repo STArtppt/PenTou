@@ -15,7 +15,8 @@ import grokUrl from "../assets/brand-icons/grok.svg";
 
 // 映射见 spec ai-brand-icons §4.3；Codex 属 OpenAI 产品复用其图标。
 // platform 是开放字符串（导入数据可超出 Platform 枚举），
-// Doubao/Metaso/Qianwen/Grok 为实际数据中存在的枚举外平台。
+// Doubao/Metaso/Qwen/Grok 为实际数据中存在的枚举外平台。
+// Qwen 为标准产品名，Qianwen 为存量数据兼容 alias（spec import-auto-classify §4.3）。
 export const BRAND_ICON_URLS: Record<string, string> = {
   ChatGPT: chatgptUrl,
   DeepSeek: deepseekUrl,
@@ -27,6 +28,7 @@ export const BRAND_ICON_URLS: Record<string, string> = {
   Hermes: hermesUrl,
   Doubao: doubaoUrl,
   Metaso: metasoUrl,
+  Qwen: qwenUrl,
   Qianwen: qwenUrl,
   Grok: grokUrl,
 };

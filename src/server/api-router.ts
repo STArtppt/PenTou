@@ -44,6 +44,7 @@ import {
   deleteConvVersions,
 } from "./conversation-versions.js";
 import { parseFileContent } from "../shared/parsers.js";
+import { matchAiProduct } from "../shared/ai-products.js";
 import { getRawNormalizer } from "../shared/normalizers/registry.js";
 import { registerDefaultRawNormalizers } from "../shared/normalizers/defaults.js";
 import { redactText } from "./redact.js";
@@ -447,9 +448,41 @@ function findConversationByExternalKey(convDir: string, externalKey: string): an
   return null;
 }
 
+/**
+ * 导入自动归类（spec import-auto-classify §4.1）：platform 命中默认产品清单时
+ * 查找（folder.platform 优先、name 回退）或创建平台文件夹，返回其 id；
+ * 清单外平台或 folders.json 异常时返回 null → 未分类（§5 异常 1）。
+ */
+function resolveAutoFolderId(convDir: string, platform: unknown): string | null {
+  if (typeof platform !== "string" || !platform) return null;
+  const product = matchAiProduct(platform);
+  if (!product) return null;
+  const foldersFile = path.join(path.dirname(convDir), "folders.json");
+  try {
+    const folders = JSON.parse(fs.readFileSync(foldersFile, "utf-8"));
+    if (!Array.isArray(folders)) return null;
+    const names = [product.name, ...(product.aliases ?? [])];
+    const existing =
+      folders.find((f: any) => f && names.includes(f.platform)) ??
+      folders.find((f: any) => f && f.name === product.name);
+    if (existing?.id) return existing.id;
+    const folder = {
+      id: `f_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      name: product.name,
+      platform: product.name,
+    };
+    fs.writeFileSync(foldersFile, JSON.stringify([...folders, folder], null, 2), "utf-8");
+    return folder.id;
+  } catch {
+    return null;
+  }
+}
+
 function createConversation(convDir: string, incoming: any): UpsertConversationResult {
   const now = new Date().toISOString();
   const full = normalizeConversation({ ...incoming, updatedAt: incoming.updatedAt ?? now });
+  // 仅新建分支归类；merge 保留已有 folderId（spec import-auto-classify §4.5 决策 2）
+  if (!full.folderId) full.folderId = resolveAutoFolderId(convDir, full.platform);
   const v1 = initConvVersions(convDir, full.id, conversationToMd(full), "import");
   const conversation = { ...full, currentVersionId: v1.id };
   writeConversationFile(convDir, conversation);

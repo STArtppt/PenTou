@@ -437,6 +437,99 @@ describe("conversation import dedup + versioning", () => {
   });
 });
 
+describe("import auto-classify (spec import-auto-classify)", () => {
+  const base = (over: any = {}) => ({
+    id: `conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    title: `Auto classify ${Math.random().toString(36).slice(2, 7)}`,
+    platform: "Claude",
+    date: "2026-07-01T00:00:00.000Z",
+    folderId: null,
+    messages: [
+      { id: "m1", role: "user", content: `hello ${Math.random().toString(36).slice(2, 7)}`, timestamp: "2026-07-01T00:00:00.000Z" },
+      { id: "m2", role: "ai", content: "hi there", timestamp: "2026-07-01T00:00:05.000Z" },
+    ],
+    ...over,
+  });
+
+  const foldersPath = (abs: string) => path.join(abs, "folders.json");
+  const writeFolders = (abs: string, folders: unknown) =>
+    fs.writeFileSync(foldersPath(abs), JSON.stringify(folders, null, 2));
+  const readFolders = (abs: string) => JSON.parse(fs.readFileSync(foldersPath(abs), "utf-8"));
+
+  it("reuses an existing folder matched by folder.platform (US-01 AC1)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, [{ id: "f4", name: "Claude", platform: "Claude" }]);
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base() });
+    expect(res.status).toBe(201);
+    expect(res.body.conversation.folderId).toBe("f4");
+    expect(readFolders(abs)).toHaveLength(1);
+  });
+
+  it("creates a missing product folder with platform tag (US-01 AC2)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, []);
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base({ platform: "Grok" }) });
+    const folders = readFolders(abs);
+    expect(folders).toHaveLength(1);
+    expect(folders[0]).toMatchObject({ name: "Grok", platform: "Grok" });
+    expect(res.body.conversation.folderId).toBe(folders[0].id);
+  });
+
+  it("keeps platforms outside the product list uncategorized (US-01 AC3)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, []);
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base({ platform: "Foo" }) });
+    expect(res.body.conversation.folderId).toBeNull();
+    expect(readFolders(abs)).toHaveLength(0);
+  });
+
+  it("maps alias platform Qianwen into the canonical Qwen folder (§4.3)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, []);
+    const first = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base({ platform: "Qianwen" }) });
+    const folders = readFolders(abs);
+    expect(folders[0]).toMatchObject({ name: "Qwen", platform: "Qwen" });
+    const second = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base({ platform: "Qwen" }) });
+    expect(second.body.conversation.folderId).toBe(first.body.conversation.folderId);
+    expect(readFolders(abs)).toHaveLength(1);
+  });
+
+  it("falls back to matching by folder name when platform tag is absent (§5 边界 2)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, [{ id: "f_manual", name: "Claude" }]);
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base() });
+    expect(res.body.conversation.folderId).toBe("f_manual");
+    expect(readFolders(abs)).toHaveLength(1);
+  });
+
+  it("merge keeps the existing folderId untouched (US-01 AC4)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, [{ id: "f4", name: "Claude", platform: "Claude" }]);
+    const conv = base();
+    await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: conv });
+    const grown = base({
+      id: `conv_grown_${Math.random().toString(36).slice(2, 7)}`,
+      title: conv.title,
+      messages: [
+        ...conv.messages,
+        { id: "m3", role: "user", content: "more", timestamp: "2026-07-01T00:01:00.000Z" },
+      ],
+    });
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: grown });
+    expect(res.body.action).toBe("merged");
+    const detail = await callApi({ dataDir: rel, url: `/api/conversations/${conv.id}` });
+    expect(detail.body.folderId).toBe("f4");
+  });
+
+  it("degrades to uncategorized when folders.json is corrupted (§5 异常 1)", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    fs.writeFileSync(foldersPath(abs), "not json {");
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base() });
+    expect(res.status).toBe(201);
+    expect(res.body.conversation.folderId).toBeNull();
+  });
+});
+
 describe("/api/search route (spec hybrid-search §4.4)", () => {
   afterEach(() => _resetForTest());
 

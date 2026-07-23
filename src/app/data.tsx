@@ -580,6 +580,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // 自动归类可能在服务端新建了平台文件夹（spec import-auto-classify §4.1）→ 刷新列表
+    if (created.length > 0) {
+      try {
+        setFolders((await apiFetch("/api/folders")) as Folder[]);
+      } catch (e) {
+        console.error("Failed to refresh folders after import", e);
+      }
+    }
+
     // Imported conversations carry full messages; mark hydrated so on-demand fetch is skipped.
     created.forEach((c) => hydratedConvRef.current.add(c.id));
     merged.forEach((m) => {
