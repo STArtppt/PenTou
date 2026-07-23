@@ -120,7 +120,9 @@ function isForbiddenIPv4(ip: string): boolean {
   if (a === 169 && b === 254) return true;        // link-local
   if (a === 172 && b >= 16 && b <= 31) return true; // private
   if (a === 192 && (b === 0 || b === 168)) return true; // 192.0.0/24, 192.0.2/24 (doc), private
-  if (a === 198 && (b === 18 || b === 19)) return true; // benchmark
+  // 注意：不拦截 198.18.0.0/15（RFC 2544 benchmark）。Clash / Surge 等代理的
+  // fake-ip 模式会把公网域名解析到该段；拦截后远程图永远下不下来，md 只能
+  // 保留 hotlink，签名 URL 一过期就「图片加载失败」。该段不指向本机内网服务。
   if (a === 198 && b === 51) return true;         // 198.51.100/24 doc
   if (a === 203 && b === 0) return true;          // 203.0.113/24 doc
   if (a >= 224) return true;                      // multicast + reserved + broadcast
@@ -206,7 +208,16 @@ function realHttpGet(url: URL, pinned: { address: string; family: number }): Pro
     };
     const req = mod.request(
       url,
-      { method: "GET", lookup, timeout: REMOTE_DOWNLOAD_TIMEOUT_MS, headers: { Accept: "image/*" } },
+      {
+        method: "GET",
+        lookup,
+        timeout: REMOTE_DOWNLOAD_TIMEOUT_MS,
+        headers: {
+          Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+          // 部分 CDN（含 Google usercontent）对无 UA 的请求更苛刻
+          "User-Agent": "PentouMediaLocalizer/1.0",
+        },
+      },
       (res) => {
         const chunks: Buffer[] = [];
         let size = 0;

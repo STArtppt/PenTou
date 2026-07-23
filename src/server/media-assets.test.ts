@@ -164,8 +164,33 @@ describe("SSRF 防护（边界 3）", () => {
     ];
     for (const ip of forbidden) expect(isForbiddenIp(ip), ip).toBe(true);
 
-    const allowed = ["93.184.216.34", "8.8.8.8", "172.32.0.1", "2606:2800:220:1:248:1893:25c8:1946"];
+    // 198.18.0.0/15：代理 fake-ip（Clash/Surge），必须放行，否则远程图本地化全灭
+    const allowed = [
+      "93.184.216.34",
+      "8.8.8.8",
+      "172.32.0.1",
+      "198.18.0.1",
+      "198.18.0.196",
+      "198.19.255.255",
+      "2606:2800:220:1:248:1893:25c8:1946",
+    ];
     for (const ip of allowed) expect(isForbiddenIp(ip), ip).toBe(false);
+  });
+
+  it("DNS 解析到代理 fake-ip（198.18.x）时仍下载并落盘", async () => {
+    __setDnsLookupForTests(async () => [{ address: "198.18.0.196", family: 4 }]);
+    const transport = vi.fn(async () => ({
+      statusCode: 200,
+      headers: { "content-type": "image/png" },
+      body: PNG_BUF,
+    }));
+    __setHttpGetForTests(transport);
+
+    const out = await localizeMedia("![g](https://lh3.googleusercontent.com/gg/token)", {
+      downloadRemote: true,
+    });
+    expect(out).toMatch(/!\[g\]\(\/api\/assets\/[0-9a-f]{16}\.png\)/);
+    expect(transport).toHaveBeenCalledTimes(1);
   });
 
   it("直连内网 IP / localhost 的远程图片拒绝下载，引用保留，零网络请求", async () => {
