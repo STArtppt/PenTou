@@ -21,6 +21,8 @@ import {
   Square,
   Minus,
   ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   LogOut,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -638,6 +640,12 @@ export function Sidebar() {
 
   const selectedCount = selectedIds.size;
   const hasSelection = selectedCount > 0;
+  const areAllChatFoldersOpen = folders.length > 0 && folders.every((folder) => chatFolderOpen[folder.id] ?? true);
+
+  const toggleAllChatFolders = () => {
+    const nextOpen = !areAllChatFoldersOpen;
+    setChatFolderOpen(Object.fromEntries(folders.map((folder) => [folder.id, nextOpen])));
+  };
 
   return (
     <SelectionContext.Provider value={selectionValue}>
@@ -739,8 +747,19 @@ export function Sidebar() {
         {activeView === "chat" ? (
           <>
             <div className="mt-2 mb-4">
-              <div className="px-3 py-1.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                FOLDERS
+              <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                <span>{t("sidebar.folders")}</span>
+                {folders.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={toggleAllChatFolders}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-orange-500 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-yellow-400"
+                    title={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+                    aria-label={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+                  >
+                    {areAllChatFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+                  </button>
+                )}
               </div>
               <div className="space-y-0.5">
                 {folders.length === 0 ? (
@@ -771,6 +790,11 @@ export function Sidebar() {
           <DocumentList
             documents={filteredDocuments}
             folderOpen={docFolderOpen}
+            onToggleAllFolders={() => {
+              const areAllOpen = documentFolders.length > 0 && documentFolders.every((folder) => docFolderOpen[folder.id] ?? true);
+              const nextOpen = !areAllOpen;
+              setDocFolderOpen(Object.fromEntries(documentFolders.map((folder) => [folder.id, nextOpen])));
+            }}
             onToggleFolderOpen={(id) =>
               setDocFolderOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }))
             }
@@ -1345,22 +1369,36 @@ function PlatformIcon({ platform }: { platform: Platform }) {
 function DocumentList({
   documents,
   folderOpen,
+  onToggleAllFolders,
   onToggleFolderOpen,
 }: {
   documents: Document[];
   folderOpen: Record<string, boolean>;
+  onToggleAllFolders: () => void;
   onToggleFolderOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const { documentFolders } = useAppContext();
   const documentFolderIds = new Set(documentFolders.map((folder) => folder.id));
   const uncategorized = documents.filter((d) => !d.folderId || !documentFolderIds.has(d.folderId));
+  const areAllFoldersOpen = documentFolders.length > 0 && documentFolders.every((folder) => folderOpen[folder.id] ?? true);
 
   return (
     <>
       <div className="mt-2 mb-4">
-        <div className="px-3 py-1.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-          FOLDERS
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+          <span>{t("sidebar.folders")}</span>
+          {documentFolders.length > 0 && (
+            <button
+              type="button"
+              onClick={onToggleAllFolders}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-orange-500 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-yellow-400"
+              title={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+              aria-label={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+            >
+              {areAllFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+            </button>
+          )}
         </div>
         <div className="space-y-0.5">
           {documentFolders.length === 0 ? (
@@ -1384,7 +1422,7 @@ function DocumentList({
 
       <div className="mt-2">
         <div className="px-3 py-1.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-          UNCATEGORIZED
+          {t("sidebar.uncategorized")}
         </div>
         <DocumentUncategorizedList documents={uncategorized} />
       </div>

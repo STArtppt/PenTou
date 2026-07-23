@@ -55,6 +55,10 @@ import {
   writeIngestConfig,
 } from "./ingest-token.js";
 import { clientIp, isLimited, recordFail } from "./auth.js";
+import { createMigrationManifest, readManifestFile } from "./migrate/manifest.js";
+import { readFolderBundle } from "./migrate/merge-folders.js";
+import { cleanupMigrationTmp, finalizeMigrationReceiver, mergeMigrationFolders, receiveMigrationFile } from "./migrate/receiver.js";
+import { createMigrationPlan, getMigrationProgress, runMigration, testMigrationPeer } from "./migrate/orchestrator.js";
 
 export interface RouterContext {
   dataDir: string;
@@ -67,6 +71,8 @@ export interface RouterContext {
   obscuraAllowDownload?: boolean;
   /** ingest 限速器取真实 IP 用；prod 传 Docker env 值，dev / 测试缺省 false。 */
   trustProxy?: boolean;
+  /** 当前应用版本，供迁移 manifest/兼容性检查展示。 */
+  version?: string;
 }
 
 // ── Directory initialization ──────────────────────────────────────────────────
@@ -97,6 +103,9 @@ export function ensureDirs(dataDir: string): void {
 
   // 图片资产目录（spec media-assets 异常 1）。
   ensureAssetsDir(dataDir);
+
+  // 迁移中断残留的任务级临时目录永不进入 manifest，启动时顺手清理。
+  cleanupMigrationTmp(dataDir);
 
   // 检索索引：设定数据目录并后台预热（spec hybrid-search §4.5 决策7）。
   configureSearch(dataDir);
@@ -826,6 +835,116 @@ export async function handleApiRequest(
   const pathOnly = url.split("?")[0];
   if (pathOnly === "/api/ingest" || pathOnly.startsWith("/api/ingest/")) {
     return handleIngestRequest(req, res, ctx, convDir);
+  }
+
+  // ── /api/migrate 族（一键迁移；server-to-server 文件级同步）──────────────
+  if (pathOnly === "/api/migrate/manifest" && method === "GET") {
+    try {
+      json(res, 200, createMigrationManifest(ctx.dataDir, ctx.version ?? "0.0.0"));
+    } catch (e) {
+      json(res, 500, { error: String(e) });
+    }
+    return true;
+  }
+
+  if (pathOnly === "/api/migrate/folders" && method === "GET") {
+    json(res, 200, readFolderBundle(ctx.dataDir));
+    return true;
+  }
+
+  if (pathOnly === "/api/migrate/files" && method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const taskId = typeof body?.taskId === "string" ? body.taskId : `remote-${Date.now()}`;
+      const files = Array.isArray(body?.files) ? body.files : [];
+      const results = files.map((file: any) => receiveMigrationFile(ctx.dataDir, taskId, {
+        path: String(file?.path ?? ""),
+        expectedHash: String(file?.hash ?? ""),
+        data: Buffer.from(String(file?.data ?? ""), "base64"),
+      }));
+      json(res, 200, { results });
+    } catch (e) {
+      json(res, 400, { error: String(e) });
+    }
+    return true;
+  }
+
+  if (pathOnly === "/api/migrate/files/download" && method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      const paths = Array.isArray(body?.paths) ? body.paths.map(String) : [];
+      const files: any[] = [];
+      const failures: any[] = [];
+      for (const relativePath of paths) {
+        try {
+          const { buffer, entry } = readManifestFile(ctx.dataDir, relativePath);
+          files.push({ path: entry.path, hash: entry.hash, data: buffer.toString("base64") });
+        } catch (e: any) {
+          failures.push({ path: relativePath, reason: String(e?.message ?? e) });
+        }
+      }
+      json(res, 200, { files, failures });
+    } catch (e) {
+      json(res, 400, { error: String(e) });
+    }
+    return true;
+  }
+
+  if (pathOnly === "/api/migrate/merge-folders" && method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      json(res, 200, { ok: true, result: mergeMigrationFolders(ctx.dataDir, {
+        folders: Array.isArray(body?.folders) ? body.folders : [],
+        documentFolders: Array.isArray(body?.documentFolders) ? body.documentFolders : [],
+      }) });
+    } catch (e) {
+      json(res, 400, { error: String(e) });
+    }
+    return true;
+  }
+
+  if (pathOnly === "/api/migrate/finalize" && method === "POST") {
+    try {
+      json(res, 200, finalizeMigrationReceiver(ctx.dataDir));
+    } catch (e) {
+      json(res, 500, { error: String(e) });
+    }
+    return true;
+  }
+
+  if (pathOnly === "/api/migrate/test" && method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      json(res, 200, await testMigrationPeer(ctx.dataDir, body, ctx.version ?? "0.0.0"));
+    } catch (e) {
+      json(res, 400, { ok: false, error: String(e) });
+    }
+    return true;
+  }
+
+  if (pathOnly === "/api/migrate/plan" && method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      json(res, 200, await createMigrationPlan(ctx.dataDir, body, ctx.version ?? "0.0.0"));
+    } catch (e) {
+      json(res, 400, { error: String(e) });
+    }
+    return true;
+  }
+
+  if (pathOnly === "/api/migrate/run" && method === "POST") {
+    try {
+      const body = JSON.parse(await readBody(req));
+      json(res, 200, await runMigration(ctx.dataDir, body, ctx.version ?? "0.0.0"));
+    } catch (e) {
+      json(res, 400, { ok: false, error: String(e) });
+    }
+    return true;
+  }
+
+  if (pathOnly === "/api/migrate/progress" && method === "GET") {
+    json(res, 200, getMigrationProgress());
+    return true;
   }
 
   // ── GET /api/storage-paths/:type/:id （返回条目实际落盘路径） ───────────────
