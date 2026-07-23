@@ -5,7 +5,7 @@
  * timestamp 为 sqlite datetime("YYYY-MM-DD HH:MM:SS"，UTC）或 ISO 串。
  */
 import type { Conversation, Message } from "../../app/data.js";
-import { buildConversation, makeMessage, parseEnvelope } from "./util.js";
+import { buildConversation, EmptyPayloadError, makeMessage, parseEnvelope } from "./util.js";
 
 function sqliteUtcToIso(value: unknown): string | undefined {
   if (typeof value !== "string" || !value) return undefined;
@@ -26,7 +26,7 @@ export function normalizeCopilot(data: string): Conversation[] {
     if (aiText) messages.push(makeMessage("ai", aiText, timestamp));
   }
 
-  if (messages.length === 0) throw new Error("copilot raw payload contains no messages");
+  if (messages.length === 0) throw new EmptyPayloadError("copilot raw payload contains no messages");
   return [buildConversation({
     platform: "Copilot",
     title: typeof session?.summary === "string" ? session.summary : undefined,

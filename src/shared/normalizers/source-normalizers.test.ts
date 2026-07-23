@@ -11,6 +11,7 @@ import { normalizeCopilotVscode } from "./copilot-vscode";
 import { normalizeHermes } from "./hermes";
 import { normalizeCursor } from "./cursor";
 import { parseJsonl, parseMarkdown } from "../parsers";
+import { EmptyPayloadError } from "./util";
 
 describe("grok-cli normalizer (US-02)", () => {
   it("keeps real user/assistant turns, strips user_query wrapper, skips synthetic lines", () => {
@@ -33,6 +34,11 @@ describe("grok-cli normalizer (US-02)", () => {
 
   it("throws when nothing parseable", () => {
     expect(() => normalizeGrokCli("not json")).toThrow(/no messages/);
+  });
+
+  it("throws EmptyPayloadError for system-only sessions (空会话归 skipped)", () => {
+    const systemOnly = JSON.stringify({ type: "system", content: "You are Grok" });
+    expect(() => normalizeGrokCli(systemOnly)).toThrow(EmptyPayloadError);
   });
 });
 

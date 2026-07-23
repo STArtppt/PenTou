@@ -15,6 +15,8 @@ import type {
 import { IngestClient, isAuthIngestError, isRetryableIngestError } from "./ingest-client.js";
 import { writeConfig } from "./config.js";
 import { isVirtualKey, parseSessionKey } from "./sqlite.js";
+import { EmptyPayloadError, parseRawConversations } from "../../shared/raw-dispatch.js";
+import { shrinkConversation } from "./shrink.js";
 
 const INGEST_MAX_BODY_BYTES = 10 * 1024 * 1024;
 const INGEST_BODY_OVERHEAD_BYTES = 4096;
@@ -41,6 +43,7 @@ export function addResultCounts(counts: CollectorCounts, results: IngestItemResu
       counts.error += 1;
       continue;
     }
+    if (result.skippedReason) counts.skipped += 1;
     for (const conversation of result.conversations) {
       if (conversation.action === "created") counts.created += 1;
       else if (conversation.action === "merged") counts.merged += 1;
@@ -183,6 +186,50 @@ function canAppendToBatch(batch: PreparedItem[], item: PreparedItem): boolean {
   return estimateIngestBodyBytes([...batch, item].map((entry) => entry.item)) <= INGEST_MAX_BODY_BYTES - INGEST_BODY_OVERHEAD_BYTES;
 }
 
+// 单 item 预算：可单独成批发送；再留 1KB 给 item 信封（platform/externalId/format 等字段）
+const SHRINK_BUDGET_BYTES = INGEST_MAX_BODY_BYTES - INGEST_BODY_OVERHEAD_BYTES - 1024;
+
+export interface DegradeResult {
+  entries: PreparedItem[];
+  /** 被瘦身（有信息损失）上报的会话数 */
+  truncated: number;
+  /** 瘦身后仍超预算的会话（理论不可达，spec §5 异常 2） */
+  oversizeErrors: string[];
+}
+
+/**
+ * 超限降级（spec collector-oversize-ingest US-01）：raw 超限 item 本地解析为
+ * conversation item(s)。与服务端共用 raw 两级派发；解析失败以 Error 抛出。
+ * externalId 仅单会话结果保留（多会话时 index 不稳定，挂 externalKey 有错配
+ * 覆盖风险，与服务端 raw 多会话行为对齐，§4.5 决策 3）。
+ */
+export function degradeOversizeItem(entry: PreparedItem): DegradeResult {
+  if (entry.item.format !== "raw" || typeof entry.item.data !== "string") {
+    throw new Error("oversize item is not raw");
+  }
+  const conversations = parseRawConversations(entry.item.platform, entry.item.data, entry.item.filename);
+  const result: DegradeResult = { entries: [], truncated: 0, oversizeErrors: [] };
+  for (const conversation of conversations) {
+    const item: IngestItem = {
+      platform: entry.item.platform,
+      ...(conversations.length === 1 && entry.item.externalId ? { externalId: entry.item.externalId } : {}),
+      format: "conversation",
+      data: conversation,
+    };
+    if (itemTooLarge(item)) {
+      const shrunk = shrinkConversation(conversation, SHRINK_BUDGET_BYTES);
+      item.data = shrunk.conversation;
+      if (itemTooLarge(item)) {
+        result.oversizeErrors.push("conversation exceeds ingest limit after shrink");
+        continue;
+      }
+      result.truncated += 1;
+    }
+    result.entries.push({ file: entry.file, item, snapshot: entry.snapshot });
+  }
+  return result;
+}
+
 async function prepareItems(
   files: SessionFile[],
   adapters: CollectorAdapter[],
@@ -259,17 +306,56 @@ export async function pullOnce(
     scanned: files.length,
     sent: 0,
     skippedByExclude: prepared.skippedByExclude,
+    truncated: 0,
     counts: emptyCounts(),
     errors: [...prepared.errors],
   };
   summary.counts.error += prepared.errors.length;
 
   if (options.dryRun) {
-    for (const item of prepared.items) logger.log(item.file);
+    for (const item of prepared.items) {
+      logger.log(itemTooLarge(item.item) ? `${item.file} (oversize: local parse fallback)` : item.file);
+    }
     return summary;
   }
 
+  // ── 超限降级（spec collector-oversize-ingest US-01）────────────────────────
+  const sendItems: PreparedItem[] = [];
+  for (const entry of prepared.items) {
+    if (!itemTooLarge(entry.item)) {
+      sendItems.push(entry);
+      continue;
+    }
+    try {
+      const degraded = degradeOversizeItem(entry);
+      summary.truncated += degraded.truncated;
+      for (const error of degraded.oversizeErrors) {
+        summary.errors.push({ file: entry.file, error });
+        summary.counts.error += 1;
+      }
+      if (options.verbose) {
+        const shrunk = degraded.truncated ? `, ${degraded.truncated} shrunk` : "";
+        logger.log(`oversize ${entry.file}: local parse -> ${degraded.entries.length} conversation(s)${shrunk}`);
+      }
+      sendItems.push(...degraded.entries);
+    } catch (error: any) {
+      if (error instanceof EmptyPayloadError) {
+        // 空会话不算失败：计 skipped 并推进快照（与服务端 skippedReason 语义一致）
+        summary.counts.skipped += 1;
+        config.snapshots[entry.file] = entry.snapshot;
+        if (options.verbose) logger.log(`skip ${entry.file} (empty session)`);
+        continue;
+      }
+      summary.errors.push({ file: entry.file, error: error?.message ?? String(error) });
+      summary.counts.error += 1;
+    }
+  }
+
   const client = options.client ?? new IngestClient({ server: config.server, token: config.token });
+  // 降级后同一文件可对应多个 item：全部成功才推进快照，避免部分失败被误标已同步
+  const pendingByFile = new Map<string, number>();
+  for (const entry of sendItems) pendingByFile.set(entry.file, (pendingByFile.get(entry.file) ?? 0) + 1);
+  const failedFiles = new Set<string>();
   const unsent: PreparedItem[] = [];
   let batch: PreparedItem[] = [];
   const sendBatch = async (current: PreparedItem[]): Promise<boolean> => {
@@ -279,14 +365,23 @@ export async function pullOnce(
       const response = await client.ingest(current.map((entry) => entry.item));
       addResultCounts(summary.counts, response.results);
       for (const result of response.results) {
-        const file = current[result.itemIndex]?.file ?? "(unknown)";
-        if (result.error) summary.errors.push({ file, error: result.error });
-        else if (current[result.itemIndex]) config.snapshots[file] = current[result.itemIndex].snapshot;
+        const entry = current[result.itemIndex];
+        if (result.error) {
+          summary.errors.push({ file: entry?.file ?? "(unknown)", error: result.error });
+          if (entry) failedFiles.add(entry.file);
+        } else if (entry) {
+          const left = (pendingByFile.get(entry.file) ?? 1) - 1;
+          pendingByFile.set(entry.file, left);
+          if (left <= 0 && !failedFiles.has(entry.file)) config.snapshots[entry.file] = entry.snapshot;
+        }
       }
       return true;
     } catch (error: any) {
       const message = error?.message ?? String(error);
-      for (const entry of current) summary.errors.push({ file: entry.file, error: message });
+      for (const entry of current) {
+        summary.errors.push({ file: entry.file, error: message });
+        failedFiles.add(entry.file);
+      }
       summary.counts.error += current.length;
       if (isAuthIngestError(error)) {
         return false;
@@ -295,17 +390,12 @@ export async function pullOnce(
     }
   };
 
-  for (let index = 0; index < prepared.items.length; index++) {
-    const entry = prepared.items[index];
-    if (itemTooLarge(entry.item)) {
-      summary.errors.push({ file: entry.file, error: "file exceeds ingest 10MB limit" });
-      summary.counts.error += 1;
-      continue;
-    }
+  for (let index = 0; index < sendItems.length; index++) {
+    const entry = sendItems[index];
     if (!canAppendToBatch(batch, entry)) {
       const ok = await sendBatch(batch);
       if (!ok) {
-        unsent.push(entry, ...prepared.items.slice(index + 1));
+        unsent.push(entry, ...sendItems.slice(index + 1));
         batch = [];
         break;
       }
@@ -317,12 +407,15 @@ export async function pullOnce(
     const ok = await sendBatch(batch);
     if (!ok) {
       const sentOrErrored = new Set(summary.errors.map((error) => error.file));
-      for (const entry of prepared.items) {
+      for (const entry of sendItems) {
         if (!sentOrErrored.has(entry.file) && !config.snapshots[entry.file]) unsent.push(entry);
       }
     }
   }
+  const unsentFiles = new Set<string>();
   for (const entry of unsent) {
+    if (unsentFiles.has(entry.file)) continue;
+    unsentFiles.add(entry.file);
     summary.errors.push({ file: entry.file, error: "not sent after auth failure" });
     summary.counts.error += 1;
   }
@@ -463,13 +556,43 @@ export class CollectorWatchEngine {
   }
 
   private async sendPrepared(entry: PreparedItem): Promise<boolean> {
-    try {
-      const response = await this.client.ingest([entry.item]);
-      const result = response.results[0];
-      if (result?.error) {
-        this.logger.warn(`ingest error ${entry.file}: ${result.error}`);
+    // 超限降级（spec collector-oversize-ingest US-01；与 pullOnce 同一降级器）
+    let entries: PreparedItem[] = [entry];
+    let degradeError = false;
+    if (itemTooLarge(entry.item)) {
+      try {
+        const degraded = degradeOversizeItem(entry);
+        for (const error of degraded.oversizeErrors) this.logger.warn(`ingest error ${entry.file}: ${error}`);
+        if (this.verbose) {
+          const shrunk = degraded.truncated ? `, ${degraded.truncated} shrunk` : "";
+          this.logger.log(`oversize ${entry.file}: local parse -> ${degraded.entries.length} conversation(s)${shrunk}`);
+        }
+        entries = degraded.entries;
+        degradeError = degraded.oversizeErrors.length > 0;
+        if (entries.length === 0) return true;
+      } catch (error: any) {
+        if (error instanceof EmptyPayloadError) {
+          this.config.snapshots[entry.file] = entry.snapshot;
+          this.persistConfig();
+          if (this.verbose) this.logger.log(`skip ${entry.file} (empty session)`);
+          return true;
+        }
+        this.logger.warn(`local parse failed ${entry.file}: ${error?.message ?? error}`);
         return true;
       }
+    }
+    try {
+      let anyError = degradeError;
+      for (const one of entries) {
+        const response = await this.client.ingest([one.item]);
+        const result = response.results[0];
+        if (result?.error) {
+          this.logger.warn(`ingest error ${one.file}: ${result.error}`);
+          anyError = true;
+        }
+      }
+      // 任一会话失败则不推进快照，下次变化整文件重试（服务端 merge/skip 幂等）
+      if (anyError) return true;
       this.config.snapshots[entry.file] = entry.snapshot;
       this.persistConfig();
       if (this.verbose) this.logger.log(`synced ${entry.file}`);

@@ -5,7 +5,7 @@
  * composerData 的 _v 持续演进（spec §5 边界 7）：未知 type 的气泡跳过、尽力解析。
  */
 import type { Conversation, Message } from "../../app/data.js";
-import { buildConversation, epochToIso, makeMessage, parseEnvelope } from "./util.js";
+import { buildConversation, EmptyPayloadError, epochToIso, makeMessage, parseEnvelope } from "./util.js";
 
 export function normalizeCursor(data: string): Conversation[] {
   const { session, messages: bubbles } = parseEnvelope(data, "cursor");
@@ -20,7 +20,7 @@ export function normalizeCursor(data: string): Conversation[] {
     messages.push(makeMessage(role, text, timestamp));
   }
 
-  if (messages.length === 0) throw new Error("cursor raw payload contains no messages");
+  if (messages.length === 0) throw new EmptyPayloadError("cursor raw payload contains no messages");
   return [buildConversation({
     platform: "Cursor",
     title: typeof session?.name === "string" ? session.name : undefined,

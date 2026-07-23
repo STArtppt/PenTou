@@ -500,6 +500,30 @@ describe("batch semantics and result model", () => {
     expect(res.body.results[1].error).toBe("invalid conversation payload");
     expect(res.body.results[2].error).toBe("raw data must be a string");
   });
+
+  it("classifies empty sessions as skippedReason instead of error (边界 3)", async () => {
+    const dataDir = makeDataDir();
+    // 只跑了 /exit 的 Claude Code 会话：仅元数据行，无真实对话
+    const metaOnly = '{"type":"mode","mode":"normal"}\n{"type":"file-history-snapshot","snapshot":{}}\n';
+    // 只有 system prompt 的 grok-cli 会话
+    const systemOnly = '{"type":"system","content":"You are Grok"}\n';
+    const res = await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: {
+        source: "cli",
+        items: [
+          { platform: "claude-code", format: "raw", data: metaOnly, filename: "s.jsonl" },
+          { platform: "grok-cli", format: "raw", data: systemOnly, filename: "chat_history.jsonl" },
+        ],
+      },
+      headers: authed(dataDir),
+    });
+    expect(res.body.ok).toBe(true); // 空会话不算失败
+    expect(res.body.results[0]).toMatchObject({ skippedReason: "no conversations parsed", conversations: [] });
+    expect(res.body.results[0].error).toBeUndefined();
+    expect(res.body.results[1].skippedReason).toMatch(/no messages/);
+    expect(res.body.results[1].error).toBeUndefined();
+  });
 });
 
 // ── 两级派发（§4.4）───────────────────────────────────────────────────────────

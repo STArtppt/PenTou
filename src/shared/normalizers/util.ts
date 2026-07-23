@@ -1,6 +1,12 @@
 /** normalizer 共用的最小构造工具（与 parsers.ts 同构，避免跨层 export 私有函数） */
 import type { Conversation, Message, Platform } from "../../app/data.js";
 
+/**
+ * 空会话（载荷合法但不含任何用户/AI 消息，如只跑了 /exit 的 CLI 会话）。
+ * 服务端与 CLI 降级路径据此归类为 skipped 而非 error（ingest-gateway 边界 3）。
+ */
+export class EmptyPayloadError extends Error {}
+
 export function makeConvId(): string {
   return `conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }

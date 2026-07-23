@@ -223,7 +223,7 @@ async function pullCollector(flags: ParsedArgs["flags"]): Promise<void> {
   });
 
   console.log(`scanned=${summary.scanned} sent=${summary.sent} excluded=${summary.skippedByExclude}`);
-  console.log(`created=${summary.counts.created} merged=${summary.counts.merged} skipped=${summary.counts.skipped} error=${summary.counts.error}`);
+  console.log(`created=${summary.counts.created} merged=${summary.counts.merged} skipped=${summary.counts.skipped} error=${summary.counts.error}${summary.truncated ? ` truncated=${summary.truncated}` : ""}`);
   if (summary.errors.length) {
     for (const error of summary.errors) console.error(`  ${error.file}: ${error.error}`);
     process.exitCode = 1;

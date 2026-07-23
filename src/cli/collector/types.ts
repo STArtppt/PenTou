@@ -32,8 +32,9 @@ export interface SessionFile {
 export interface IngestItem {
   platform: string;
   externalId?: string;
-  format: "raw";
-  data: string;
+  /** 默认 "raw"；"conversation" 仅超限降级本地解析产出（spec collector-oversize-ingest §4.4） */
+  format: "raw" | "conversation";
+  data: string | Record<string, unknown>;
   filename?: string;
 }
 
@@ -62,6 +63,8 @@ export interface IngestConversationResult {
 export interface IngestItemResult {
   itemIndex: number;
   conversations: IngestConversationResult[];
+  /** 空会话（载荷合法但 0 条消息）：非失败，计入 skipped 并正常推进快照 */
+  skippedReason?: string;
   error?: string;
 }
 
@@ -86,6 +89,8 @@ export interface PullSummary {
   scanned: number;
   sent: number;
   skippedByExclude: number;
+  /** 超限降级中被瘦身上报的会话数（有信息损失但成功落库，spec collector-oversize-ingest US-02） */
+  truncated: number;
   counts: CollectorCounts;
   errors: CollectorFileError[];
 }

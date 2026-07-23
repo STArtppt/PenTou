@@ -43,10 +43,8 @@ import {
   readConvVersionBody,
   deleteConvVersions,
 } from "./conversation-versions.js";
-import { parseFileContent } from "../shared/parsers.js";
 import { matchAiProduct } from "../shared/ai-products.js";
-import { getRawNormalizer } from "../shared/normalizers/registry.js";
-import { registerDefaultRawNormalizers } from "../shared/normalizers/defaults.js";
+import { EmptyPayloadError, parseRawConversations } from "../shared/raw-dispatch.js";
 import { redactText } from "./redact.js";
 import {
   getIngestToken,
@@ -642,39 +640,6 @@ function readBodyLimited(req: IncomingMessage, maxBytes: number): Promise<string
   });
 }
 
-/** 无 filename 时按内容猜派发扩展名（filename 仅辅助 parseFileContent 派发，§4.3）。 */
-function guessRawFilename(data: string): string {
-  const trimmed = data.trim();
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    try {
-      JSON.parse(trimmed);
-      return "ingest.json";
-    } catch {
-      return "ingest.jsonl"; // 整体非法但可能是逐行 JSON
-    }
-  }
-  return "ingest.md";
-}
-
-/**
- * raw 两级派发（§4.4）：platform 命中已注册 normalizer 优先，未命中回退 parseFileContent。
- * 失败以 Error 抛出，由逐 item 容错捕获（错误消息即 results[].error）。
- */
-function parseRawConversations(platform: string, data: string, filename?: string): any[] {
-  registerDefaultRawNormalizers();
-  const normalizer = getRawNormalizer(platform);
-  if (normalizer) {
-    const conversations = normalizer(data, filename);
-    if (conversations.length === 0) throw new Error("no conversations parsed");
-    return conversations;
-  }
-  const name = (filename ?? "").trim() || guessRawFilename(data);
-  if (!/\.(json|jsonl|md|txt)$/i.test(name)) throw new Error("unrecognized format");
-  const conversations = parseFileContent(name, data);
-  if (conversations.length === 0) throw new Error("no conversations parsed");
-  return conversations;
-}
-
 /** `format: "conversation"` 的结构校验（§5 边界 5）；返回补全 id 的副本。 */
 function validateConversationPayload(data: unknown): any {
   const conv: any = data;
@@ -886,8 +851,10 @@ async function handleIngestRequest(
       }
       if (redactions > 0) result.redactions = redactions;
     } catch (e: any) {
-      result.conversations = []; // error 时 conversations 为空数组（§4.3）
-      result.error = String(e?.message ?? e);
+      result.conversations = []; // error / 空会话时 conversations 为空数组（§4.3）
+      // 空会话（如只跑了 /exit 的 CLI 会话）不是失败：归 skipped，客户端可推进快照（边界 3）
+      if (e instanceof EmptyPayloadError) result.skippedReason = String(e.message);
+      else result.error = String(e?.message ?? e);
     }
     results.push(result);
   }

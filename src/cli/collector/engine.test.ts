@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createClaudeCodeAdapter } from "./adapters/claude-code";
-import { CollectorWatchEngine, backoffDelay, createExcludeMatcher, pullOnce, snapshotChanged } from "./engine";
+import { CollectorWatchEngine, backoffDelay, createExcludeMatcher, degradeOversizeItem, pullOnce, snapshotChanged } from "./engine";
 import { defaultConfig } from "./config";
 import type { IngestItem, IngestResponse } from "./types";
 import { IngestHttpError } from "./ingest-client";
@@ -98,20 +98,75 @@ describe("collector engine", () => {
     client.responses.push({
       ok: true,
       results: [
-        { itemIndex: 0, conversations: [], error: "no conversations parsed" },
+        { itemIndex: 0, conversations: [], error: "unrecognized format" },
         { itemIndex: 1, conversations: [{ action: "created", id: "conv_b" }] },
       ],
     });
 
     const summary = await pullOnce(config, [createClaudeCodeAdapter(root)], { client: client as any });
     expect(summary.counts).toEqual({ created: 1, merged: 0, skipped: 0, error: 1 });
-    expect(summary.errors[0].error).toBe("no conversations parsed");
+    expect(summary.errors[0].error).toBe("unrecognized format");
   });
 
-  it("pull isolates 413 failures so large files do not poison small-file batches", async () => {
-    const root = tmpDir("pentou-pull-413-");
+  it("pull counts server-reported empty sessions as skipped, not error", async () => {
+    const root = tmpDir("pentou-pull-empty-");
+    writeJsonl(path.join(root, "a.jsonl"));
+    const config = defaultConfig({
+      server: "http://x",
+      token: "t",
+      adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
+    });
+    const client = new FakeClient();
+    client.responses.push({
+      ok: true,
+      results: [{ itemIndex: 0, conversations: [], skippedReason: "no conversations parsed" }],
+    });
+
+    const summary = await pullOnce(config, [createClaudeCodeAdapter(root)], { client: client as any });
+    expect(summary.counts).toEqual({ created: 0, merged: 0, skipped: 1, error: 0 });
+    expect(summary.errors).toEqual([]);
+    // 空会话推进快照：watch 模式下文件不变化就不再重传
+    expect(Object.keys(config.snapshots)).toHaveLength(1);
+  });
+
+  it("pull degrades oversize raw files to locally parsed conversation items (spec US-01)", async () => {
+    const root = tmpDir("pentou-pull-oversize-");
     writeJsonl(path.join(root, "a.jsonl"), "small-a");
-    writeJsonl(path.join(root, "big.jsonl"), "x".repeat(11 * 1024 * 1024));
+    // 真实形态：对话文本很小，超限来自会被解析丢弃的 bulk 行（tool_result 等）
+    const bulk = JSON.stringify({ type: "tool_result", blob: "x".repeat(11 * 1024 * 1024) });
+    writeJsonl(
+      path.join(root, "big.jsonl"),
+      '{"type":"user","message":{"role":"user","content":"hello big"},"timestamp":"2026-07-01T00:00:00.000Z"}\n' +
+        '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"world"}]},"timestamp":"2026-07-01T00:00:01.000Z"}\n' +
+        bulk + "\n",
+    );
+    writeJsonl(path.join(root, "c.jsonl"), "small-c");
+    const config = defaultConfig({
+      server: "http://x",
+      token: "t",
+      adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
+    });
+    const client = new FakeClient();
+
+    const summary = await pullOnce(config, [createClaudeCodeAdapter(root)], { client: client as any });
+
+    expect(client.calls).toHaveLength(1);
+    const items = client.calls[0];
+    expect(items.map((item) => item.format)).toEqual(["raw", "conversation", "raw"]);
+    const degraded = items[1];
+    expect(degraded.externalId).toBe("big"); // 单会话结果保留 externalId（§4.5 决策 3）
+    expect((degraded.data as any).messages).toHaveLength(2);
+    expect((degraded.data as any).messages[0].content).toBe("hello big");
+    expect(summary.counts).toEqual({ created: 3, merged: 0, skipped: 0, error: 0 });
+    expect(summary.truncated).toBe(0);
+    expect(summary.errors).toEqual([]);
+    expect(Object.keys(config.snapshots)).toHaveLength(3);
+  });
+
+  it("pull isolates oversize local-parse empty results as skipped without poisoning other files", async () => {
+    const root = tmpDir("pentou-pull-oversize-fail-");
+    writeJsonl(path.join(root, "a.jsonl"), "small-a");
+    writeJsonl(path.join(root, "big.jsonl"), "x".repeat(11 * 1024 * 1024)); // 解析不出任何对话的超限内容
     writeJsonl(path.join(root, "c.jsonl"), "small-c");
     const config = defaultConfig({
       server: "http://x",
@@ -131,8 +186,81 @@ describe("collector engine", () => {
 
     expect(client.calls).toHaveLength(1);
     expect(client.calls[0].map((item) => item.filename)).toEqual(["a.jsonl", "c.jsonl"]);
-    expect(summary.counts).toEqual({ created: 2, merged: 0, skipped: 0, error: 1 });
-    expect(summary.errors).toEqual([{ file: path.join(root, "big.jsonl"), error: "file exceeds ingest 10MB limit" }]);
+    // 解析出 0 条对话 = 空载荷：归 skipped 且推进快照，不再逐轮报错
+    expect(summary.counts).toEqual({ created: 2, merged: 0, skipped: 1, error: 0 });
+    expect(summary.errors).toEqual([]);
+    expect(config.snapshots[path.join(root, "big.jsonl")]).toBeDefined();
+  });
+
+  it("pull shrinks a single conversation still exceeding the limit after parse (spec US-02)", async () => {
+    const root = tmpDir("pentou-pull-shrink-");
+    const chunk = "y".repeat(200 * 1024); // 200KB < 单消息 cap，走阶段二整条移除
+    const lines = ['{"type":"user","message":{"role":"user","content":"U1"},"timestamp":"2026-07-01T00:00:00.000Z"}'];
+    for (let i = 0; i < 60; i++) {
+      lines.push(JSON.stringify({
+        type: "assistant",
+        message: { role: "assistant", content: [{ type: "text", text: `${chunk}#${i}` }] },
+        timestamp: `2026-07-01T00:00:${String(i % 60).padStart(2, "0")}.000Z`,
+      }));
+    }
+    writeJsonl(path.join(root, "long.jsonl"), lines.join("\n") + "\n");
+    const config = defaultConfig({
+      server: "http://x",
+      token: "t",
+      adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
+    });
+    const client = new FakeClient();
+
+    const summary = await pullOnce(config, [createClaudeCodeAdapter(root)], { client: client as any });
+
+    expect(summary.truncated).toBe(1);
+    expect(summary.errors).toEqual([]);
+    const item = client.calls[0][0];
+    expect(item.format).toBe("conversation");
+    const messages = (item.data as any).messages;
+    expect(messages[0].content).toBe("U1"); // 指纹锚点保留
+    expect(messages.some((m: any) => m.content.includes("pentou-cli 省略中部"))).toBe(true);
+    expect(messages[messages.length - 1].content.endsWith("#59")).toBe(true); // 尾部最新保留
+    expect(Buffer.byteLength(JSON.stringify(client.calls[0]))).toBeLessThanOrEqual(10 * 1024 * 1024);
+  });
+
+  it("dry-run marks oversize files without parsing or sending (spec US-01 AC4)", async () => {
+    const root = tmpDir("pentou-pull-dryrun-");
+    writeJsonl(path.join(root, "a.jsonl"), "small-a");
+    writeJsonl(path.join(root, "big.jsonl"), "x".repeat(11 * 1024 * 1024)); // 不可解析，若被解析将产生错误
+    const config = defaultConfig({
+      server: "http://x",
+      token: "t",
+      adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
+    });
+    const client = new FakeClient();
+    const logs: string[] = [];
+    const logger = { log: (m: string) => logs.push(m), warn: () => {}, error: () => {} };
+
+    const summary = await pullOnce(config, [createClaudeCodeAdapter(root)], { client: client as any, dryRun: true, logger });
+
+    expect(client.calls).toHaveLength(0);
+    expect(logs.some((line) => line.includes("(oversize: local parse fallback)"))).toBe(true);
+    expect(summary.errors).toEqual([]); // 未解析，无解析错误
+  });
+
+  it("degradeOversizeItem drops externalId when a file parses into multiple conversations (§4.5 决策 3)", () => {
+    const data = JSON.stringify([
+      { session_id: "s1", messages: [{ role: "user", content: "q1" }, { role: "assistant", content: "a1" }] },
+      { session_id: "s2", messages: [{ role: "user", content: "q2" }, { role: "assistant", content: "a2" }] },
+    ]);
+    const entry = {
+      file: "/tmp/export.json",
+      item: { platform: "claude-code", externalId: "export", format: "raw" as const, data, filename: "export.json" },
+      snapshot: { mtimeMs: 1, size: data.length },
+    };
+
+    const result = degradeOversizeItem(entry as any);
+
+    expect(result.entries).toHaveLength(2);
+    expect(result.entries.every((one) => one.item.externalId === undefined)).toBe(true);
+    expect(result.entries.every((one) => one.item.format === "conversation")).toBe(true);
+    expect(result.entries.every((one) => one.file === "/tmp/export.json")).toBe(true);
   });
 
   it("pull reports unsent files after a 401 instead of silently dropping them", async () => {

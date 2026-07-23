@@ -4,7 +4,7 @@
  *        messages:[{ role, time:{created}, parts:[{type:"text",text}], ... }] }
  */
 import type { Conversation, Message } from "../../app/data.js";
-import { buildConversation, epochToIso, makeMessage, parseEnvelope } from "./util.js";
+import { buildConversation, EmptyPayloadError, epochToIso, makeMessage, parseEnvelope } from "./util.js";
 
 export function normalizeOpencode(data: string): Conversation[] {
   const { session, messages: rows } = parseEnvelope(data, "opencode");
@@ -23,7 +23,7 @@ export function normalizeOpencode(data: string): Conversation[] {
     messages.push(makeMessage(role, text, timestamp));
   }
 
-  if (messages.length === 0) throw new Error("opencode raw payload contains no messages");
+  if (messages.length === 0) throw new EmptyPayloadError("opencode raw payload contains no messages");
   return [buildConversation({
     platform: "OpenCode",
     title: typeof session?.title === "string" ? session.title : undefined,

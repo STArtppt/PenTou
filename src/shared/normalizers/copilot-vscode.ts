@@ -5,7 +5,7 @@
  * response 项形态随 VS Code 版本演进（spec §8 风险）：宽容收集字符串型 value/text。
  */
 import type { Conversation, Message } from "../../app/data.js";
-import { buildConversation, epochToIso, makeMessage } from "./util.js";
+import { buildConversation, EmptyPayloadError, epochToIso, makeMessage } from "./util.js";
 
 function requestText(message: any): string {
   if (typeof message?.text === "string") return message.text.trim();
@@ -58,7 +58,7 @@ export function normalizeCopilotVscode(data: string): Conversation[] {
     if (aiText) messages.push(makeMessage("ai", aiText, timestamp));
   }
 
-  if (messages.length === 0) throw new Error("copilot-vscode raw payload contains no messages");
+  if (messages.length === 0) throw new EmptyPayloadError("copilot-vscode raw payload contains no messages");
   return [buildConversation({
     platform: "Copilot",
     date: sessionDate,

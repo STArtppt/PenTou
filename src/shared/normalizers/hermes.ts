@@ -7,7 +7,7 @@
  */
 import type { Conversation, Message } from "../../app/data.js";
 import { parseHermesExport } from "../parsers.js";
-import { buildConversation, epochToIso, makeMessage, parseEnvelope } from "./util.js";
+import { buildConversation, EmptyPayloadError, epochToIso, makeMessage, parseEnvelope } from "./util.js";
 
 function isEnvelope(data: string): boolean {
   try {
@@ -21,7 +21,7 @@ function isEnvelope(data: string): boolean {
 export function normalizeHermes(data: string): Conversation[] {
   if (!isEnvelope(data)) {
     const conversations = parseHermesExport(JSON.parse(data));
-    if (conversations.length === 0) throw new Error("hermes raw payload contains no messages");
+    if (conversations.length === 0) throw new EmptyPayloadError("hermes raw payload contains no messages");
     return conversations;
   }
   const { session, messages: rows } = parseEnvelope(data, "hermes");
@@ -35,7 +35,7 @@ export function normalizeHermes(data: string): Conversation[] {
     messages.push(makeMessage(role, text, epochToIso(row?.timestamp) ?? new Date().toISOString()));
   }
 
-  if (messages.length === 0) throw new Error("hermes raw payload contains no messages");
+  if (messages.length === 0) throw new EmptyPayloadError("hermes raw payload contains no messages");
   return [buildConversation({
     platform: "Hermes",
     title: typeof session?.title === "string" ? session.title : undefined,

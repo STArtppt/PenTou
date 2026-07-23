@@ -7,7 +7,7 @@
  * 行内无时间戳：date 由服务端落库时间兜底。
  */
 import type { Conversation, Message } from "../../app/data.js";
-import { buildConversation, makeMessage } from "./util.js";
+import { buildConversation, EmptyPayloadError, makeMessage } from "./util.js";
 
 const USER_QUERY_RE = /<user_query>\s*([\s\S]*?)\s*<\/user_query>/;
 
@@ -45,6 +45,6 @@ export function normalizeGrokCli(data: string): Conversation[] {
     }
   }
 
-  if (messages.length === 0) throw new Error("grok-cli raw payload contains no messages");
+  if (messages.length === 0) throw new EmptyPayloadError("grok-cli raw payload contains no messages");
   return [buildConversation({ platform: "Grok", messages, fallbackTitle: "Grok Conversation" })];
 }
