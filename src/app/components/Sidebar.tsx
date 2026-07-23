@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import {
   Search,
@@ -27,6 +27,7 @@ import {
   ArrowUpNarrowWide,
   LogOut,
   Send,
+  Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
@@ -166,6 +167,7 @@ function ItemActionMenu({
   onMove,
   onCopyPath,
   onDownloadMarkdown,
+  onUploadUpdate,
   onDelete,
 }: {
   menuPosition: MenuPosition;
@@ -174,6 +176,7 @@ function ItemActionMenu({
   onMove: (folderId: string | null) => void;
   onCopyPath: (event: React.MouseEvent) => void;
   onDownloadMarkdown: (event: React.MouseEvent) => void;
+  onUploadUpdate?: (event: React.MouseEvent) => void;
   onDelete: (event: React.MouseEvent) => void;
 }) {
   const { t } = useTranslation();
@@ -235,6 +238,15 @@ function ItemActionMenu({
         >
           <Download size={12} /> {t("sidebar.menuDownloadMd")}
         </button>
+        {onUploadUpdate && (
+          <button
+            onMouseEnter={() => setSubmenuOpen(false)}
+            onClick={onUploadUpdate}
+            className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 flex items-center gap-2"
+          >
+            <Upload size={12} /> {t("sidebar.menuUploadUpdate")}
+          </button>
+        )}
         <div className="my-1 h-px bg-zinc-100 dark:bg-white/10" />
         <button
           onMouseEnter={() => setSubmenuOpen(false)}
@@ -1710,8 +1722,9 @@ function DocumentUncategorizedList({ documents }: { documents: Document[] }) {
 
 function DocumentItem({ document: doc }: { document: Document }) {
   const { t } = useTranslation();
-  const { activeDocId, setActiveDocId, deleteDocument, renameDocument, moveDocument, documentFolders } = useAppContext();
+  const { activeDocId, setActiveDocId, deleteDocument, renameDocument, moveDocument, uploadDocumentUpdate, documentFolders } = useAppContext();
   const { mode: selectionMode, isSelected, toggle } = useSelection();
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -1766,6 +1779,30 @@ function DocumentItem({ document: doc }: { document: Document }) {
     e.stopPropagation();
     setMenuOpen(false);
     downloadMarkdownFile(`${doc.id}.md`, documentToMarkdown(doc));
+  };
+
+  const handleUploadUpdate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    uploadInputRef.current?.click();
+  };
+
+  const handleUploadFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".md")) {
+      toast.error(t("sidebar.uploadUpdateInvalidType"));
+      return;
+    }
+    try {
+      const action = await uploadDocumentUpdate(doc.id, file);
+      if (action === "skipped") toast.info(t("sidebar.uploadUpdateSkipped"));
+      else toast.success(t("sidebar.uploadUpdateSuccess"));
+    } catch (error: any) {
+      console.error({ module: "Sidebar", op: "uploadDocumentUpdate", err: error, context: { id: doc.id } });
+      toast.error(error?.message || t("sidebar.uploadUpdateFailed"));
+    }
   };
 
   const moveTargets: MoveTarget[] = [
@@ -1833,10 +1870,20 @@ function DocumentItem({ document: doc }: { document: Document }) {
             onMove={handleMove}
             onCopyPath={handleCopyPath}
             onDownloadMarkdown={handleDownloadMarkdown}
+            onUploadUpdate={handleUploadUpdate}
             onDelete={handleDelete}
           />
         )}
       </AnimatePresence>
+
+      <input
+        ref={uploadInputRef}
+        type="file"
+        accept=".md"
+        className="hidden"
+        onClick={(e) => e.stopPropagation()}
+        onChange={handleUploadFileChange}
+      />
 
       <RenameModal
         isOpen={renameOpen}

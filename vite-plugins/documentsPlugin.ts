@@ -709,6 +709,16 @@ export async function documentsApiHandler(
     return true;
   }
 
+  // ── POST /api/documents/:id/upload-update ──────────────────────────────────
+  if (sub === "upload-update" && method === "POST") {
+    if (!fs.existsSync(path.join(DOCS_DIR, `${docId}.md`))) {
+      json(res, 404, { error: "Not found" });
+      return true;
+    }
+    await handleDocumentUploadUpdate(req, res, docId);
+    return true;
+  }
+
   return false;
 }
 
@@ -849,4 +859,64 @@ async function handleDocumentImport(req: IncomingMessage, res: ServerResponse): 
     failedCount: compactResults.length - successCount,
     results: compactResults,
   });
+}
+
+// ── Document Upload Update (multipart, spec doc-upload-update) ────────────────
+
+/** 上传 .md 覆盖指定文档正文：绕过指纹去重，目标由 :id 显式指定（spec §4.1）。 */
+async function handleDocumentUploadUpdate(
+  req: IncomingMessage,
+  res: ServerResponse,
+  docId: string,
+): Promise<void> {
+  const form = formidable({
+    maxFileSize: DOC_IMPORT_MAX_FILE_SIZE,
+    maxFiles: 1,
+    uploadDir: tmpdir(),
+    keepExtensions: true,
+  });
+
+  let file: formidable.File | undefined;
+  try {
+    const [, formFiles] = await form.parse(req);
+    file = (Object.values(formFiles).flat().filter(Boolean) as formidable.File[])[0];
+  } catch (e: any) {
+    if (e.message?.includes("maxFileSize") || e.message?.includes("maxTotalFileSize")) {
+      json(res, 413, { error: `File too large. Maximum ${DOC_IMPORT_MAX_FILE_SIZE / 1024 / 1024}MB per file.` });
+    } else {
+      json(res, 400, { error: String(e) });
+    }
+    return;
+  }
+
+  if (!file) {
+    json(res, 400, { error: "No file uploaded" });
+    return;
+  }
+
+  const originalName = file.originalFilename ?? file.newFilename ?? "unknown";
+  try {
+    if (path.extname(originalName).toLowerCase() !== ".md") {
+      json(res, 400, { error: "Unsupported file extension: only .md is accepted" });
+      return;
+    }
+    const raw = fs.readFileSync(file.filepath, "utf-8");
+    const body = await localizeMedia(raw, {
+      downloadRemote: true,
+      baseDir: path.dirname(file.filepath),
+    });
+    const docPath = path.join(DOCS_DIR, `${docId}.md`);
+    const existing = parseDocumentMd(docId, fs.readFileSync(docPath, "utf-8"));
+    if (existing.body === body) {
+      json(res, 200, { ok: true, action: "skipped", document: existing });
+      return;
+    }
+    // 复用 mergeDocument：pre-import-overwrite 存档 + import 新版本；不传 title 保留原标题（spec 决策 3）
+    const result = mergeDocument(existing, { body });
+    json(res, 200, { ok: true, action: result.action, document: result.document });
+  } catch (e) {
+    json(res, 500, { error: String(e) });
+  } finally {
+    try { fs.unlinkSync(file.filepath); } catch {}
+  }
 }

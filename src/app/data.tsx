@@ -249,6 +249,7 @@ interface AppContextType {
   addDocuments: (docs: Document[]) => Promise<void>;
   updateDocument: (id: string, patch: Partial<Document>) => Promise<void>;
   saveDocumentBody: (id: string, newBody: string) => Promise<DocumentVersion>;
+  uploadDocumentUpdate: (id: string, file: File) => Promise<"merged" | "skipped">;
   deleteDocument: (id: string) => Promise<void>;
   renameDocument: (id: string, title: string) => Promise<void>;
   moveDocument: (docId: string, folderId: string | null) => Promise<void>;
@@ -765,6 +766,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return data.version as DocumentVersion;
   }, []);
 
+  // 上传 .md 覆盖更新指定文档（spec doc-upload-update US-01）
+  const uploadDocumentUpdate = useCallback(async (id: string, file: File): Promise<"merged" | "skipped"> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`/api/documents/${id}/upload-update`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error ?? `API /api/documents/${id}/upload-update failed: ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.action === "merged" && data.document) {
+      hydratedDocRef.current.add(id);
+      setDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, ...data.document } : d)));
+    }
+    return data.action;
+  }, []);
+
   const deleteDocument = useCallback(async (id: string) => {
     setDocuments((prev) => prev.filter((d) => d.id !== id));
     if (activeDocId === id) setActiveDocId(null);
@@ -950,6 +972,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addDocuments,
         updateDocument,
         saveDocumentBody,
+        uploadDocumentUpdate,
         deleteDocument,
         renameDocument,
         moveDocument,
