@@ -11,7 +11,7 @@ const toneClass: Record<Tone, string> = {
   success:
     "border-green-200 bg-green-50 text-green-800 dark:border-green-400/30 dark:bg-green-400/10 dark:text-green-200",
   warning:
-    "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200",
+    "border-destructive/25 bg-destructive/10 text-destructive",
 };
 
 export function SettingsNote({

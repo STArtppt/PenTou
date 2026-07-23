@@ -238,21 +238,22 @@ export function TopToolbar() {
         {/* Edit Doc button with sub-mode toggle */}
         {editActive ? (
           <>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1.5"
               onClick={() => setEditMode(editMode === "annotate" ? "edit" : "annotate")}
-              className={clsx(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                "bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-300",
-              )}
             >
               {editMode === "annotate" ? t("doc.annotateMode") : t("doc.editMode")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-muted-foreground"
               onClick={() => setEditMode("off")}
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors"
             >
               <X size={14} /> {t("toolbar.exitEdit")}
-            </button>
+            </Button>
           </>
         ) : (
           <ToolButton
@@ -369,21 +370,19 @@ function ToolButton({
   active?: boolean;
 }) {
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={onClick}
       disabled={disabled}
       title={tooltip}
       className={clsx(
-        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
-        disabled
-          ? "text-zinc-300 dark:text-zinc-600 cursor-not-allowed"
-          : active
-          ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-          : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-orange-500 dark:hover:text-yellow-400",
+        "gap-1.5 px-2.5",
+        active && "bg-primary text-primary-foreground hover:bg-primary/90",
       )}
     >
       <Icon size={14} className={loading ? "animate-spin" : ""} />
       {label}
-    </button>
+    </Button>
   );
 }

@@ -196,7 +196,7 @@ export function MigrationTab() {
       </Field>
 
       {remoteUrl.trim().startsWith("http://") && (
-        <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
+        <label className="flex items-start gap-3 rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-xs text-destructive">
           <Checkbox
             checked={allowInsecure}
             onCheckedChange={(v) => setAllowInsecure(v === true)}

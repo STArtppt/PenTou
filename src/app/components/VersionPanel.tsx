@@ -132,7 +132,7 @@ export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
             ) : (
               <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                 {versions.length > 10 && (
-                  <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-400/20 rounded-lg px-3 py-2 mb-2">
+                  <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2 mb-2">
                     {t("version.tooMany", { n: versions.length })}
                   </div>
                 )}
@@ -164,7 +164,7 @@ const TYPE_COLORS: Record<VersionType, string> = {
   "manual-edit": "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300",
   "conversation-excerpt": "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
   "pre-llm-rewrite": "bg-zinc-100 dark:bg-white/10 text-zinc-500 dark:text-zinc-500",
-  "llm-rewrite": "bg-orange-100 dark:bg-yellow-500/20 text-orange-700 dark:text-yellow-300",
+  "llm-rewrite": "bg-muted text-muted-foreground",
   "pre-import-overwrite": "bg-zinc-100 dark:bg-white/10 text-zinc-500 dark:text-zinc-500",
   "pre-rollback": "bg-zinc-100 dark:bg-white/10 text-zinc-500 dark:text-zinc-500",
   "rolled-back-from": "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300",
@@ -198,7 +198,7 @@ function VersionCard({
       className={clsx(
         "rounded-lg border p-3 transition-colors",
         isCurrent
-          ? "border-orange-300 dark:border-yellow-500/40 bg-orange-50 dark:bg-yellow-500/10"
+          ? "border-border bg-accent"
           : isPreviewing
           ? "border-blue-300 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-500/10"
           : "border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1A1A1A]"
@@ -211,7 +211,7 @@ function VersionCard({
             {typeLabel}
           </span>
           {isCurrent && (
-            <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-orange-500 dark:bg-yellow-400 text-white dark:text-zinc-900">
+            <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-primary text-primary-foreground">
               {t("version.current")}
             </span>
           )}
@@ -221,7 +221,7 @@ function VersionCard({
       <div className="text-xs text-zinc-400 dark:text-zinc-500 mb-2">
         {formatDisplayDateTime(version.createdAt, language)}
         {version.sourceAnnotationIds && version.sourceAnnotationIds.length > 0 && (
-          <span className="ml-2 text-orange-500 dark:text-yellow-400">
+          <span className="ml-2 text-foreground">
             {t("version.basedOn", { n: version.sourceAnnotationIds.length })}
           </span>
         )}
@@ -238,7 +238,7 @@ function VersionCard({
           </button>
           <button
             onClick={onRollback}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400 transition-colors"
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-foreground transition-colors"
           >
             <RotateCcw size={10} /> {t("version.rollback")}
           </button>

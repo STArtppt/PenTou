@@ -197,7 +197,7 @@ export function ChatBody() {
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-[#1A1A1A] text-zinc-400 min-w-0">
-        <Loader2 size={48} className="mb-4 opacity-50 animate-spin text-orange-500 dark:text-yellow-400" />
+        <Loader2 size={48} className="mb-4 opacity-50 animate-spin text-muted-foreground" />
         <h2 className="text-xl font-semibold mb-2 text-zinc-600 dark:text-zinc-300">{t("main.loading")}</h2>
       </div>
     );
@@ -211,7 +211,7 @@ export function ChatBody() {
         <p className="text-sm mb-6">{t("main.selectConv")}</p>
         <button
           onClick={() => setDrawerOpen(true)}
-          className="flex items-center justify-center gap-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-orange-600 dark:hover:bg-yellow-400 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+          className="flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm"
         >
           <Import size={18} /> {t("main.importData")}
         </button>
@@ -251,7 +251,7 @@ export function ChatBody() {
           <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400 shrink-0">
             <button
               onClick={() => setVersionPanelOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-orange-500 dark:hover:text-yellow-400 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-foreground transition-colors"
             >
               <History size={14} />
               {t("toolbar.versionHistory")}
@@ -259,7 +259,7 @@ export function ChatBody() {
             <button
               onClick={handleConvertToDoc}
               disabled={converting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-orange-500 dark:hover:text-yellow-400 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-foreground transition-colors"
             >
               {converting ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
               {t("toolbar.convertToDoc", { defaultValue: "转为文档" })}
@@ -270,7 +270,7 @@ export function ChatBody() {
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
                 aiSidebarOpen
                   ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                  : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-orange-500 dark:hover:text-yellow-400",
+                  : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-foreground",
               )}
             >
               <MessageSquare size={14} />
@@ -348,7 +348,7 @@ function CodeBlock({ children, className }: any) {
         <span className="text-xs uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">{codeLanguage}</span>
         <button
           onClick={handleCopy}
-          className="text-zinc-500 hover:text-orange-500 dark:text-zinc-400 dark:hover:text-yellow-400 transition-colors flex items-center gap-1 text-xs uppercase font-bold tracking-wider"
+          className="text-zinc-500 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground transition-colors flex items-center gap-1 text-xs uppercase font-bold tracking-wider"
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
           {copied ? t("main.copied") : t("main.copy")}
@@ -394,7 +394,7 @@ function MessageHeader({
       )}
       <button
         onClick={handleCopy}
-        className="opacity-0 group-hover/header:opacity-100 p-1 rounded-md text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-all"
+        className="opacity-0 group-hover/header:opacity-100 p-1 rounded-md text-zinc-400 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 transition-all"
         title={t("main.copyMessage")}
       >
         {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -402,7 +402,7 @@ function MessageHeader({
       <button
         onClick={onExcerpt}
         disabled={excerpting}
-        className="opacity-0 group-hover/header:opacity-100 p-1 rounded-md text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-all"
+        className="opacity-0 group-hover/header:opacity-100 p-1 rounded-md text-zinc-400 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 transition-all"
         title={t("main.excerptConversation")}
       >
         {excerpting ? <Loader2 size={14} className="animate-spin" /> : <Quote size={14} />}
@@ -438,10 +438,10 @@ const markdownComponents = {
     );
   },
   blockquote: ({ node, ...props }: any) => (
-    <blockquote className="border-l-4 border-zinc-300 dark:border-zinc-700 hover:border-orange-500 dark:hover:border-yellow-400 bg-zinc-50 dark:bg-white/5 pl-4 py-2 my-4 rounded-r text-zinc-700 dark:text-zinc-300 italic transition-colors" {...props} />
+    <blockquote className="border-l-4 border-zinc-300 dark:border-zinc-700 hover:border-foreground/40 bg-zinc-50 dark:bg-white/5 pl-4 py-2 my-4 rounded-r text-zinc-700 dark:text-zinc-300 italic transition-colors" {...props} />
   ),
   a: ({ node, ...props }: any) => (
-    <a className="text-blue-600 dark:text-blue-400 hover:text-orange-500 dark:hover:text-yellow-400 underline transition-colors" target="_blank" rel="noopener noreferrer" {...props} />
+    <a className="text-blue-600 dark:text-blue-400 hover:text-foreground underline transition-colors" target="_blank" rel="noopener noreferrer" {...props} />
   ),
   img: ({ node, src, alt }: any) => <MarkdownImage src={src} alt={alt} />,
   table: ({ node, ...props }: any) => (

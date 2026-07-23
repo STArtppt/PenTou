@@ -99,7 +99,7 @@ export function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
             href={src}
             target="_blank"
             rel="noopener noreferrer"
-            className="break-all text-blue-600 underline transition-colors hover:text-orange-500 dark:text-blue-400 dark:hover:text-yellow-400"
+            className="break-all text-blue-600 underline transition-colors hover:text-foreground dark:text-blue-400 dark:hover:text-foreground"
           >
             {src}
           </a>

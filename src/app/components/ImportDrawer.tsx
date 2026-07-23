@@ -291,7 +291,7 @@ export function ImportDrawer() {
             <div className="flex items-center justify-between p-6 border-b border-zinc-200 dark:border-white/10 shrink-0 bg-zinc-50/50 dark:bg-[#1A1A1A]/50">
               <div>
                 <h2 className="text-xl font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
-                  <UploadCloud size={22} className="text-orange-500 dark:text-yellow-400" />
+                  <UploadCloud size={22} className="text-muted-foreground" />
                   {title}
                 </h2>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{subtitle}</p>
@@ -320,7 +320,7 @@ export function ImportDrawer() {
                   className={clsx(
                     "border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center transition-all group mt-2 relative overflow-hidden",
                     isImporting ? "opacity-50 border-zinc-300 dark:border-white/20 bg-zinc-50 dark:bg-[#1A1A1A]/50" : 
-                    isDragging ? "border-orange-500 dark:border-yellow-400 bg-orange-50 dark:bg-yellow-400/10 scale-[1.02]" :
+                    isDragging ? "border-foreground bg-accent scale-[1.02]" :
                     "border-zinc-300 dark:border-white/20 bg-zinc-50 dark:bg-[#1A1A1A]/50 hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer hover:border-zinc-400 dark:hover:border-white/30"
                   )}
                 >
@@ -330,7 +330,7 @@ export function ImportDrawer() {
                   
                   <div className={clsx(
                     "w-16 h-16 rounded-full flex items-center justify-center shadow-sm mb-4 transition-all duration-300",
-                    isDragging ? "bg-orange-500 dark:bg-yellow-400 text-white dark:text-zinc-900 scale-110" : "bg-white dark:bg-[#2A2A2A] text-zinc-400 group-hover:text-orange-500 dark:group-hover:text-yellow-400"
+                    isDragging ? "bg-primary text-primary-foreground scale-110" : "bg-white dark:bg-[#2A2A2A] text-zinc-400 group-hover:text-foreground"
                   )}>
                     {isImporting ? <Loader2 size={32} className="animate-spin" /> : <UploadCloud size={32} />}
                   </div>
@@ -361,7 +361,7 @@ export function ImportDrawer() {
                       onChange={(e) => setImportUrl(e.target.value)}
                       placeholder={t("import.urlPlaceholder")}
                       disabled={isImporting}
-                      className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 dark:focus:ring-yellow-400/50 text-zinc-900 dark:text-white placeholder:text-zinc-400 disabled:opacity-50 transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 text-zinc-900 dark:text-white placeholder:text-zinc-400 disabled:opacity-50 transition-all"
                     />
                   </div>
                   <button
@@ -390,7 +390,7 @@ export function ImportDrawer() {
                   {/* Card 1: Platform Exports */}
                   <div className="bg-white dark:bg-[#222] border border-zinc-200 dark:border-white/10 rounded-xl p-5 shadow-sm">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-lg">
+                      <div className="p-2 bg-muted text-muted-foreground rounded-lg">
                         <FileJson size={20} />
                       </div>
                       <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">{t("import.platformExports")}</h4>
@@ -565,7 +565,7 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
 
   const statusColor = configured
     ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20"
-    : "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-400/20";
+    : "text-destructive bg-destructive/10 border-destructive/20";
 
   return (
     <div className="space-y-6">
@@ -607,7 +607,7 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
                 onChange={(e) => setTokenInput(e.target.value)}
                 type="password"
                 placeholder={tokenPlaceholder}
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1A1A1A] text-sm text-zinc-800 dark:text-zinc-100 outline-none focus:border-orange-400 dark:focus:border-yellow-400"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1A1A1A] text-sm text-zinc-800 dark:text-zinc-100 outline-none focus:border-ring"
               />
             </div>
             <Button type="button" variant="primary" size="sm" onClick={saveToken} disabled={savingToken}>
@@ -639,7 +639,7 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
             "border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center transition-all cursor-pointer",
             uploading
               ? "border-zinc-300 dark:border-white/20 bg-zinc-50 dark:bg-[#1A1A1A]/50 opacity-60"
-              : "border-zinc-300 dark:border-white/20 bg-zinc-50 dark:bg-[#1A1A1A]/50 hover:border-orange-400 dark:hover:border-yellow-400 hover:bg-zinc-100 dark:hover:bg-white/5"
+              : "border-zinc-300 dark:border-white/20 bg-zinc-50 dark:bg-[#1A1A1A]/50 hover:border-foreground/40 hover:bg-zinc-100 dark:hover:bg-white/5"
           )}
         >
           <input

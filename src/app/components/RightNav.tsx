@@ -167,7 +167,7 @@ export function RightNav({ messages, scrollContainer }: RightNavProps) {
                   className={clsx(
                     "flex-1 truncate text-xs text-right pr-2 transition-colors font-medium whitespace-nowrap",
                     isActive 
-                      ? "text-orange-500 dark:text-yellow-400 font-semibold" 
+                      ? "text-foreground font-semibold"
                       : (isMsgHovered 
                           ? "text-zinc-900 dark:text-zinc-100 font-semibold" 
                           : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300")
@@ -182,7 +182,7 @@ export function RightNav({ messages, scrollContainer }: RightNavProps) {
                   className={clsx(
                     "rounded-full transition-all duration-300",
                     isActive 
-                      ? "bg-orange-500 dark:bg-yellow-400 h-[3px] w-[14px]" 
+                      ? "bg-primary h-[3px] w-[14px]"
                       : (isMsgHovered 
                           ? "bg-zinc-800 dark:bg-zinc-200 h-[3px] w-[14px]" 
                           : "bg-zinc-300 dark:bg-zinc-600 h-[2px] w-[10px]")

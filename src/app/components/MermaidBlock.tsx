@@ -94,7 +94,7 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
             type="button"
             onClick={() => setView(showSource ? "preview" : "source")}
             disabled={status.kind !== "ready" && !showSource}
-            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-yellow-400"
+            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-foregrounddisabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-foreground"
             title={showSource ? t("mermaid.showPreview") : t("mermaid.showSource")}
           >
             {showSource ? <Eye size={12} /> : <Code2 size={12} />}
@@ -104,7 +104,7 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-orange-500 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-yellow-400"
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-foregrounddark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-foreground"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? t("main.copied") : t("main.copy")}
@@ -115,7 +115,7 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
               type="button"
               onClick={() => setFullscreenOpen(true)}
               disabled={status.kind !== "ready"}
-              className="rounded p-1 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-yellow-400"
+              className="rounded p-1 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-foregrounddisabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-foreground"
               title={t("mermaid.fullscreen")}
             >
               <Maximize2 size={14} />
@@ -126,7 +126,7 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
 
       {status.kind === "loading" && (
         <div className="flex min-h-40 items-center justify-center gap-2 bg-zinc-50 text-sm text-zinc-500 dark:bg-[#111] dark:text-zinc-400">
-          <Loader2 size={16} className="animate-spin text-orange-500 dark:text-yellow-400" />
+          <Loader2 size={16} className="animate-spin text-muted-foreground" />
           {t("mermaid.rendering")}
         </div>
       )}

@@ -165,7 +165,7 @@ export function ObsidianTab({
             feedback.kind === "ok"
               ? "text-xs text-green-600 dark:text-green-400"
               : feedback.kind === "warn"
-                ? "text-xs text-amber-600 dark:text-amber-400"
+                ? "text-xs text-destructive"
                 : "text-xs text-red-600 dark:text-red-400"
           }
         >

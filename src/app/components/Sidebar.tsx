@@ -712,28 +712,32 @@ export function Sidebar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-semibold text-lg group cursor-pointer">
             <img src={theme === "dark" ? logoDarkUrl : logoUrl} alt="PenTou Logo" className="w-6 h-6 object-contain" />
-            <span className="group-hover:text-orange-500 dark:group-hover:text-yellow-400 transition-colors">PenTou</span>
+            <span className="group-hover:text-foreground transition-colors">PenTou</span>
           </div>
           <div className="flex items-center gap-1">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground"
               onClick={() => setSettingsOpen(true)}
-              className="p-1.5 rounded-md hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400 transition-colors"
               title={t("toolbar.settings")}
             >
               <Settings size={18} />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground"
               onClick={async () => {
                 try {
                   await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
                 } catch { /* dev mode has no logout endpoint; fall through to redirect */ }
                 window.location.href = "/login";
               }}
-              className="p-1.5 rounded-md hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400 transition-colors"
               title="Logout"
             >
               <LogOut size={18} />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -763,33 +767,37 @@ export function Sidebar() {
               {t("sidebar.tab.doc")}
             </button>
           </div>
-          <button
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground"
             onClick={() => setSearchOpen(true)}
             title={t("search.button")}
             aria-label={t("search.button")}
-            className="shrink-0 flex items-center justify-center h-8 w-8 rounded-lg border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400 hover:border-orange-500 dark:hover:border-yellow-400 transition-colors"
           >
             <Search size={16} />
-          </button>
+          </Button>
         </div>
 
         {/* Action Buttons */}
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="outline"
+            className="flex-[2] gap-1.5 border-foreground font-semibold shadow-sm"
             onClick={() => setDrawerOpen(true)}
             disabled={selectionMode}
-            className="flex-[2] flex items-center justify-center gap-1.5 bg-transparent border border-zinc-900 dark:border-white text-zinc-900 dark:text-white hover:border-orange-500 hover:text-orange-500 dark:hover:border-yellow-400 dark:hover:text-yellow-400 rounded-lg py-1.5 text-sm font-semibold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-900 disabled:hover:text-zinc-900 dark:disabled:hover:border-white dark:disabled:hover:text-white"
           >
             <Import size={16} /> {t("sidebar.import")}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 gap-1.5"
             onClick={handleNewFolder}
             disabled={selectionMode}
-            className="flex-1 flex items-center justify-center gap-1.5 bg-transparent border border-zinc-200 dark:border-white/10 hover:border-orange-500 hover:text-orange-500 dark:hover:border-yellow-400 dark:hover:text-yellow-400 rounded-lg py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-200 disabled:hover:text-zinc-700 dark:disabled:hover:border-white/10 dark:disabled:hover:text-zinc-300"
             title={t("sidebar.newFolder")}
           >
             <FolderOpen size={16} /> {t("sidebar.new")}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -812,7 +820,7 @@ export function Sidebar() {
                   <button
                     type="button"
                     onClick={toggleConvSort}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-orange-500 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-yellow-400"
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-foreground dark:text-zinc-500 dark:hover:bg-white/5"
                     title={convSortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}
                     aria-label={convSortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}
                   >
@@ -822,7 +830,7 @@ export function Sidebar() {
                     <button
                       type="button"
                       onClick={toggleAllChatFolders}
-                      className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-orange-500 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-yellow-400"
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-foreground dark:text-zinc-500 dark:hover:bg-white/5"
                       title={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
                       aria-label={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
                     >
@@ -978,7 +986,7 @@ export function Sidebar() {
                   if (e.key === "Escape") setIsNewFolderModalOpen(false);
                 }}
                 placeholder={t("sidebar.folderName")}
-                className="w-full bg-zinc-50 dark:bg-[#151515] border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-yellow-400 focus:border-transparent transition-all mb-6"
+                className="w-full bg-zinc-50 dark:bg-[#151515] border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all mb-6"
               />
               {activeView === "chat" && (
                 <datalist id="platform-options">
@@ -988,18 +996,12 @@ export function Sidebar() {
                 </datalist>
               )}
               <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setIsNewFolderModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors"
-                >
+                <Button variant="ghost" onClick={() => setIsNewFolderModalOpen(false)}>
                   {t("sidebar.cancel")}
-                </button>
-                <button
-                  onClick={submitNewFolder}
-                  className="px-4 py-2 text-sm font-medium bg-orange-500 dark:bg-yellow-400 text-white dark:text-zinc-900 hover:bg-orange-600 dark:hover:bg-yellow-500 rounded-lg transition-colors shadow-sm"
-                >
+                </Button>
+                <Button variant="primary" className="shadow-sm" onClick={submitNewFolder}>
                   {t("sidebar.create")}
-                </button>
+                </Button>
               </div>
             </motion.div>
           </div>
@@ -1045,7 +1047,7 @@ function BatchToolbar({
           className="flex items-center gap-1.5 hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed"
           title={t("sidebar.selectAll")}
         >
-          <Icon size={14} className={clsx(selectAllState !== "none" && "text-orange-500 dark:text-yellow-400")} />
+          <Icon size={14} className={clsx(selectAllState !== "none" && "text-primary")} />
           <span>{t("sidebar.selectAll")}</span>
         </button>
         <span className="font-medium text-zinc-700 dark:text-zinc-300">
@@ -1056,7 +1058,7 @@ function BatchToolbar({
         <button
           onClick={onMoveClick}
           disabled={!hasSelection}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-orange-500 hover:text-orange-500 dark:hover:border-yellow-400 dark:hover:text-yellow-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-200 disabled:hover:text-zinc-700 dark:disabled:hover:border-white/10 dark:disabled:hover:text-zinc-300"
+          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-foreground/40 hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-200 disabled:hover:text-zinc-700 dark:disabled:hover:border-white/10 dark:disabled:hover:text-zinc-300"
         >
           <FolderInput size={12} /> {t("sidebar.moveTo", { n: selectedCount })}
         </button>
@@ -1064,7 +1066,7 @@ function BatchToolbar({
           <button
             onClick={onObsidianClick}
             disabled={!hasSelection}
-            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-orange-500 hover:text-orange-500 dark:hover:border-yellow-400 dark:hover:text-yellow-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-200 disabled:hover:text-zinc-700 dark:disabled:hover:border-white/10 dark:disabled:hover:text-zinc-300"
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-foreground/40 hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-200 disabled:hover:text-zinc-700 dark:disabled:hover:border-white/10 dark:disabled:hover:text-zinc-300"
           >
             <Send size={12} /> {t("sidebar.obsidianExport")}
           </button>
@@ -1159,7 +1161,7 @@ function FolderItem({
         className={clsx(
           "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors group",
           isOver
-            ? "bg-orange-50 dark:bg-yellow-400/10 border border-orange-200 dark:border-yellow-400/30"
+            ? "bg-accent border border-border"
             : "hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent text-zinc-700 dark:text-zinc-300"
         )}
         title={selectionMode ? undefined : t("sidebar.rightClick")}
@@ -1171,12 +1173,12 @@ function FolderItem({
           {isOpen ? (
             <FolderOpen
               size={16}
-              className={clsx("text-zinc-400", isOver && "text-orange-500 dark:text-yellow-400")}
+              className={clsx("text-zinc-400", isOver && "text-primary")}
             />
           ) : (
             <FolderIcon
               size={16}
-              className={clsx("text-zinc-400", isOver && "text-orange-500 dark:text-yellow-400")}
+              className={clsx("text-zinc-400", isOver && "text-primary")}
             />
           )}
           <span className="font-medium truncate">{folder.name}</span>
@@ -1189,7 +1191,7 @@ function FolderItem({
             onClick={toggleMenu}
             className={clsx(
               "p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/20 transition-opacity shrink-0",
-              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400"
+              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-foreground"
             )}
             title={t("sidebar.moreActions")}
           >
@@ -1275,7 +1277,7 @@ function ConversationUncategorizedList({ conversations }: { conversations: Conve
       ref={drop}
       className={clsx(
         "space-y-0.5 rounded-lg transition-colors",
-        isOver && "bg-orange-50 dark:bg-yellow-400/10 ring-1 ring-orange-200 dark:ring-yellow-400/30"
+        isOver && "bg-accent ring-1 ring-ring"
       )}
     >
       {conversations.length === 0 ? (
@@ -1377,7 +1379,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
         "group relative flex flex-col justify-center px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors border",
         isDragging ? "opacity-40" : "opacity-100",
         selectionMode && checked
-          ? "bg-orange-50 dark:bg-yellow-400/10 border-orange-200 dark:border-yellow-400/30 text-zinc-900 dark:text-white"
+          ? "bg-accent border-border text-zinc-900 dark:text-white"
           : !selectionMode && isActive
             ? "bg-white dark:bg-[#2C2C2E] border-zinc-200 dark:border-white/10 shadow-sm text-zinc-900 dark:text-white"
             : "border-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5"
@@ -1387,7 +1389,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
         <div className="flex min-w-0 items-center gap-2 truncate pr-6">
           {selectionMode && (
             checked
-              ? <CheckSquare size={14} className="text-orange-500 dark:text-yellow-400 shrink-0" />
+              ? <CheckSquare size={14} className="text-primary shrink-0" />
               : <Square size={14} className="text-zinc-400 shrink-0" />
           )}
           <PlatformIcon platform={conversation.platform} />
@@ -1402,7 +1404,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
               "absolute right-2 p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/20 transition-opacity",
               menuOpen
                 ? "opacity-100"
-                : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400"
+                : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-foreground"
             )}
           >
             <MoreHorizontal size={14} />
@@ -1480,7 +1482,7 @@ function DocumentList({
             <button
               type="button"
               onClick={onToggleAllFolders}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-orange-500 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-yellow-400"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-foreground dark:text-zinc-500 dark:hover:bg-white/5"
               title={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
               aria-label={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
             >
@@ -1590,7 +1592,7 @@ function DocumentFolderItem({
         className={clsx(
           "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors border text-zinc-700 dark:text-zinc-300 group",
           isOver
-            ? "bg-orange-50 dark:bg-yellow-400/10 border-orange-200 dark:border-yellow-400/30"
+            ? "bg-accent border-border"
             : "hover:bg-zinc-100 dark:hover:bg-white/5 border-transparent"
         )}
       >
@@ -1599,9 +1601,9 @@ function DocumentFolderItem({
           className="min-w-0 flex-1 flex items-center gap-2 truncate text-left"
         >
           {isOpen ? (
-            <FolderOpen size={14} className={clsx("text-zinc-400", isOver && "text-orange-500 dark:text-yellow-400")} />
+            <FolderOpen size={14} className={clsx("text-zinc-400", isOver && "text-primary")} />
           ) : (
-            <FolderIcon size={14} className={clsx("text-zinc-400", isOver && "text-orange-500 dark:text-yellow-400")} />
+            <FolderIcon size={14} className={clsx("text-zinc-400", isOver && "text-primary")} />
           )}
           <span className="font-medium truncate">{folder.name}</span>
           <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-zinc-200 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 ml-1">
@@ -1613,7 +1615,7 @@ function DocumentFolderItem({
             onClick={toggleMenu}
             className={clsx(
               "p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/20 transition-opacity shrink-0",
-              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400"
+              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-foreground"
             )}
             title={t("sidebar.moreActions")}
           >
@@ -1697,7 +1699,7 @@ function DocumentUncategorizedList({ documents }: { documents: Document[] }) {
       ref={drop}
       className={clsx(
         "space-y-0.5 rounded-lg transition-colors",
-        isOver && "bg-orange-50 dark:bg-yellow-400/10 ring-1 ring-orange-200 dark:ring-yellow-400/30"
+        isOver && "bg-accent ring-1 ring-ring"
       )}
     >
       {documents.length === 0 ? (
@@ -1823,7 +1825,7 @@ function DocumentItem({ document: doc }: { document: Document }) {
         "group relative flex flex-col justify-center px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-colors border",
         isDragging ? "opacity-40" : "opacity-100",
         selectionMode && checked
-          ? "bg-orange-50 dark:bg-yellow-400/10 border-orange-200 dark:border-yellow-400/30 text-zinc-900 dark:text-white"
+          ? "bg-accent border-border text-zinc-900 dark:text-white"
           : !selectionMode && isActive
             ? "bg-white dark:bg-[#2C2C2E] border-zinc-200 dark:border-white/10 shadow-sm text-zinc-900 dark:text-white"
             : "border-transparent text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5"
@@ -1833,7 +1835,7 @@ function DocumentItem({ document: doc }: { document: Document }) {
         <div className="flex items-center gap-2 truncate pr-6">
           {selectionMode && (
             checked
-              ? <CheckSquare size={14} className="text-orange-500 dark:text-yellow-400 shrink-0" />
+              ? <CheckSquare size={14} className="text-primary shrink-0" />
               : <Square size={14} className="text-zinc-400 shrink-0" />
           )}
           <FileText size={14} className="text-zinc-400 shrink-0" />
@@ -1844,7 +1846,7 @@ function DocumentItem({ document: doc }: { document: Document }) {
             onClick={toggleMenu}
             className={clsx(
               "absolute right-2 p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/20 transition-opacity",
-              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-orange-500 dark:hover:text-yellow-400"
+              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-foreground"
             )}
           >
             <MoreHorizontal size={14} />

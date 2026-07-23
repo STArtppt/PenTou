@@ -162,7 +162,7 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
     >
       {orphanedCount > 0 && (
         <div className="mx-auto max-w-4xl pt-6">
-          <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg px-3 py-2">
+          <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
             {t("anno.orphanBanner", { n: orphanedCount })}
           </div>
         </div>
@@ -200,14 +200,14 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
             <div className="flex items-center gap-1 bg-zinc-900 dark:bg-[#2A2A2A] rounded-lg shadow-xl p-1 border border-white/10">
               <button
                 onClick={handleHighlight}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-yellow-300 hover:bg-white/10 rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-zinc-200 hover:bg-white/10 rounded-md transition-colors"
               >
                 <Highlighter size={12} /> {t("anno.addHighlight")}
               </button>
               <div className="w-px h-4 bg-white/20" />
               <button
                 onClick={handleStartComment}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-orange-300 hover:bg-white/10 rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-zinc-200 hover:bg-white/10 rounded-md transition-colors"
               >
                 <MessageSquare size={12} /> {t("anno.addComment")}
               </button>
@@ -221,7 +221,7 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
             <div className="w-56 bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 rounded-lg shadow-xl p-3">
               <textarea
                 autoFocus
-                className="w-full text-xs bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-md p-2 text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 outline-none resize-none focus:ring-1 focus:ring-orange-500 dark:focus:ring-yellow-400"
+                className="w-full text-xs bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-md p-2 text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 outline-none resize-none focus:ring-1 focus:ring-ring"
                 rows={3}
                 placeholder={t("anno.commentPlaceholder")}
                 value={commentDraft}
@@ -235,7 +235,7 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
                 <button
                   onClick={handleSaveComment}
                   disabled={!commentDraft.trim()}
-                  className="px-2.5 py-1 text-xs font-medium bg-orange-500 dark:bg-yellow-400 text-white dark:text-zinc-900 rounded-md disabled:opacity-50 transition-colors hover:bg-orange-600 dark:hover:bg-yellow-500"
+                  className="px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-md disabled:opacity-50 transition-colors hover:bg-primary/90"
                 >
                   {t("anno.save")}
                 </button>
@@ -387,7 +387,7 @@ function DocCodeBlock({ children, className }: any) {
         <button
           type="button"
           onClick={handleCopy}
-          className="text-zinc-500 hover:text-orange-500 dark:text-zinc-400 dark:hover:text-yellow-400 transition-colors flex items-center gap-1 text-xs uppercase font-bold tracking-wider"
+          className="text-zinc-500 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground transition-colors flex items-center gap-1 text-xs uppercase font-bold tracking-wider"
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
           {copied ? t("main.copied") : t("main.copy")}
@@ -412,7 +412,7 @@ const mdComponents = {
     <blockquote className="border-l-4 border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-white/5 pl-4 py-2 my-4 rounded-r italic text-zinc-600 dark:text-zinc-400" {...props} />
   ),
   a: ({ node, ...props }: any) => (
-    <a className="text-blue-600 dark:text-blue-400 hover:text-orange-500 dark:hover:text-yellow-400 underline transition-colors" target="_blank" rel="noopener noreferrer" {...props} />
+    <a className="text-blue-600 dark:text-blue-400 hover:text-foreground underline transition-colors" target="_blank" rel="noopener noreferrer" {...props} />
   ),
   img: ({ node, src, alt }: any) => <MarkdownImage src={src} alt={alt} />,
   code: ({ node, className, children, isBlock, ...props }: any) => {
@@ -519,15 +519,15 @@ function DocumentTOC({ body }: { body: string }) {
                 key={i}
                 onClick={() => scrollToHeading(h.slug)}
                 className={clsx(
-                  "relative text-left w-full pr-3 py-1.5 text-xs transition-colors hover:text-orange-500 dark:hover:text-yellow-400 truncate group",
-                  isActive ? "text-orange-500 dark:text-yellow-400 font-medium" : "text-zinc-500 dark:text-zinc-400",
+                  "relative text-left w-full pr-3 py-1.5 text-xs transition-colors hover:text-foreground truncate group",
+                  isActive ? "text-foreground font-medium" : "text-zinc-500 dark:text-zinc-400",
                   h.level === 1 && "text-[13px] mt-1 pl-4",
                   h.level === 2 && "pl-7",
                   h.level === 3 && "pl-10 text-xs",
                 )}
               >
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-[16px] bg-orange-500 dark:bg-yellow-400 rounded-full" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-[16px] bg-primary rounded-full" />
                 )}
                 {h.text}
               </button>

@@ -49,7 +49,7 @@ const aiMarkdownComponents = {
   },
   img: ({ node, src, alt }: any) => <MarkdownImage src={src} alt={alt} />,
   a: ({ node, ...props }: any) => (
-    <a className="text-blue-600 underline decoration-blue-200 underline-offset-2 transition-colors hover:text-orange-500 dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:text-yellow-400" target="_blank" rel="noopener noreferrer" {...props} />
+    <a className="text-blue-600 underline decoration-blue-200 underline-offset-2 transition-colors hover:text-foreground dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:text-foreground" target="_blank" rel="noopener noreferrer" {...props} />
   ),
   table: ({ node, ...props }: any) => (
     <div className="my-4 overflow-x-auto rounded-lg border border-zinc-200 dark:border-white/10">
@@ -370,7 +370,7 @@ export function AiSidebar() {
       <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 custom-scrollbar">
         <ContextPill context={context} label={contextDisplayLabel} />
         {!hasLLM && (
-          <div className="mb-4 mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300">
+          <div className="mb-4 mt-4 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
             <p className="font-medium">{t("aiSidebar.configureModel")}</p>
             <button
               onClick={() => setSettingsOpen(true)}
@@ -461,7 +461,7 @@ function ContextPill({ context, label }: { context: ContextSnapshot; label: stri
         <span className="min-w-0 flex-1 truncate">{label}</span>
       </div>
       {context.truncated && (
-        <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{t("aiSidebar.contextTruncated")}</p>
+        <p className="mt-1 text-xs text-destructive">{t("aiSidebar.contextTruncated")}</p>
       )}
       {context.savedBodyHint && (
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{t("aiSidebar.savedBodyHint")}</p>

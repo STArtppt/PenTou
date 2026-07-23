@@ -68,7 +68,7 @@ function AppContent() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex h-screen w-full bg-white dark:bg-[#1A1A1A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans selection:bg-orange-200 selection:text-zinc-900 dark:selection:bg-yellow-500/30 dark:selection:text-yellow-100 transition-colors duration-200">
+      <div className="flex h-screen w-full bg-white dark:bg-[#1A1A1A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans selection:bg-accent selection:text-accent-foreground transition-colors duration-200">
         <style dangerouslySetInnerHTML={{ __html: `
           .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
