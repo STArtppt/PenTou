@@ -16,6 +16,7 @@ import { locateAndFlash } from "../utils/searchJump";
 import { BrandIcon } from "./BrandIcon";
 import { topBarSourceLabel } from "./topBarSourceLabel";
 import { MermaidBlock } from "./MermaidBlock";
+import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
 import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { formatDisplayDateTime } from "../utils/dateFormat";
 import { useScrollActivity } from "../hooks/useScrollActivity";
@@ -336,40 +337,6 @@ function isValidDate(d: any) {
   return date instanceof Date && !isNaN(date.getTime());
 }
 
-function CodeBlock({ children, className }: any) {
-  const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  const text = String(children).replace(/\n$/, "");
-  const codeLanguage = className ? className.replace(/language-/, "") : "snippet";
-
-  const handleCopy = async () => {
-    if (await copyText(text)) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  return (
-    <div className="relative group mt-4 mb-6">
-      <div className="absolute flex items-center justify-between top-0 left-0 right-0 px-4 py-2 bg-zinc-200/50 dark:bg-[#2A2A2A] rounded-t-lg border-b border-zinc-200 dark:border-white/10">
-        <span className="text-xs uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">{codeLanguage}</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCopy}
-          className="h-auto gap-1 rounded px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-        >
-          {copied ? <Check size={12} /> : <Copy size={12} />}
-          {copied ? t("main.copied") : t("main.copy")}
-        </Button>
-      </div>
-      <pre className="bg-zinc-50 dark:bg-[#111] border border-zinc-200 dark:border-white/10 rounded-lg p-4 pt-12 overflow-x-auto text-sm font-mono text-zinc-800 dark:text-zinc-300 shadow-sm custom-scrollbar">
-        <code className={className}>{children}</code>
-      </pre>
-    </div>
-  );
-}
-
 function MessageHeader({
   name,
   timestamp,
@@ -443,7 +410,7 @@ const markdownComponents = {
     if (isBlock && language === "mermaid") {
       return <MermaidBlock source={String(children).replace(/\n$/, "")} className={className} />;
     }
-    if (isBlock) return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+    if (isBlock) return <MarkdownCodeBlock className={className}>{children}</MarkdownCodeBlock>;
     return (
       <code className="bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono text-zinc-800 dark:text-zinc-200" {...props}>
         {children}

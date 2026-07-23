@@ -4,15 +4,15 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import { Check, Copy, MessageSquare, Highlighter, Trash2, X } from "lucide-react";
+import { MessageSquare, Highlighter, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { useAppContext, Annotation } from "../data";
 import { captureAnnotationFromSelection } from "../annotations";
 import { generateAnnotationId, extractHeadings, slugify } from "../doc-utils";
 import { useTranslation } from "../i18n";
-import { copyText } from "../utils/clipboard";
 import { locateAndFlash } from "../utils/searchJump";
 import { MermaidBlock } from "./MermaidBlock";
+import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
 import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { useScrollActivity } from "../hooks/useScrollActivity";
 
@@ -372,41 +372,6 @@ function splitTextNodeByAnnotations(
   return nodes;
 }
 
-function DocCodeBlock({ children, className }: any) {
-  const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  const text = String(children).replace(/\n$/, "");
-  const language = className ? className.replace(/language-/, "") : "snippet";
-
-  const handleCopy = async () => {
-    if (await copyText(text)) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  return (
-    <div className="relative group mt-4 mb-6">
-      <div className="absolute flex items-center justify-between top-0 left-0 right-0 px-4 py-2 bg-zinc-200/50 dark:bg-[#2A2A2A] rounded-t-lg border-b border-zinc-200 dark:border-white/10">
-        <span className="text-xs uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">{language}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleCopy}
-          className="h-auto gap-1 rounded px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-        >
-          {copied ? <Check size={12} /> : <Copy size={12} />}
-          {copied ? t("main.copied") : t("main.copy")}
-        </Button>
-      </div>
-      <pre className="bg-zinc-50 dark:bg-[#111] border border-zinc-200 dark:border-white/10 rounded-lg p-4 pt-12 overflow-x-auto text-sm font-mono text-zinc-800 dark:text-zinc-300 shadow-sm custom-scrollbar">
-        <code className={className}>{children}</code>
-      </pre>
-    </div>
-  );
-}
-
 const mdComponents = {
   h1: ({ node, ...props }: any) => <h1 className="text-2xl font-bold mt-8 mb-4 text-zinc-900 dark:text-zinc-50" {...props} />,
   h2: ({ node, ...props }: any) => <h2 className="text-xl font-bold mt-8 mb-4 text-zinc-900 dark:text-zinc-50 border-b border-zinc-200 dark:border-white/10 pb-2" {...props} />,
@@ -427,7 +392,7 @@ const mdComponents = {
     if (isBlock && language === "mermaid") {
       return <MermaidBlock source={String(children).replace(/\n$/, "")} className={className} />;
     }
-    if (isBlock) return <DocCodeBlock className={className} {...props}>{children}</DocCodeBlock>;
+    if (isBlock) return <MarkdownCodeBlock className={className}>{children}</MarkdownCodeBlock>;
     return <code className="bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono text-zinc-800 dark:text-zinc-200" {...props}>{children}</code>;
   },
   pre: ({ children }: any) => (

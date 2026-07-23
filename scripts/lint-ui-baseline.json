@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-21T08:31:40.459Z",
-  "count": 84,
+  "generatedAt": "2026-07-22T01:52:43.149Z",
+  "count": 81,
   "violations": [
     {
       "rule": "hardcoded-hex",
@@ -83,49 +83,37 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 200,
+      "line": 201,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 209,
+      "line": 210,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 231,
+      "line": 232,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 234,
+      "line": 235,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 354,
-      "match": "dark:bg-[#2A2A2A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/ChatBody.tsx",
-      "line": 366,
-      "match": "dark:bg-[#111]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/ChatBody.tsx",
-      "line": 466,
+      "line": 433,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 508,
+      "line": 475,
       "match": "text-[15px]"
     },
     {
@@ -179,19 +167,7 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 390,
-      "match": "dark:bg-[#2A2A2A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/DocViewer.tsx",
-      "line": 403,
-      "match": "dark:bg-[#111]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/DocViewer.tsx",
-      "line": 445,
+      "line": 410,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
@@ -203,7 +179,7 @@
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 531,
+      "line": 496,
       "match": "text-[13px]"
     },
     {
@@ -313,6 +289,12 @@
       "file": "src/app/components/MermaidBlock.tsx",
       "line": 164,
       "match": "dark:bg-[#151515]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/MermaidBlock.tsx",
+      "line": 246,
+      "match": "\"bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
