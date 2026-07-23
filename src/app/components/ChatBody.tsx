@@ -231,8 +231,8 @@ export function ChatBody() {
   return (
     <div className="flex-1 flex bg-white dark:bg-[#1A1A1A] relative overflow-hidden min-w-0 min-h-0">
       <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0 min-h-0">
-        {/* Top Metadata Bar */}
-        <header className="shrink-0 h-14 border-b border-zinc-200 dark:border-white/10 px-6 flex items-center justify-between bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-md z-10 sticky top-0">
+        {/* Top Metadata Bar — 移动端隐藏，标题/时间/Ask AI 由 MobileTopBar+FAB 承接（spec US-03 AC4/US-05 AC5） */}
+        <header className="shrink-0 h-14 border-b border-zinc-200 dark:border-white/10 px-6 hidden md:flex items-center justify-between bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-md z-10 sticky top-0">
           <div className="flex items-center gap-4 min-w-0">
             <h1 className="text-lg font-semibold text-zinc-800 dark:text-zinc-100 truncate max-w-lg">
               {conversation.title}
@@ -324,7 +324,7 @@ export function ChatBody() {
         </div>
       </div>
 
-      <div className={clsx(aiSidebarOpen && "max-[1280px]:hidden")}>
+      <div className={clsx("hidden md:block", aiSidebarOpen && "max-[1280px]:hidden")}>
         <RightNav messages={displayMessages} scrollContainer={scrollRef} />
       </div>
       <VersionPanel kind="conversation" />
@@ -361,18 +361,21 @@ function MessageHeader({
   };
 
   return (
-    <div className="flex items-center gap-3 mb-1 group/header">
-      <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{name}</span>
-      {timestamp && isValidDate(timestamp) && (
-        <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">
-          {formatDisplayDateTime(timestamp, language)}
-        </span>
-      )}
+    <div className="flex min-w-0 flex-1 items-center gap-3 group/header">
+      {/* 名称 + 时间戳：移动端分两行（窄屏时间戳不再被挤换行），桌面同一行。 */}
+      <div className="flex min-w-0 flex-col gap-0.5 md:flex-row md:items-center md:gap-3">
+        <span className="truncate font-semibold text-sm text-zinc-900 dark:text-zinc-100">{name}</span>
+        {timestamp && isValidDate(timestamp) && (
+          <span className="whitespace-nowrap text-xs text-zinc-400 dark:text-zinc-500 font-medium">
+            {formatDisplayDateTime(timestamp, language)}
+          </span>
+        )}
+      </div>
       <Button
         variant="ghost"
         size="icon"
         onClick={handleCopy}
-        className="size-7 text-zinc-400 opacity-0 transition-all group-hover/header:opacity-100"
+        className="size-7 text-zinc-400 opacity-100 transition-all md:opacity-0 md:group-hover/header:opacity-100"
         title={t("main.copyMessage")}
       >
         {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -382,7 +385,7 @@ function MessageHeader({
         size="icon"
         onClick={onExcerpt}
         disabled={excerpting}
-        className="size-7 text-zinc-400 opacity-0 transition-all group-hover/header:opacity-100"
+        className="size-7 text-zinc-400 opacity-100 transition-all md:opacity-0 md:group-hover/header:opacity-100"
         title={t("main.excerptConversation")}
       >
         {excerpting ? <Loader2 size={14} className="animate-spin" /> : <Quote size={14} />}
@@ -451,19 +454,20 @@ function MessageBubble({
   const isUser = message.role === "user";
 
   return (
-    <div id={`msg-${message.id}`} className="flex gap-4 transition-all scroll-mt-24 group w-full">
-      <div className="shrink-0 pt-1">
-        {isUser ? (
-          <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400">
-            <User size={18} />
-          </div>
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center border border-zinc-200 dark:border-white/10 text-white dark:text-zinc-900 shadow-sm">
-            <BrandIcon platform={platform} size={18} />
-          </div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
+    <div id={`msg-${message.id}`} className="transition-all scroll-mt-24 group w-full">
+      {/* 角色头：头像 + 名称/时间 + 操作按钮同一行。移动端头像居中对齐两行文本，桌面顶端对齐。 */}
+      <div className="flex items-center gap-3 md:items-start md:gap-4">
+        <div className="shrink-0 md:pt-1">
+          {isUser ? (
+            <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400">
+              <User size={18} />
+            </div>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center border border-zinc-200 dark:border-white/10 text-white dark:text-zinc-900 shadow-sm">
+              <BrandIcon platform={platform} size={18} />
+            </div>
+          )}
+        </div>
         <MessageHeader
           name={isUser ? t("main.you") : platform}
           timestamp={message.timestamp}
@@ -471,8 +475,11 @@ function MessageBubble({
           onExcerpt={onExcerpt}
           excerpting={excerpting}
         />
+      </div>
+      {/* 正文：移动端与头像左对齐铺满（消除长文左侧空隙）；桌面 pl-12 缩进对齐到名称下方。 */}
+      <div className="mt-2 md:mt-1 md:pl-12">
         <div className={clsx(
-          "max-w-full text-[15px] leading-7 mt-1 markdown-body break-words",
+          "max-w-full text-[15px] leading-7 markdown-body break-words",
           isUser
             ? "bg-zinc-50 dark:bg-white/5 inline-block px-5 py-4 border border-zinc-100 dark:border-white/10 rounded-2xl rounded-tl-sm text-zinc-800 dark:text-zinc-200 shadow-sm"
             : "text-zinc-800 dark:text-zinc-200",

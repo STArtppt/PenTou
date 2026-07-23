@@ -201,7 +201,7 @@ export function TopToolbar() {
 
   return (
     <>
-      <div className="shrink-0 h-12 border-b border-zinc-200 dark:border-white/10 px-4 flex items-center gap-2 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-md z-10">
+      <div className="shrink-0 h-12 border-b border-zinc-200 dark:border-white/10 px-4 hidden md:flex items-center gap-2 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-md z-10">
         {/* Document Title and Tags */}
         <div className="flex items-center gap-2 max-w-xl">
           <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-100 truncate">

@@ -149,6 +149,7 @@ export const translations = {
     "import.doc.tokenSaved": "MinerU Token saved",
     "import.doc.tokenCleared": "MinerU Token cleared",
     "import.doc.privacyNote": "PDF, Office, image, and HTML files are uploaded to MinerU for cloud parsing. Local formats stay local.",
+    "import.doc.mineruDesktopOnly": "Please configure the MinerU token on desktop.",
     "import.doc.supportedFormats": "Supported formats:",
     "import.doc.uploadBtn": "Upload Documents",
     "import.doc.uploading": "Uploading and parsing...",
@@ -399,6 +400,10 @@ export const translations = {
     "aiSidebar.toDoc": "Turn into document",
     "aiSidebar.threadToDoc": "Turn thread into document",
     "aiSidebar.docCreated": "AI answer saved as a document",
+    // Mobile (spec mobile-responsive)
+    "mobile.openMenu": "Open menu",
+    "mobile.closeMenu": "Close menu",
+    "mobile.import": "Import",
   },
   zh: {
     // Sidebar
@@ -546,6 +551,7 @@ export const translations = {
     "import.doc.tokenSaved": "MinerU Token 已保存",
     "import.doc.tokenCleared": "MinerU Token 已清除",
     "import.doc.privacyNote": "PDF、Office、图片、HTML 会上传至 MinerU 云端解析；本地格式不会上传。",
+    "import.doc.mineruDesktopOnly": "请在桌面端配置 MinerU token。",
     "import.doc.supportedFormats": "支持的格式：",
     "import.doc.uploadBtn": "上传文档",
     "import.doc.uploading": "上传并解析中...",
@@ -796,6 +802,10 @@ export const translations = {
     "aiSidebar.toDoc": "转文档",
     "aiSidebar.threadToDoc": "整段转文档",
     "aiSidebar.docCreated": "AI 回答已存为文档",
+    // Mobile (spec mobile-responsive)
+    "mobile.openMenu": "打开菜单",
+    "mobile.closeMenu": "关闭菜单",
+    "mobile.import": "导入",
   }
 };
 

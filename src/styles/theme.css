@@ -187,6 +187,23 @@
   }
 }
 
+/* 移动端排版调整（spec mobile-responsive 调整批次）。
+ * 规则不入 @layer，凭「无层级 > 有层级」的层叠优先级压过 Tailwind 工具类，无需 !important。
+ * 1) 提升基础字号（rem 基准）改善阅读与设置可读性（US-02 反馈：iPhone 上字号偏小）。
+ * 2) 表单控件锁定 ≥16px：iOS 聚焦 <16px 输入会自动放大整页，关闭后停留在放大态导致横向溢出
+ *    （Ask AI / 搜索抽屉打开即自动聚焦输入 → 触发；见调整批次 issue 4/5 根因）。 */
+@media (max-width: 767px) {
+  :root {
+    --font-size: 17px;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* Shiki dual-theme for @startist/code-block */
 .dark .shiki,
 .dark .shiki span {

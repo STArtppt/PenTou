@@ -43,6 +43,7 @@ import {
   LogOut,
   Send,
   Upload,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
@@ -51,6 +52,7 @@ import { useAppContext, Conversation, Folder, Platform, Document, DocumentFolder
 import logoUrl from "../../../assets/images/logo.png";
 import logoDarkUrl from "../../../assets/images/logo_dark.png";
 import { useScrollActivity } from "../hooks/useScrollActivity";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
 import { formatDisplayDate } from "../utils/dateFormat";
 import { copyText } from "../utils/clipboard";
@@ -69,12 +71,16 @@ type SelectionContextValue = {
   mode: boolean;
   isSelected: (id: string) => boolean;
   toggle: (id: string) => void;
+  // 移动端禁用 DnD 与「更多操作」入口（spec mobile-responsive US-02 AC5 / §8 风险）：
+  // 通过上下文下发，避免各列表项重复调用 useIsMobile。
+  isMobile: boolean;
 };
 
 const SelectionContext = createContext<SelectionContextValue>({
   mode: false,
   isSelected: () => false,
   toggle: () => {},
+  isMobile: false,
 });
 
 function useSelection() {
@@ -481,9 +487,18 @@ export function Sidebar() {
     deleteDocument,
     moveDocument,
     obsidianConfig,
+    mobileNavOpen,
+    setMobileNavOpen,
   } = useAppContext();
 
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+
+  // 移动端：选中条目后侧栏抽屉自动收起（spec US-02 AC2）。activeId 变化即视为完成选择。
+  useEffect(() => {
+    if (isMobile) setMobileNavOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversationId, activeDocId]);
 
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -550,8 +565,9 @@ export function Sidebar() {
           else next.add(id);
           return next;
         }),
+      isMobile,
     }),
-    [selectionMode, selectedIds]
+    [selectionMode, selectedIds, isMobile]
   );
 
   // 当前视图可见叶子 id（受搜索 + 文件夹折叠影响）
@@ -708,7 +724,27 @@ export function Sidebar() {
 
   return (
     <SelectionContext.Provider value={selectionValue}>
-    <div className="w-72 h-full bg-[#FAFAFA] dark:bg-[#151515] border-r border-zinc-200 dark:border-white/10 flex flex-col z-50 shrink-0">
+    {/* 移动端遮罩：点击关抽屉（spec US-02 AC3）。桌面不渲染。 */}
+    {isMobile && mobileNavOpen && (
+      <div
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+        onClick={() => setMobileNavOpen(false)}
+      />
+    )}
+    <div
+      onKeyDown={(e) => {
+        if (isMobile && e.key === "Escape") setMobileNavOpen(false);
+      }}
+      className={clsx(
+        "bg-[#FAFAFA] dark:bg-[#151515] border-r border-zinc-200 dark:border-white/10 flex flex-col z-50",
+        isMobile
+          ? clsx(
+              "fixed inset-y-0 left-0 w-[85vw] max-w-xs transition-transform duration-300 ease-out will-change-transform",
+              mobileNavOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full pointer-events-none",
+            )
+          : "w-72 h-full shrink-0",
+      )}
+    >
       {/* Header */}
       <div className="p-4 flex flex-col gap-4 border-b border-zinc-200 dark:border-white/10 shrink-0">
         <div className="flex items-center justify-between">
@@ -740,6 +776,18 @@ export function Sidebar() {
             >
               <LogOut size={18} />
             </Button>
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground"
+                onClick={() => setMobileNavOpen(false)}
+                title={t("mobile.closeMenu")}
+                aria-label={t("mobile.closeMenu")}
+              >
+                <X size={18} />
+              </Button>
+            )}
           </div>
         </div>
 
@@ -771,15 +819,18 @@ export function Sidebar() {
           </Button>
         </div>
 
-        {/* Primary action: Import (elevated full-width surface pill) */}
-        <Button
-          variant="surface"
-          className="w-full gap-1.5 font-semibold"
-          onClick={() => setDrawerOpen(true)}
-          disabled={selectionMode}
-        >
-          <Import size={16} /> {t("sidebar.import")}
-        </Button>
+        {/* Primary action: Import (elevated full-width surface pill).
+            移动端隐藏：导入入口移至 MobileTopBar 右侧（spec US-02 AC4 / US-03 AC1）。 */}
+        {!isMobile && (
+          <Button
+            variant="surface"
+            className="w-full gap-1.5 font-semibold"
+            onClick={() => setDrawerOpen(true)}
+            disabled={selectionMode}
+          >
+            <Import size={16} /> {t("sidebar.import")}
+          </Button>
+        )}
       </div>
 
       {/* Lists */}
@@ -798,18 +849,21 @@ export function Sidebar() {
               <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
                 <span>{t("sidebar.folders")}</span>
                 <div className="flex items-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleNewFolder}
-                    disabled={selectionMode}
-                    className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
-                    title={t("sidebar.newFolder")}
-                    aria-label={t("sidebar.newFolder")}
-                  >
-                    <FolderPlus size={14} />
-                  </Button>
+                  {/* 新建文件夹在移动端隐藏：其弹窗为桌面态居中模态，未适配触屏（US 调整批次 issue 3） */}
+                  {!isMobile && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleNewFolder}
+                      disabled={selectionMode}
+                      className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+                      title={t("sidebar.newFolder")}
+                      aria-label={t("sidebar.newFolder")}
+                    >
+                      <FolderPlus size={14} />
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
@@ -867,6 +921,7 @@ export function Sidebar() {
             folderOpen={docFolderOpen}
             onNewFolder={handleNewFolder}
             newFolderDisabled={selectionMode}
+            hideNewFolder={isMobile}
             onToggleAllFolders={() => {
               const areAllOpen = documentFolders.length > 0 && documentFolders.every((folder) => docFolderOpen[folder.id] ?? false);
               const nextOpen = !areAllOpen;
@@ -879,7 +934,9 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Batch Select (entry button OR toolbar) */}
+      {/* Batch Select (entry button OR toolbar).
+          移动端隐藏：不进入批量选择态（spec US-02 AC5）。 */}
+      {!isMobile && (
       <div className="shrink-0 p-3 border-t border-zinc-200 dark:border-white/10">
         {!selectionMode ? (
           <Button
@@ -914,6 +971,7 @@ export function Sidebar() {
           />
         )}
       </div>
+      )}
 
       {/* Batch Move target menu (复用 ItemActionMenu 的 submenu 风格) */}
       <AnimatePresence>
@@ -1114,25 +1172,26 @@ function FolderItem({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const { moveConversation, renameFolder, deleteFolder } = useAppContext();
-  const { mode: selectionMode } = useSelection();
+  const { mode: selectionMode, isMobile } = useSelection();
+  const dndDisabled = selectionMode || isMobile;
 
   const [{ isOver }, drop] = useDrop(
     () => ({
       accept: CONVERSATION_ITEM_TYPE,
-      canDrop: () => !selectionMode,
+      canDrop: () => !dndDisabled,
       drop: (item: { id: string }) => {
-        if (selectionMode) return;
+        if (dndDisabled) return;
         moveConversation(item.id, folder.id);
       },
       collect: (monitor) => ({
-        isOver: !!monitor.isOver() && !selectionMode,
+        isOver: !!monitor.isOver() && !dndDisabled,
       }),
     }),
-    [selectionMode, folder.id, moveConversation]
+    [dndDisabled, folder.id, moveConversation]
   );
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    if (selectionMode) return;
+    if (selectionMode || isMobile) return;
     e.preventDefault();
     setMenuPosition({
       top: Math.max(8, Math.min(e.clientY, window.innerHeight - 240)),
@@ -1172,7 +1231,7 @@ function FolderItem({
             ? "bg-accent border border-border"
             : "hover:bg-zinc-100 dark:hover:bg-white/5 border border-transparent text-zinc-700 dark:text-zinc-300"
         )}
-        title={selectionMode ? undefined : t("sidebar.rightClick")}
+        title={selectionMode || isMobile ? undefined : t("sidebar.rightClick")}
       >
         <button
           onClick={onToggleOpen}
@@ -1194,7 +1253,7 @@ function FolderItem({
             {conversations.length}
           </span>
         </button>
-        {!selectionMode && (
+        {!selectionMode && !isMobile && (
           <button
             onClick={toggleMenu}
             className={clsx(
@@ -1263,21 +1322,22 @@ function FolderItem({
 function ConversationUncategorizedList({ conversations }: { conversations: Conversation[] }) {
   const { t } = useTranslation();
   const { moveConversation } = useAppContext();
-  const { mode: selectionMode } = useSelection();
+  const { mode: selectionMode, isMobile } = useSelection();
+  const dndDisabled = selectionMode || isMobile;
 
   const [{ isOver }, drop] = useDrop(
     () => ({
       accept: CONVERSATION_ITEM_TYPE,
-      canDrop: () => !selectionMode,
+      canDrop: () => !dndDisabled,
       drop: (item: { id: string }) => {
-        if (selectionMode) return;
+        if (dndDisabled) return;
         moveConversation(item.id, null);
       },
       collect: (monitor) => ({
-        isOver: !!monitor.isOver() && !selectionMode,
+        isOver: !!monitor.isOver() && !dndDisabled,
       }),
     }),
-    [selectionMode, moveConversation]
+    [dndDisabled, moveConversation]
   );
 
   return (
@@ -1303,7 +1363,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
   const { t, language } = useTranslation();
   const { activeConversationId, setActiveConversationId, deleteConversation, renameConversation, moveConversation, folders } =
     useAppContext();
-  const { mode: selectionMode, isSelected, toggle } = useSelection();
+  const { mode: selectionMode, isSelected, toggle, isMobile } = useSelection();
   const [menuOpen, setMenuOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -1316,12 +1376,12 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
     () => ({
       type: CONVERSATION_ITEM_TYPE,
       item: { id: conversation.id },
-      canDrag: () => !selectionMode,
+      canDrag: () => !selectionMode && !isMobile,
       collect: (monitor) => ({
         isDragging: !!monitor.isDragging(),
       }),
     }),
-    [selectionMode, conversation.id]
+    [selectionMode, isMobile, conversation.id]
   );
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -1404,8 +1464,8 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
           <span className="truncate font-medium">{conversation.title}</span>
         </div>
 
-        {/* Floating Menu Trigger (hidden in selection mode) */}
-        {!selectionMode && (
+        {/* Floating Menu Trigger (hidden in selection mode / on mobile) */}
+        {!selectionMode && !isMobile && (
           <button
             onClick={toggleMenu}
             className={clsx(
@@ -1469,6 +1529,7 @@ function DocumentList({
   folderOpen,
   onNewFolder,
   newFolderDisabled,
+  hideNewFolder,
   onToggleAllFolders,
   onToggleFolderOpen,
 }: {
@@ -1476,6 +1537,7 @@ function DocumentList({
   folderOpen: Record<string, boolean>;
   onNewFolder: () => void;
   newFolderDisabled?: boolean;
+  hideNewFolder?: boolean;
   onToggleAllFolders: () => void;
   onToggleFolderOpen: (id: string) => void;
 }) {
@@ -1491,18 +1553,21 @@ function DocumentList({
         <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
           <span>{t("sidebar.folders")}</span>
           <div className="flex items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onNewFolder}
-              disabled={newFolderDisabled}
-              className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
-              title={t("sidebar.newFolder")}
-              aria-label={t("sidebar.newFolder")}
-            >
-              <FolderPlus size={14} />
-            </Button>
+            {/* 新建文件夹在移动端隐藏（US 调整批次 issue 3，同会话列表） */}
+            {!hideNewFolder && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onNewFolder}
+                disabled={newFolderDisabled}
+                className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+                title={t("sidebar.newFolder")}
+                aria-label={t("sidebar.newFolder")}
+              >
+                <FolderPlus size={14} />
+              </Button>
+            )}
             {documentFolders.length > 0 && (
               <Button
                 type="button"
@@ -1565,21 +1630,22 @@ function DocumentFolderItem({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const { moveDocument, renameDocumentFolder, deleteDocumentFolder } = useAppContext();
-  const { mode: selectionMode } = useSelection();
+  const { mode: selectionMode, isMobile } = useSelection();
+  const dndDisabled = selectionMode || isMobile;
 
   const [{ isOver }, drop] = useDrop(
     () => ({
       accept: DOCUMENT_ITEM_TYPE,
-      canDrop: () => !selectionMode,
+      canDrop: () => !dndDisabled,
       drop: (item: { id: string }) => {
-        if (selectionMode) return;
+        if (dndDisabled) return;
         moveDocument(item.id, folder.id);
       },
       collect: (monitor) => ({
-        isOver: !!monitor.isOver() && !selectionMode,
+        isOver: !!monitor.isOver() && !dndDisabled,
       }),
     }),
-    [selectionMode, folder.id, moveDocument]
+    [dndDisabled, folder.id, moveDocument]
   );
 
   const handleRenameFolder = () => {
@@ -1603,7 +1669,7 @@ function DocumentFolderItem({
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    if (selectionMode) return;
+    if (selectionMode || isMobile) return;
     e.preventDefault();
     setMenuPosition({
       top: Math.max(8, Math.min(e.clientY, window.innerHeight - 240)),
@@ -1638,7 +1704,7 @@ function DocumentFolderItem({
             {documents.length}
           </span>
         </button>
-        {!selectionMode && (
+        {!selectionMode && !isMobile && (
           <button
             onClick={toggleMenu}
             className={clsx(
@@ -1705,21 +1771,22 @@ function DocumentFolderItem({
 function DocumentUncategorizedList({ documents }: { documents: Document[] }) {
   const { t } = useTranslation();
   const { moveDocument } = useAppContext();
-  const { mode: selectionMode } = useSelection();
+  const { mode: selectionMode, isMobile } = useSelection();
+  const dndDisabled = selectionMode || isMobile;
 
   const [{ isOver }, drop] = useDrop(
     () => ({
       accept: DOCUMENT_ITEM_TYPE,
-      canDrop: () => !selectionMode,
+      canDrop: () => !dndDisabled,
       drop: (item: { id: string }) => {
-        if (selectionMode) return;
+        if (dndDisabled) return;
         moveDocument(item.id, null);
       },
       collect: (monitor) => ({
-        isOver: !!monitor.isOver() && !selectionMode,
+        isOver: !!monitor.isOver() && !dndDisabled,
       }),
     }),
-    [selectionMode, moveDocument]
+    [dndDisabled, moveDocument]
   );
 
   return (
@@ -1744,7 +1811,7 @@ function DocumentUncategorizedList({ documents }: { documents: Document[] }) {
 function DocumentItem({ document: doc }: { document: Document }) {
   const { t } = useTranslation();
   const { activeDocId, setActiveDocId, deleteDocument, renameDocument, moveDocument, uploadDocumentUpdate, documentFolders } = useAppContext();
-  const { mode: selectionMode, isSelected, toggle } = useSelection();
+  const { mode: selectionMode, isSelected, toggle, isMobile } = useSelection();
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -1758,12 +1825,12 @@ function DocumentItem({ document: doc }: { document: Document }) {
     () => ({
       type: DOCUMENT_ITEM_TYPE,
       item: { id: doc.id },
-      canDrag: () => !selectionMode,
+      canDrag: () => !selectionMode && !isMobile,
       collect: (monitor) => ({
         isDragging: !!monitor.isDragging(),
       }),
     }),
-    [selectionMode, doc.id]
+    [selectionMode, isMobile, doc.id]
   );
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -1869,7 +1936,7 @@ function DocumentItem({ document: doc }: { document: Document }) {
           <FileText size={14} className="text-zinc-400 shrink-0" />
           <span className="truncate font-medium">{doc.title}</span>
         </div>
-        {!selectionMode && (
+        {!selectionMode && !isMobile && (
           <button
             onClick={toggleMenu}
             className={clsx(

@@ -4,6 +4,7 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { Sidebar } from "./components/Sidebar";
 import { MainContent } from "./components/MainContent";
 import { AppProvider, useAppContext } from "./data";
+import { useIsMobile } from "./hooks/useIsMobile";
 import { Toaster } from "sonner";
 
 const ImportDrawer = lazy(() =>
@@ -20,7 +21,20 @@ const AiSidebar = lazy(() =>
 );
 
 function AppContent() {
-  const { theme, isDrawerOpen, settingsOpen, searchOpen, setSearchOpen, aiSidebarOpen, toggleAiSidebar } = useAppContext();
+  const {
+    theme,
+    isDrawerOpen,
+    settingsOpen,
+    searchOpen,
+    setSearchOpen,
+    aiSidebarOpen,
+    toggleAiSidebar,
+    setDrawerOpen,
+    setSettingsOpen,
+    setAiSidebarOpen,
+    setMobileNavOpen,
+  } = useAppContext();
+  const isMobile = useIsMobile();
   const [drawerEverOpened, setDrawerEverOpened] = useState(false);
   const [settingsEverOpened, setSettingsEverOpened] = useState(false);
   const [searchEverOpened, setSearchEverOpened] = useState(false);
@@ -54,6 +68,17 @@ function AppContent() {
     if (aiSidebarOpen) setAiSidebarEverOpened(true);
   }, [aiSidebarOpen]);
 
+  // 断点临界映射（spec mobile-responsive §5 M5）：跨越 768px 时收起所有覆盖层，回到 Reading。
+  // `>= md → < md`：关闭桌面右侧栏（Ask AI 仅以 FAB 呈现，不自动展开）+ 导入/设置/搜索。
+  // `< md → >= md`：关闭 NavDrawer / 各底部抽屉 / 搜索，恢复桌面三栏。两向都归零，语义一致。
+  useEffect(() => {
+    setAiSidebarOpen(false);
+    setDrawerOpen(false);
+    setSettingsOpen(false);
+    setSearchOpen(false);
+    setMobileNavOpen(false);
+  }, [isMobile, setAiSidebarOpen, setDrawerOpen, setSettingsOpen, setSearchOpen, setMobileNavOpen]);
+
   useEffect(() => {
     const ric = (window as unknown as {
       requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
@@ -85,7 +110,7 @@ function AppContent() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex h-screen w-full bg-white dark:bg-[#1A1A1A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans selection:bg-foreground/25 selection:text-foreground transition-colors duration-200">
+      <div className="flex h-dvh w-full bg-white dark:bg-[#1A1A1A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans selection:bg-foreground/25 selection:text-foreground transition-colors duration-200">
         <style dangerouslySetInnerHTML={{ __html: `
           .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
@@ -230,7 +255,8 @@ function AppContent() {
           {(primed || searchEverOpened) && <SearchPalette />}
           {(primed || aiSidebarEverOpened) && <AiSidebar />}
         </Suspense>
-        <Toaster position="bottom-right" richColors />
+        {/* FAB 与 Toast 位置冲突（spec §5 I4）：移动端 toast 上移到 top-center，避免与右下 Ask AI FAB 重叠 */}
+        <Toaster position={isMobile ? "top-center" : "bottom-right"} richColors />
       </div>
     </DndProvider>
   );

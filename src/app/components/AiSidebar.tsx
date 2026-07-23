@@ -1,11 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Check, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, Plus, Settings, Square, Trash2 } from "lucide-react";
+import { Check, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, MessageSquare, Plus, Settings, Square, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAppContext } from "../data";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { useVisualViewport } from "../hooks/useVisualViewport";
 import {
   AiChatSession,
   AiSidebarMessage,
@@ -98,7 +102,11 @@ export function AiSidebar() {
     setActiveDocId,
   } = useAppContext();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  // 全屏面板贴合软键盘：键盘弹出时容器收缩到键盘之上，标题栏顶端不动（仅移动端 + 打开时生效）。
+  const viewport = useVisualViewport(isMobile && aiSidebarOpen);
   const [input, setInput] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -127,10 +135,11 @@ export function AiSidebar() {
     ? `${t("aiSidebar.contextPrefix")}: ${context.label}`
     : t("aiSidebar.noContext");
 
+  // 移动端进入不自动聚焦（避免一进来就弹软键盘并顶起面板，调整批次 issue 1）；桌面维持自动聚焦。
   useEffect(() => {
-    if (!aiSidebarOpen) return;
+    if (!aiSidebarOpen || isMobile) return;
     inputRef.current?.focus();
-  }, [aiSidebarOpen, currentAiSession.id]);
+  }, [aiSidebarOpen, currentAiSession.id, isMobile]);
 
   useEffect(() => {
     if (!aiSidebarOpen) return;
@@ -255,7 +264,7 @@ export function AiSidebar() {
     if (isCurrentEmpty) return;
     await createNewAiSession();
     setHistoryOpen(false);
-    inputRef.current?.focus();
+    if (!isMobile) inputRef.current?.focus(); // 移动端不主动聚焦（issue 1）
   };
 
   const handleSelectSession = async (id: string) => {
@@ -314,23 +323,8 @@ export function AiSidebar() {
     toast.success(t("aiSidebar.docCreated"));
   };
 
-  return (
-    <div
-      className={clsx(
-        "ai-sidebar-shell shrink-0 overflow-hidden border-l bg-white transition-[width,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#151515]",
-        aiSidebarOpen ? "w-[min(100vw,384px)] border-zinc-200 dark:border-white/10" : "w-0 border-transparent",
-      )}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") setAiSidebarOpen(false);
-      }}
-    >
-      <aside
-        className={clsx(
-          "flex h-full w-[min(100vw,384px)] flex-col bg-white text-zinc-950 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#151515] dark:text-zinc-100",
-          aiSidebarOpen ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0",
-        )}
-        aria-hidden={!aiSidebarOpen}
-      >
+  const panelContent = (
+    <>
       <header className="relative z-10 shrink-0 px-4 py-3">
         <div className="flex h-8 items-center gap-1">
           <h2 className="flex-1 text-sm font-semibold tracking-normal text-zinc-950 dark:text-zinc-100">{t("aiSidebar.chat")}</h2>
@@ -363,15 +357,16 @@ export function AiSidebar() {
           <IconButton
             title={t("aiSidebar.close")}
             onClick={() => setAiSidebarOpen(false)}
-            icon={<ChevronRight size={17} />}
+            icon={isMobile ? <X size={18} /> : <ChevronRight size={17} />}
           />
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 custom-scrollbar">
+      {/* 固定区：上下文感知栏 + 未配置模型提醒。移动端全屏时与标题栏一起全程固定，不随键盘 / 消息滚动（issue 2）。 */}
+      <div className="shrink-0 px-4">
         <ContextPill context={context} label={contextDisplayLabel} />
         {!hasLLM && (
-          <div className="mb-4 mt-4 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="mb-4 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
             <p className="font-medium">{t("aiSidebar.configureModel")}</p>
             <Button
               variant="primary"
@@ -384,12 +379,14 @@ export function AiSidebar() {
             </Button>
           </div>
         )}
+      </div>
 
+      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-4 pt-1 custom-scrollbar">
         {currentAiSession.messages.length === 0 ? (
-          <EmptyState activeView={activeView} onAsk={handleSend} />
+          <EmptyState activeView={activeView} onAsk={handleSend} faded={isMobile && inputFocused} />
         ) : (
           <ImageGalleryProvider>
-            <div className="mt-5 space-y-5">
+            <div className="space-y-5">
               {currentAiSession.messages.map((message) => (
                 <MessageBubble
                   key={message.id}
@@ -418,22 +415,27 @@ export function AiSidebar() {
             {t("aiSidebar.threadToDoc")}
           </Button>
         )}
-        <div className="mb-3 text-[13px] text-zinc-500 dark:text-zinc-400">
-          {t("aiSidebar.shortcutTip")} <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">⌘</kbd> <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">I</kbd>
-        </div>
+        {/* 快捷键提示：移动端不显示（无实体键盘，issue 2）。 */}
+        {!isMobile && (
+          <div className="mb-3 text-[13px] text-zinc-500 dark:text-zinc-400">
+            {t("aiSidebar.shortcutTip")} <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">⌘</kbd> <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">I</kbd>
+          </div>
+        )}
         <div className="rounded-md border border-zinc-200 bg-white p-3 transition-colors focus-within:border-zinc-400 dark:border-white/10 dark:bg-[#1A1A1A] dark:focus-within:border-white/30">
           <textarea
             ref={inputRef}
             value={input}
             maxLength={1000}
             onChange={(e) => setInput(e.target.value)}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
             }}
-            rows={3}
+            rows={isMobile ? 2 : 3}
             placeholder={t("aiSidebar.placeholder")}
             className="w-full resize-none bg-transparent text-sm leading-6 text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 dark:placeholder:text-zinc-500"
           />
@@ -454,6 +456,66 @@ export function AiSidebar() {
           </div>
         </div>
       </footer>
+    </>
+  );
+
+  // 移动端（spec US-05，调整批次）：右下 Ask AI 悬浮按钮 + 全屏面板（复用同一 Chat 内容主体）。
+  // 关键：容器保持 `fixed inset-0` **绝对不动**——iOS Safari 上若随 visualViewport 用 transform/height 移动容器，
+  // 会与系统聚焦滚动打架，出现「整屉上下刷动 / 闪烁露底」（issue 1/2，纯 iOS 行为）。改为仅给内容列加
+  // `paddingBottom = 键盘高度`：标题 / 上下文 / 提醒固定在顶不动，中部消息区被压缩，仅 footer 输入框抬到键盘之上。
+  // scrollRef `overscroll-contain` 阻断链式滚动；motion 的 y 仅用于开合滑入，不参与键盘避让。
+  if (isMobile) {
+    return (
+      <>
+        {!aiSidebarOpen && (
+          <button
+            onClick={() => setAiSidebarOpen(true)}
+            aria-label={t("aiSidebar.chat")}
+            className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 transition-transform active:scale-95 md:hidden"
+          >
+            <MessageSquare size={22} />
+          </button>
+        )}
+        {createPortal(
+          <AnimatePresence>
+            {aiSidebarOpen && (
+              <motion.div
+                key="ai-fullscreen"
+                className="fixed inset-0 z-[60] flex min-w-0 flex-col overflow-hidden bg-white pb-[env(safe-area-inset-bottom)] text-zinc-950 dark:bg-[#151515] dark:text-zinc-100 md:hidden"
+                style={viewport && viewport.keyboard > 0 ? { paddingBottom: viewport.keyboard } : undefined}
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 34, stiffness: 340 }}
+              >
+                {panelContent}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div
+      className={clsx(
+        "ai-sidebar-shell shrink-0 overflow-hidden border-l bg-white transition-[width,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#151515]",
+        aiSidebarOpen ? "w-[min(100vw,384px)] border-zinc-200 dark:border-white/10" : "w-0 border-transparent",
+      )}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setAiSidebarOpen(false);
+      }}
+    >
+      <aside
+        className={clsx(
+          "flex h-full w-[min(100vw,384px)] flex-col bg-white text-zinc-950 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#151515] dark:text-zinc-100",
+          aiSidebarOpen ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0",
+        )}
+        aria-hidden={!aiSidebarOpen}
+      >
+        {panelContent}
       </aside>
     </div>
   );
@@ -530,11 +592,17 @@ function HistoryPanel({
   );
 }
 
-function EmptyState({ activeView, onAsk }: { activeView: "chat" | "doc"; onAsk: (text: string) => void }) {
+function EmptyState({ activeView, onAsk, faded }: { activeView: "chat" | "doc"; onAsk: (text: string) => void; faded?: boolean }) {
   const { t } = useTranslation();
   const prompts = [activeView === "doc" ? t("aiSidebar.docQuickOne") : t("aiSidebar.quickOne"), t("aiSidebar.quickTwo")];
   return (
-    <div className="flex min-h-[180px] flex-1 flex-col justify-end pb-2">
+    <div
+      className={clsx(
+        // 输入框聚焦（移动端上移）时原位置渐隐，避免与上浮的输入框争空间（issue 2）。
+        "flex min-h-[180px] flex-1 flex-col justify-end pb-2 transition-opacity duration-200",
+        faded && "pointer-events-none opacity-0",
+      )}
+    >
       <div className="space-y-3">
         {prompts.map((prompt) => (
           <button

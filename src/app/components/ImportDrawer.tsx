@@ -25,6 +25,8 @@ import { useAppContext, ImportSummary } from "../data";
 import { parseFileContent, parseChatGPTExport } from "../parsers";
 import { useTranslation } from "../i18n";
 import { useScrollActivity } from "../hooks/useScrollActivity";
+import { useIsMobile } from "../hooks/useIsMobile";
+import { BottomSheet } from "./BottomSheet";
 
 /** CLI 采集器已接入的桌面来源（不含需显式登记的 waylog） */
 const CLI_COLLECTOR_PLATFORMS = [
@@ -175,6 +177,7 @@ async function parseChatGPTZip(file: File, t: (key: string) => string): Promise<
 export function ImportDrawer() {
   const { isDrawerOpen, setDrawerOpen, addConversations, addDocuments, folders, activeView, setActiveView, setActiveDocId, setActiveConversationId } = useAppContext();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { isScrolling: isDrawerScrolling, markScrollActive: markDrawerScrollActive } = useScrollActivity();
 
   // 首次滑入动画修复：App 用 `{drawerEverOpened && <ImportDrawer/>}` 门控，本组件
@@ -343,6 +346,65 @@ export function ImportDrawer() {
   const isDocMode = activeView === "doc";
   const title = isDocMode ? t("import.titleDoc") : t("import.title");
   const subtitle = isDocMode ? t("import.subtitleDoc") : t("import.subtitle");
+
+  // 移动端：底部抽屉（spec US-04）。对话页仅链接导入（隐藏 ZIP/文件上传与指引卡）；
+  // 文档页保留文档上传 + MinerU 状态只读展示（隐藏 token 输入/保存/清除）。
+  if (isMobile) {
+    return (
+      <BottomSheet
+        open={isDrawerOpen}
+        onClose={() => { if (!isImporting) setDrawerOpen(false); }}
+        title={title}
+        bodyClassName="px-4 pb-6"
+      >
+        <p className="pt-1 text-sm text-zinc-500 dark:text-zinc-400">{subtitle}</p>
+        {isDocMode ? (
+          <div className="mt-4">
+            <DocumentImportPanel
+              mobile
+              setDrawerOpen={setDrawerOpen}
+              addDocuments={addDocuments}
+              setActiveDocId={setActiveDocId}
+              setActiveView={setActiveView}
+              t={t}
+            />
+          </div>
+        ) : (
+          <form onSubmit={handleUrlImport} className="mt-4 space-y-3">
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3 text-muted-foreground">
+                <Link size={16} />
+              </div>
+              <Input
+                type="url"
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                placeholder={t("import.urlPlaceholder")}
+                disabled={isImporting}
+                className="h-12 pl-9"
+              />
+            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              disabled={isImporting || !importUrl.trim()}
+              className="h-12 w-full gap-2"
+            >
+              {isImporting ? <Loader2 className="animate-spin" /> : <Globe />}
+              {t("import.fetchBtn")}
+            </Button>
+            <p className="px-1 text-xs text-zinc-500 dark:text-zinc-400">{t("import.urlNote")}</p>
+            {error && (
+              <div className="rounded-md border border-red-100 bg-red-50 p-3 text-sm font-medium text-red-500 dark:border-red-500/20 dark:bg-red-900/20 dark:text-red-400">
+                {error}
+              </div>
+            )}
+          </form>
+        )}
+      </BottomSheet>
+    );
+  }
 
   return (
     <Drawer
@@ -591,7 +653,7 @@ const SUPPORTED_DOC_EXTS = [
   ".png", ".jpg", ".jpeg", ".jp2", ".webp", ".gif", ".bmp",
 ];
 
-function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setActiveView, t }: any) {
+function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setActiveView, t, mobile }: any) {
   const [status, setStatus] = useState<any>(null);
   const [tokenInput, setTokenInput] = useState("");
   const [savingToken, setSavingToken] = useState(false);
@@ -697,6 +759,12 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
           {configured ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
           <span>{configured ? t("import.doc.mineruConfigured") : t("import.doc.mineruMissing")}</span>
         </div>
+        {/* 移动端只读：不提供 token 输入/保存/清除；未配置时提示到桌面端配置（spec US-04 AC3）。 */}
+        {mobile ? (
+          !configured && (
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{t("import.doc.mineruDesktopOnly")}</p>
+          )
+        ) : (
         <div className="mt-3 space-y-3">
           {!configured && (
             <ol className="list-decimal list-inside space-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
@@ -756,6 +824,7 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
             onConfirm={() => { void doClearToken(); }}
           />
         </div>
+        )}
       </div>
 
       {/* Upload zone */}

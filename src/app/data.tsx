@@ -270,6 +270,9 @@ interface AppContextType {
   setLanguage: (lang: "en" | "zh") => void;
   isDrawerOpen: boolean;
   setDrawerOpen: (open: boolean) => void;
+  // ── Mobile nav drawer (spec mobile-responsive US-02) — UI-only, 不持久化 ──
+  mobileNavOpen: boolean;
+  setMobileNavOpen: (open: boolean) => void;
   // ── Search palette (spec hybrid-search) ──
   searchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
@@ -343,6 +346,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem("pentou-language") as "en" | "zh") ?? "en";
   });
   const [isDrawerOpen, setDrawerOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchJump, setSearchJump] = useState<SearchJump | null>(null);
   const [aiSidebarOpen, setAiSidebarOpen] = useState(false);
@@ -999,6 +1003,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLanguage,
         isDrawerOpen,
         setDrawerOpen,
+        mobileNavOpen,
+        setMobileNavOpen,
         searchOpen,
         setSearchOpen,
         searchJump,

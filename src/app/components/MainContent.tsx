@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { useAppContext } from "../data";
 import { TopToolbar } from "./TopToolbar";
+import { MobileTopBar } from "./MobileTopBar";
 
 const ChatBody = lazy(() =>
   import("./ChatBody").then(m => ({ default: m.ChatBody }))
@@ -18,6 +19,7 @@ export function MainContent() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0 min-h-0">
+      <MobileTopBar />
       {activeView === "doc" && <TopToolbar />}
       <Suspense fallback={<ViewFallback />}>
         {activeView === "chat" ? <ChatBody /> : <DocBody />}

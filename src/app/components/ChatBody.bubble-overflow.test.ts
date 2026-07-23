@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 describe("message bubble width containment", () => {
   it("caps the message bubble width so <pre> scrolls instead of overflowing", () => {
     const chatBody = readFileSync("src/app/components/ChatBody.tsx", "utf8");
-    expect(chatBody).toContain("max-w-full text-[15px] leading-7 mt-1 markdown-body break-words");
+    expect(chatBody).toContain("max-w-full text-[15px] leading-7 markdown-body break-words");
     expect(chatBody).not.toContain("max-w-none");
   });
 });

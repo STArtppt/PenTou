@@ -12,6 +12,7 @@ import { Search, X, Bot, FileText, Loader2, SearchX, Sparkles } from "lucide-rea
 import clsx from "clsx";
 import { useAppContext } from "../data";
 import { useTranslation } from "../i18n";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { formatDisplayMonthDay } from "../utils/dateFormat";
 
 interface SnippetPart { text: string; matched: boolean; }
@@ -81,6 +82,7 @@ export function SearchPalette() {
     conversations, documents, embeddingConfig,
   } = useAppContext();
   const { t, language } = useTranslation();
+  const isMobile = useIsMobile();
 
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -97,6 +99,8 @@ export function SearchPalette() {
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const expanded = query.trim().length > 0;
+  // 移动端全屏：结果区常驻并占满（桌面仍按输入展开/收起胶囊）。
+  const showPanel = expanded || isMobile;
 
   const clearPoll = () => {
     if (pollRef.current) { clearTimeout(pollRef.current); pollRef.current = null; }
@@ -210,7 +214,11 @@ export function SearchPalette() {
     <AnimatePresence>
       <motion.div
         key="search-overlay"
-        className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[14vh] bg-black/50 backdrop-blur-sm"
+        className={clsx(
+          // 覆盖层最高层级（spec §5 覆盖层层级）：在底部抽屉(z-60)与侧栏(z-50)之上。
+          "fixed inset-0 z-[70] flex justify-center bg-black/50 backdrop-blur-sm",
+          isMobile ? "items-stretch p-0" : "items-start px-4 pt-[14vh]",
+        )}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -220,8 +228,11 @@ export function SearchPalette() {
         <motion.div
           key="search-card"
           className={clsx(
-            "w-full max-w-[640px] bg-white dark:bg-[#1F1F1F] shadow-2xl ring-1 ring-zinc-200 dark:ring-white/10 overflow-hidden transition-[border-radius] duration-200",
-            expanded ? "rounded-2xl" : "rounded-full",
+            "bg-white dark:bg-[#1F1F1F] shadow-2xl ring-1 ring-zinc-200 dark:ring-white/10 overflow-hidden",
+            // 移动端全屏弹层（spec US-07 AC1）：占满视口、底部避让安全区、不做圆角胶囊变形。
+            isMobile
+              ? "flex h-dvh w-full flex-col rounded-none pb-[env(safe-area-inset-bottom)]"
+              : clsx("w-full max-w-[640px] transition-[border-radius] duration-200", expanded ? "rounded-2xl" : "rounded-full"),
           )}
           initial={{ opacity: 0, y: -10, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -229,7 +240,7 @@ export function SearchPalette() {
           transition={{ duration: 0.18, ease: "easeOut" }}
         >
           {/* 无界输入区：不画框线，靠留白与两端图标勾勒（§4.6.3） */}
-          <div className="flex items-center gap-3 px-5 h-14">
+          <div className="flex shrink-0 items-center gap-3 px-5 h-14">
             <Search size={18} className="shrink-0 text-zinc-400" />
             <input
               ref={inputRef}
@@ -248,19 +259,28 @@ export function SearchPalette() {
                 <X size={16} />
               </button>
             )}
+            {/* 移动端全屏无遮罩可点：显式关闭按钮（spec US-07 AC3） */}
+            {isMobile && (
+              <button
+                onClick={close}
+                className="ml-1 shrink-0 text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+              >
+                {t("toolbar.cancel")}
+              </button>
+            )}
           </div>
 
           <AnimatePresence initial={false}>
-            {expanded && (
+            {showPanel && (
               <motion.div
                 key="panel"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
+                initial={isMobile ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                animate={isMobile ? { opacity: 1 } : { height: "auto", opacity: 1 }}
+                exit={isMobile ? { opacity: 0 } : { height: 0, opacity: 0 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="border-t border-zinc-100 dark:border-white/10"
+                className={clsx("border-t border-zinc-100 dark:border-white/10", isMobile && "flex min-h-0 flex-1 flex-col")}
               >
-                <div className="max-h-[52vh] overflow-y-auto custom-scrollbar p-2">
+                <div className={clsx("overflow-y-auto custom-scrollbar p-2", isMobile ? "min-h-0 flex-1" : "max-h-[52vh]")}>
                   {status === "ready" && notice && (
                     <div className="mx-1 mb-1 flex items-center gap-2 rounded-lg bg-zinc-50 dark:bg-white/5 px-3 py-1.5 text-xs text-zinc-400 dark:text-zinc-500">
                       <Sparkles size={12} className="shrink-0" />

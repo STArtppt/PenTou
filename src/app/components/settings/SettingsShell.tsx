@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import clsx from "clsx";
 import {
   Dialog,
   DialogBackdrop,
@@ -11,7 +12,9 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppContext } from "../../data";
 import { useTranslation } from "../../i18n";
-import { SettingsNav } from "./SettingsNav";
+import { useIsMobile } from "../../hooks/useIsMobile";
+import { BottomSheet } from "../BottomSheet";
+import { SettingsNav, SETTINGS_TABS } from "./SettingsNav";
 import type { SettingsTabId } from "./types";
 import { GeneralTab } from "./tabs/GeneralTab";
 import { LLMTab } from "./tabs/LLMTab";
@@ -20,6 +23,9 @@ import { IngestTab } from "./tabs/IngestTab";
 import { MigrationTab } from "./tabs/MigrationTab";
 import { ObsidianTab } from "./tabs/ObsidianTab";
 import { AboutTab } from "./tabs/AboutTab";
+
+// 移动端仅暴露四类配置（spec mobile-responsive US-06 AC2）：通用 / LLM / 语义检索 / 关于。
+const MOBILE_SETTINGS_TAB_IDS: SettingsTabId[] = ["general", "llm", "search", "about"];
 
 export function SettingsShell() {
   const {
@@ -35,7 +41,45 @@ export function SettingsShell() {
     setLanguage,
   } = useAppContext();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
+
+  // 移动端：底部抽屉 + 横向四类 Tab（超出四类的桌面态 activeTab 回落 general）。行为/持久化与桌面一致（AC3）。
+  if (isMobile) {
+    const mobileTab = MOBILE_SETTINGS_TAB_IDS.includes(activeTab) ? activeTab : "general";
+    const mobileTabs = SETTINGS_TABS.filter((tab) => MOBILE_SETTINGS_TAB_IDS.includes(tab.id));
+    return (
+      <BottomSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title={t("settings.title")}>
+        <div className="flex flex-col">
+          <div className="sticky top-0 z-10 flex gap-1 border-b border-border bg-white px-3 pb-2 dark:bg-[#1A1A1A]">
+            {mobileTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                aria-current={mobileTab === tab.id ? "page" : undefined}
+                className={clsx(
+                  "min-h-11 flex-1 rounded-md px-2 py-2 text-xs font-medium transition-colors",
+                  mobileTab === tab.id
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-accent/50",
+                )}
+              >
+                {t(tab.labelKey as any)}
+              </button>
+            ))}
+          </div>
+          <div className="p-1">
+            {mobileTab === "general" && (
+              <GeneralTab theme={theme} setTheme={setTheme} language={language} setLanguage={setLanguage} />
+            )}
+            {mobileTab === "llm" && <LLMTab settings={llmSettings} setSettings={setLlmSettings} />}
+            {mobileTab === "search" && <EmbeddingTab />}
+            {mobileTab === "about" && <AboutTab />}
+          </div>
+        </div>
+      </BottomSheet>
+    );
+  }
 
   return (
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
