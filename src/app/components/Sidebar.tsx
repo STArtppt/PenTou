@@ -557,7 +557,7 @@ export function Sidebar() {
       for (const c of filteredConversations) {
         if (!c.folderId || !folderIds.has(c.folderId)) {
           ids.push(c.id);
-        } else if (chatFolderOpen[c.folderId] ?? true) {
+        } else if (chatFolderOpen[c.folderId] ?? false) {
           ids.push(c.id);
         }
       }
@@ -568,7 +568,7 @@ export function Sidebar() {
       for (const d of filteredDocuments) {
         if (!d.folderId || !folderIds.has(d.folderId)) {
           ids.push(d.id);
-        } else if (docFolderOpen[d.folderId] ?? true) {
+        } else if (docFolderOpen[d.folderId] ?? false) {
           ids.push(d.id);
         }
       }
@@ -694,7 +694,7 @@ export function Sidebar() {
 
   const selectedCount = selectedIds.size;
   const hasSelection = selectedCount > 0;
-  const areAllChatFoldersOpen = folders.length > 0 && folders.every((folder) => chatFolderOpen[folder.id] ?? true);
+  const areAllChatFoldersOpen = folders.length > 0 && folders.every((folder) => chatFolderOpen[folder.id] ?? false);
 
   const toggleAllChatFolders = () => {
     const nextOpen = !areAllChatFoldersOpen;
@@ -793,7 +793,9 @@ export function Sidebar() {
       {/* Lists */}
       <div
         className={clsx(
-          "flex-1 overflow-y-auto overflow-x-hidden p-2 custom-scrollbar subtle-scrollbar space-y-1",
+          // No vertical padding: sticky headers must flush to the scrollport top.
+          // Horizontal inset stays via px-2; sticky rows bleed with -mx-2 + matching px.
+          "flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2 custom-scrollbar subtle-scrollbar space-y-1",
           isListScrolling && "subtle-scrollbar-active",
         )}
         onScroll={markListScrollActive}
@@ -801,7 +803,7 @@ export function Sidebar() {
         {activeView === "chat" ? (
           <>
             <div className="mt-2 mb-4">
-              <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+              <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
                 <span>{t("sidebar.folders")}</span>
                 <div className="flex items-center">
                   <button
@@ -835,9 +837,9 @@ export function Sidebar() {
                       key={folder.id}
                       folder={folder}
                       conversations={filteredConversations.filter((c) => c.folderId === folder.id)}
-                      isOpen={chatFolderOpen[folder.id] ?? true}
+                      isOpen={chatFolderOpen[folder.id] ?? false}
                       onToggleOpen={() =>
-                        setChatFolderOpen((prev) => ({ ...prev, [folder.id]: !(prev[folder.id] ?? true) }))
+                        setChatFolderOpen((prev) => ({ ...prev, [folder.id]: !(prev[folder.id] ?? false) }))
                       }
                     />
                   ))
@@ -845,7 +847,7 @@ export function Sidebar() {
               </div>
             </div>
             <div className="mt-4">
-              <div className="px-3 py-1.5 text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+              <div className="sticky top-0 z-10 -mx-2 bg-[#FAFAFA] px-5 py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
                 {t("sidebar.uncategorized")}
               </div>
               <ConversationUncategorizedList conversations={filteredConversations.filter((c) => !c.folderId)} />
@@ -856,12 +858,12 @@ export function Sidebar() {
             documents={filteredDocuments}
             folderOpen={docFolderOpen}
             onToggleAllFolders={() => {
-              const areAllOpen = documentFolders.length > 0 && documentFolders.every((folder) => docFolderOpen[folder.id] ?? true);
+              const areAllOpen = documentFolders.length > 0 && documentFolders.every((folder) => docFolderOpen[folder.id] ?? false);
               const nextOpen = !areAllOpen;
               setDocFolderOpen(Object.fromEntries(documentFolders.map((folder) => [folder.id, nextOpen])));
             }}
             onToggleFolderOpen={(id) =>
-              setDocFolderOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }))
+              setDocFolderOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? false) }))
             }
           />
         )}
@@ -1464,12 +1466,12 @@ function DocumentList({
   const { documentFolders } = useAppContext();
   const documentFolderIds = new Set(documentFolders.map((folder) => folder.id));
   const uncategorized = documents.filter((d) => !d.folderId || !documentFolderIds.has(d.folderId));
-  const areAllFoldersOpen = documentFolders.length > 0 && documentFolders.every((folder) => folderOpen[folder.id] ?? true);
+  const areAllFoldersOpen = documentFolders.length > 0 && documentFolders.every((folder) => folderOpen[folder.id] ?? false);
 
   return (
     <>
       <div className="mt-2 mb-4">
-        <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+        <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
           <span>{t("sidebar.folders")}</span>
           {documentFolders.length > 0 && (
             <button
@@ -1494,7 +1496,7 @@ function DocumentList({
                   key={folder.id}
                   folder={folder}
                   documents={folderDocs}
-                  isOpen={folderOpen[folder.id] ?? true}
+                  isOpen={folderOpen[folder.id] ?? false}
                   onToggleOpen={() => onToggleFolderOpen(folder.id)}
                 />
               );
@@ -1504,7 +1506,7 @@ function DocumentList({
       </div>
 
       <div className="mt-2">
-        <div className="px-3 py-1.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+        <div className="sticky top-0 z-10 -mx-2 bg-[#FAFAFA] px-5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
           {t("sidebar.uncategorized")}
         </div>
         <DocumentUncategorizedList documents={uncategorized} />
