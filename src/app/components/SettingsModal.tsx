@@ -6,7 +6,7 @@ import { useAppContext, LLMConfig } from "../data";
 import { testLLMConnection } from "../llm";
 import { useTranslation } from "../i18n";
 
-type Tab = "general" | "llm" | "search" | "obsidian" | "about";
+type Tab = "general" | "llm" | "search" | "ingest" | "obsidian" | "about";
 
 export function SettingsModal() {
   const { settingsOpen, setSettingsOpen, llmConfig, setLlmConfig, obsidianConfig, setObsidianConfig, theme, setTheme, language, setLanguage } = useAppContext();
@@ -42,7 +42,7 @@ export function SettingsModal() {
             </div>
 
             <div className="shrink-0 flex border-b border-zinc-200 dark:border-white/10 px-6">
-              {(["general", "llm", "search", "obsidian", "about"] as Tab[]).map((tab) => (
+              {(["general", "llm", "search", "ingest", "obsidian", "about"] as Tab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -66,6 +66,7 @@ export function SettingsModal() {
                 <LLMTab config={llmConfig} setConfig={setLlmConfig} t={t} />
               )}
               {activeTab === "search" && <EmbeddingTab t={t} />}
+              {activeTab === "ingest" && <IngestTab t={t} />}
               {activeTab === "obsidian" && (
                 <ObsidianTab
                   vaultName={obsidianConfig.vaultName}
@@ -270,6 +271,103 @@ function EmbeddingTab({ t }: { t: any }) {
           {phase === "error" && embeddingConfig?.error ? ` — ${embeddingConfig.error}` : ""}
         </span>
       </div>
+    </div>
+  );
+}
+
+// 采集区块（spec ingest-gateway US-03 AC3 / US-06 AC2）：token 展示 / 复制 / 重置，脱敏开关。
+function IngestTab({ t }: { t: any }) {
+  const [token, setToken] = useState("");
+  const [redact, setRedact] = useState(true);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/ingest/config")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((data) => {
+        if (cancelled) return;
+        setToken(data.token ?? "");
+        setRedact(data.redact !== false);
+        setState("ready");
+      })
+      .catch(() => { if (!cancelled) setState("error"); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(token);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* 剪贴板不可用时静默 */ }
+  };
+
+  const handleRotate = async () => {
+    const res = await fetch("/api/ingest/token/rotate", { method: "POST" });
+    if (res.ok) {
+      const data = await res.json();
+      setToken(data.token ?? "");
+    }
+  };
+
+  const handleRedactChange = async (next: boolean) => {
+    setRedact(next);
+    await fetch("/api/ingest/config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ redact: next }),
+    });
+  };
+
+  if (state === "loading") {
+    return <div className="p-6 text-sm text-zinc-500 dark:text-zinc-400">{t("settings.ingest.loading")}</div>;
+  }
+  if (state === "error") {
+    return <div className="p-6 text-sm text-red-500">{t("settings.ingest.loadError")}</div>;
+  }
+
+  return (
+    <div className="p-6 space-y-5">
+      <div className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-lg p-3 leading-relaxed">
+        {t("settings.ingest.note")}
+      </div>
+
+      <FieldRow label={t("settings.ingest.token")}>
+        <div className="flex gap-2">
+          <input className={clsx(inputCls, "font-mono text-xs")} value={token} readOnly onFocus={(e) => e.target.select()} />
+          <button
+            onClick={handleCopy}
+            className="shrink-0 px-3 py-1.5 text-sm border border-zinc-300 dark:border-white/20 text-zinc-700 dark:text-zinc-300 rounded-lg hover:border-zinc-400 dark:hover:border-white/40 transition-colors"
+          >
+            {copied ? t("settings.ingest.copied") : t("settings.ingest.copy")}
+          </button>
+        </div>
+      </FieldRow>
+
+      <div className="space-y-1.5">
+        <button
+          onClick={handleRotate}
+          className="px-4 py-1.5 text-sm font-medium border border-red-300 dark:border-red-400/40 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-400/10 transition-colors"
+        >
+          {t("settings.ingest.rotate")}
+        </button>
+        <p className="text-[11px] text-zinc-400 dark:text-zinc-500">{t("settings.ingest.rotateHint")}</p>
+      </div>
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={redact}
+          onChange={(e) => handleRedactChange(e.target.checked)}
+          className="h-4 w-4 accent-orange-500 dark:accent-yellow-400"
+        />
+        <span>
+          <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-100">{t("settings.ingest.redact")}</span>
+          <span className="block text-xs text-zinc-500 dark:text-zinc-400">{t("settings.ingest.redactHint")}</span>
+        </span>
+      </label>
     </div>
   );
 }

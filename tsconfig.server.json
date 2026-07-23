@@ -20,6 +20,7 @@
   "include": [
     "src/server/**/*.ts",
     "vite-plugins/**/*.ts",
+    "src/shared/**/*.ts",
     "src/app/parsers.ts"
   ],
   "exclude": [

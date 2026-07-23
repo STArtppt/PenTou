@@ -43,6 +43,17 @@ import {
   readConvVersionBody,
   deleteConvVersions,
 } from "./conversation-versions.js";
+import { parseFileContent } from "../shared/parsers.js";
+import { getRawNormalizer } from "../shared/normalizers/registry.js";
+import { redactText } from "./redact.js";
+import {
+  getIngestToken,
+  rotateIngestToken,
+  verifyIngestToken,
+  readIngestConfig,
+  writeIngestConfig,
+} from "./ingest-token.js";
+import { clientIp, isLimited, recordFail } from "./auth.js";
 
 export interface RouterContext {
   dataDir: string;
@@ -53,6 +64,8 @@ export interface RouterContext {
   obscuraBinDir?: string;
   /** 缺失时是否惰性下载 obscura（仅 npx 本地模式开启）。 */
   obscuraAllowDownload?: boolean;
+  /** ingest 限速器取真实 IP 用；prod 传 Docker env 值，dev / 测试缺省 false。 */
+  trustProxy?: boolean;
 }
 
 // ── Directory initialization ──────────────────────────────────────────────────
@@ -99,11 +112,12 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-function json(res: ServerResponse, statusCode: number, data: unknown): void {
+function json(res: ServerResponse, statusCode: number, data: unknown, extraHeaders?: Record<string, string>): void {
   const body = JSON.stringify(data);
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
     "Content-Length": Buffer.byteLength(body),
+    ...(extraHeaders ?? {}),
   });
   res.end(body);
 }
@@ -159,6 +173,10 @@ export function conversationToMd(conv: any): string {
   ];
   if (conv.updatedAt) fmLines.push(`updatedAt: ${escapeFrontmatterValue(conv.updatedAt)}`);
   if (conv.currentVersionId) fmLines.push(`currentVersionId: ${escapeFrontmatterValue(conv.currentVersionId)}`);
+  // ingest 身份映射（spec ingest-gateway §4.3）：externalKey 为 upsert 一级查找依据，
+  // ingestSource 仅溯源不参与匹配。
+  if (conv.externalKey) fmLines.push(`externalKey: ${escapeFrontmatterValue(conv.externalKey)}`);
+  if (conv.ingestSource) fmLines.push(`ingestSource: ${escapeFrontmatterValue(conv.ingestSource)}`);
 
   return `---
 ${fmLines.join("\n")}
@@ -260,6 +278,8 @@ export function parseMdFile(id: string, content: string): any {
     folderId: meta.folderId === "null" ? null : (meta.folderId || null),
     updatedAt: meta.updatedAt || undefined,
     currentVersionId: meta.currentVersionId || undefined,
+    externalKey: meta.externalKey || undefined,
+    ingestSource: meta.ingestSource || undefined,
     messages: mergeConsecutiveMessages(messages),
   };
 }
@@ -403,6 +423,20 @@ function findMatchingConversation(convDir: string, fingerprint: string): any | n
   return null;
 }
 
+/**
+ * 按 frontmatter externalKey 精确匹配（编码后整串比较、不折叠大小写，
+ * spec ingest-gateway §4.3）。沿用指纹查找的全量扫描模式（§4.5 决策 2）。
+ */
+function findConversationByExternalKey(convDir: string, externalKey: string): any | null {
+  if (!fs.existsSync(convDir)) return null;
+  const files = fs.readdirSync(convDir).filter((f) => f.endsWith(".md"));
+  for (const f of files) {
+    const conv = parseMdFile(f.replace(".md", ""), fs.readFileSync(path.join(convDir, f), "utf-8"));
+    if (conv.externalKey === externalKey) return conv;
+  }
+  return null;
+}
+
 function createConversation(convDir: string, incoming: any): UpsertConversationResult {
   const now = new Date().toISOString();
   const full = normalizeConversation({ ...incoming, updatedAt: incoming.updatedAt ?? now });
@@ -423,8 +457,17 @@ function mergeConversation(convDir: string, existing: any, incoming: any): Upser
     body: conversationToMd(existing),
     type: "pre-import-overwrite",
   });
-  // 2. 用新内容覆盖当前；保留已有条目的 id 与 folderId（不被导入项覆盖，spec §5 边界·跨folder）
-  const merged = normalizeConversation({ ...incoming, id: existing.id, folderId: existing.folderId, updatedAt: now });
+  // 2. 用新内容覆盖当前；保留已有条目的 id 与 folderId（不被导入项覆盖，spec §5 边界·跨folder）。
+  //    externalKey / ingestSource：导入项未携带时保留已有值，避免手动导入合并把身份键抹掉
+  //    （spec ingest-gateway §4.3）。
+  const merged = normalizeConversation({
+    ...incoming,
+    id: existing.id,
+    folderId: existing.folderId,
+    externalKey: incoming.externalKey ?? existing.externalKey,
+    ingestSource: incoming.ingestSource ?? existing.ingestSource,
+    updatedAt: now,
+  });
   const v = appendConvVersion(convDir, existing.id, { body: conversationToMd(merged), type: "import" });
   updateConvCurrentPointer(convDir, existing.id, v.id);
   const conversation = { ...merged, currentVersionId: v.id };
@@ -432,10 +475,38 @@ function mergeConversation(convDir: string, existing: any, incoming: any): Upser
   return { action: "merged", id: existing.id, title: merged.title, conversation, mergedIntoExisting: true };
 }
 
-/** 导入会话：无匹配→新建 / 完全一致→跳过 / 有差异→合并（spec §4.1）。 */
-export function upsertConversation(convDir: string, incoming: any): UpsertConversationResult {
-  const normalizedIncoming = normalizeConversation(incoming);
+export interface UpsertConversationOptions {
+  /** `<platform>:<encodeURIComponent(externalId)>`，ingest 上报时的第一身份键。 */
+  externalKey?: string;
+  /** 采集端标识（extension / cli / …），仅溯源。 */
+  ingestSource?: string;
+}
+
+/**
+ * 导入会话：无匹配→新建 / 完全一致→跳过 / 有差异→合并（spec import-dedup-versioning §4.1）。
+ * 携带 externalKey 时先走一级查找（spec ingest-gateway §4.1）：命中直接进 skip/merge 判定，
+ * 未命中降级指纹路径；无 externalKey 的入口行为完全不变。
+ */
+export function upsertConversation(
+  convDir: string,
+  incoming: any,
+  opts: UpsertConversationOptions = {},
+): UpsertConversationResult {
+  const normalizedIncoming = normalizeConversation({
+    ...incoming,
+    ...(opts.externalKey ? { externalKey: opts.externalKey } : {}),
+    ...(opts.ingestSource ? { ingestSource: opts.ingestSource } : {}),
+  });
   const sig = conversationSignature(normalizedIncoming);
+  if (opts.externalKey) {
+    const existing = findConversationByExternalKey(convDir, opts.externalKey);
+    if (existing) {
+      if (conversationSignature(existing).contentHash === sig.contentHash) {
+        return { action: "skipped", id: existing.id, title: existing.title };
+      }
+      return mergeConversation(convDir, existing, normalizedIncoming);
+    }
+  }
   if (conversationDedupable(normalizedIncoming)) {
     const existing = findMatchingConversation(convDir, sig.fingerprint);
     if (existing) {
@@ -446,6 +517,291 @@ export function upsertConversation(convDir: string, incoming: any): UpsertConver
     }
   }
   return createConversation(convDir, normalizedIncoming);
+}
+
+// ── Ingest gateway（spec ingest-gateway §4.1 / §4.4）──────────────────────────
+
+const INGEST_MAX_ITEMS = 50;                       // §4.5 决策 7
+const INGEST_MAX_BODY_BYTES = 10 * 1024 * 1024;    // 10MB
+const PLATFORM_SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;   // §4.3
+const EXTERNAL_ID_MAX_LEN = 256;
+const CONTROL_CHAR_RE = /[\u0000-\u001f\u007f]/;
+
+// CORS：`*` 仅作用于 /api/ingest 与 /api/ingest/ping，安全边界由 token 承担（§4.5 决策 4）。
+const INGEST_CORS: Record<string, string> = { "Access-Control-Allow-Origin": "*" };
+
+/** 带体积上限读取请求体；超限返回 null（整体 413，不部分落库）。 */
+function readBodyLimited(req: IncomingMessage, maxBytes: number): Promise<string | null> {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    let overflowed = false;
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => {
+      if (overflowed) return;
+      size += chunk.length;
+      if (size > maxBytes) {
+        overflowed = true;
+        resolve(null);
+        return;
+      }
+      chunks.push(Buffer.from(chunk));
+    });
+    req.on("end", () => {
+      if (!overflowed) resolve(Buffer.concat(chunks).toString("utf-8"));
+    });
+    req.on("error", reject);
+  });
+}
+
+/** 无 filename 时按内容猜派发扩展名（filename 仅辅助 parseFileContent 派发，§4.3）。 */
+function guessRawFilename(data: string): string {
+  const trimmed = data.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      JSON.parse(trimmed);
+      return "ingest.json";
+    } catch {
+      return "ingest.jsonl"; // 整体非法但可能是逐行 JSON
+    }
+  }
+  return "ingest.md";
+}
+
+/**
+ * raw 两级派发（§4.4）：platform 命中已注册 normalizer 优先，未命中回退 parseFileContent。
+ * 失败以 Error 抛出，由逐 item 容错捕获（错误消息即 results[].error）。
+ */
+function parseRawConversations(platform: string, data: string, filename?: string): any[] {
+  const normalizer = getRawNormalizer(platform);
+  if (normalizer) {
+    const conversations = normalizer(data, filename);
+    if (conversations.length === 0) throw new Error("no conversations parsed");
+    return conversations;
+  }
+  const name = (filename ?? "").trim() || guessRawFilename(data);
+  if (!/\.(json|jsonl|md|txt)$/i.test(name)) throw new Error("unrecognized format");
+  const conversations = parseFileContent(name, data);
+  if (conversations.length === 0) throw new Error("no conversations parsed");
+  return conversations;
+}
+
+/** `format: "conversation"` 的结构校验（§5 边界 5）；返回补全 id 的副本。 */
+function validateConversationPayload(data: unknown): any {
+  const conv: any = data;
+  const invalid = () => new Error("invalid conversation payload");
+  if (!conv || typeof conv !== "object" || Array.isArray(conv)) throw invalid();
+  if (!Array.isArray(conv.messages) || conv.messages.length === 0) throw invalid();
+  for (const m of conv.messages) {
+    if (!m || typeof m !== "object") throw invalid();
+    if (m.role !== "user" && m.role !== "ai") throw invalid();
+    if (typeof m.content !== "string") throw invalid();
+  }
+  // id 缺失或含非法字符（会成为落盘文件名）时重新生成
+  const id = typeof conv.id === "string" && CONV_ID_RE.test(conv.id)
+    ? conv.id
+    : `conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  return { ...conv, id, folderId: conv.folderId ?? null };
+}
+
+/** 校验 item.externalId：trim 后非空才生效；超长 / 控制字符 → 该 item error（§4.3）。 */
+function normalizeExternalId(raw: unknown): string | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "string") throw new Error("invalid externalId");
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.length > EXTERNAL_ID_MAX_LEN || CONTROL_CHAR_RE.test(trimmed)) {
+    throw new Error("invalid externalId");
+  }
+  return trimmed;
+}
+
+async function handleIngestRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  ctx: RouterContext,
+  convDir: string,
+): Promise<boolean> {
+  const pathOnly = (req.url ?? "").split("?")[0];
+  const method = req.method ?? "GET";
+
+  // ── CORS 预检（US-04 AC1）────────────────────────────────────────────────
+  if ((pathOnly === "/api/ingest" || pathOnly === "/api/ingest/ping") && method === "OPTIONS") {
+    res.writeHead(204, {
+      ...INGEST_CORS,
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Allow-Methods": "POST, GET",
+    });
+    res.end();
+    return true;
+  }
+
+  // ── 同源管理端点：不带 CORS、不接受 ingest token（US-03 AC4；Docker 走 authGuard）──
+  if (pathOnly === "/api/ingest/config") {
+    if (method === "GET") {
+      json(res, 200, { token: getIngestToken(ctx.dataDir), redact: readIngestConfig(ctx.dataDir).redact });
+      return true;
+    }
+    if (method === "PUT") {
+      try {
+        const body = JSON.parse(await readBody(req));
+        const config = writeIngestConfig(ctx.dataDir, { redact: body?.redact !== false });
+        json(res, 200, { ok: true, redact: config.redact });
+      } catch (e) {
+        json(res, 400, { error: String(e) });
+      }
+      return true;
+    }
+    json(res, 405, { error: "Method not allowed" });
+    return true;
+  }
+  if (pathOnly === "/api/ingest/token/rotate") {
+    if (method !== "POST") { json(res, 405, { error: "Method not allowed" }); return true; }
+    json(res, 200, { token: rotateIngestToken(ctx.dataDir) });
+    return true;
+  }
+
+  const isPing = pathOnly === "/api/ingest/ping";
+  const isReport = pathOnly === "/api/ingest";
+  if (!isPing && !isReport) { json(res, 404, { error: "Not found" }); return true; }
+  if ((isPing && method !== "GET") || (isReport && method !== "POST")) {
+    json(res, 405, { error: "Method not allowed" }, INGEST_CORS);
+    return true;
+  }
+
+  // ── Token 闸门（US-03；dev 与 Docker 一致）。401 也带 CORS 头（US-04 AC2）──
+  const ip = clientIp(req, ctx.trustProxy ?? false);
+  const limit = isLimited(ip);
+  if (limit.limited) {
+    json(res, 429, { error: "too_many_attempts", retryAfterSec: limit.retryAfterSec }, {
+      ...INGEST_CORS,
+      "Retry-After": String(limit.retryAfterSec),
+    });
+    return true;
+  }
+  const auth = req.headers["authorization"];
+  const presented = typeof auth === "string" && auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
+  if (!presented || !verifyIngestToken(ctx.dataDir, presented)) {
+    recordFail(ip); // 错误尝试计入现有 IP 限速器（US-03 AC2 / AC5）
+    json(res, 401, { error: "invalid_token" }, INGEST_CORS);
+    return true;
+  }
+
+  // ── GET /api/ingest/ping：只验证不落库，无任何副作用（§4.5 决策 9）──────
+  if (isPing) {
+    json(res, 200, { ok: true }, INGEST_CORS);
+    return true;
+  }
+
+  // ── 体积 / items 上限：超限整体拒绝 413（§4.5 决策 7）────────────────────
+  const declaredLength = Number(req.headers["content-length"] ?? 0);
+  if (declaredLength > INGEST_MAX_BODY_BYTES) {
+    json(res, 413, { error: "body too large" }, INGEST_CORS);
+    return true;
+  }
+  let raw: string | null;
+  try {
+    raw = await readBodyLimited(req, INGEST_MAX_BODY_BYTES);
+  } catch (e) {
+    json(res, 500, { error: String(e) }, INGEST_CORS);
+    return true;
+  }
+  if (raw === null) {
+    json(res, 413, { error: "body too large" }, INGEST_CORS);
+    return true;
+  }
+
+  // ── 请求体结构校验 → 400（§4.3：platform slug 不符整体 400）──────────────
+  let body: any;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    json(res, 400, { error: "invalid JSON body" }, INGEST_CORS);
+    return true;
+  }
+  const source = typeof body?.source === "string" ? body.source.trim() : "";
+  if (!source || !Array.isArray(body.items) || body.items.length === 0) {
+    json(res, 400, { error: "source and non-empty items are required" }, INGEST_CORS);
+    return true;
+  }
+  const items: any[] = body.items;
+  if (items.length > INGEST_MAX_ITEMS) {
+    json(res, 413, { error: `too many items (max ${INGEST_MAX_ITEMS})` }, INGEST_CORS);
+    return true;
+  }
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item || typeof item !== "object" || typeof item.platform !== "string" || !PLATFORM_SLUG_RE.test(item.platform)) {
+      json(res, 400, { error: `items[${i}]: invalid platform slug` }, INGEST_CORS);
+      return true;
+    }
+    if (item.format !== "conversation" && item.format !== "raw") {
+      json(res, 400, { error: `items[${i}]: invalid format` }, INGEST_CORS);
+      return true;
+    }
+  }
+
+  // ── 逐 item 串行处理：单条失败不影响其余（US-02 AC1）─────────────────────
+  const config = readIngestConfig(ctx.dataDir);
+  const urlCache = new Map<string, string | null>(); // 同批共享媒体下载缓存
+  const results: any[] = [];
+  let changed = false;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const result: any = { itemIndex: i, conversations: [] };
+    try {
+      const externalId = normalizeExternalId(item.externalId);
+
+      // 1. 解析（raw 两级派发 / conversation 结构校验）
+      let conversations: any[];
+      if (item.format === "raw") {
+        if (typeof item.data !== "string") throw new Error("raw data must be a string");
+        conversations = parseRawConversations(item.platform, item.data, item.filename);
+      } else {
+        conversations = [validateConversationPayload(item.data)];
+      }
+
+      // 2. 脱敏（版本存档之前，US-06 AC1；关闭时原样保留 AC2）。
+      //    title 一并处理：JSONL 等解析器会用首条用户消息生成标题，密钥可能随标题落 frontmatter。
+      let redactions = 0;
+      if (config.redact) {
+        for (const conv of conversations) {
+          if (typeof conv.title === "string") {
+            const redactedTitle = redactText(conv.title);
+            conv.title = redactedTitle.text;
+            redactions += redactedTitle.count;
+          }
+          for (const message of conv.messages ?? []) {
+            if (typeof message.content !== "string") continue;
+            const redacted = redactText(message.content);
+            message.content = redacted.text;
+            redactions += redacted.count;
+          }
+        }
+      }
+
+      // 3. 媒体本地化 → externalId 优先 upsert。raw 解析出多条对话时 externalId
+      //    无法对应单条，仅单对话结果挂 externalKey，多对话走指纹降级。
+      const externalKey = externalId && conversations.length === 1
+        ? `${item.platform}:${encodeURIComponent(externalId)}`
+        : undefined;
+      for (const conv of conversations) {
+        await localizeMessages(conv.messages, { downloadRemote: true, urlCache });
+        const upserted = upsertConversation(convDir, conv, { externalKey, ingestSource: source });
+        if (upserted.action !== "skipped") changed = true;
+        result.conversations.push({ action: upserted.action, id: upserted.id, title: upserted.title });
+      }
+      if (redactions > 0) result.redactions = redactions;
+    } catch (e: any) {
+      result.conversations = []; // error 时 conversations 为空数组（§4.3）
+      result.error = String(e?.message ?? e);
+    }
+    results.push(result);
+  }
+
+  if (changed) markStale(); // 索引失效（spec hybrid-search §4.2）
+  json(res, 200, { ok: results.every((r) => !r.error), results }, INGEST_CORS);
+  return true;
 }
 
 // ── Main entry: handleApiRequest ──────────────────────────────────────────────
@@ -463,6 +819,12 @@ export async function handleApiRequest(
   const convDir = path.join(ctx.dataDir, "conversations");
   const aiChatsDir = path.join(ctx.dataDir, "ai-chats");
   const foldersFile = path.join(ctx.dataDir, "folders.json");
+
+  // ── /api/ingest 族（spec ingest-gateway；token 闸门与 CORS 在处理器内部）──
+  const pathOnly = url.split("?")[0];
+  if (pathOnly === "/api/ingest" || pathOnly.startsWith("/api/ingest/")) {
+    return handleIngestRequest(req, res, ctx, convDir);
+  }
 
   // ── GET /api/storage-paths/:type/:id （返回条目实际落盘路径） ───────────────
   if (url.startsWith("/api/storage-paths/") && method === "GET") {

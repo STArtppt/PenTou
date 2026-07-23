@@ -147,6 +147,7 @@ function createRequestHandler(deps: HandlerDeps): http.RequestListener {
           dataDir,
           obscuraBinDir,
           obscuraAllowDownload,
+          trustProxy: authCtx.trustProxy, // ingest 限速器取真实 IP（spec ingest-gateway US-03）
         });
         if (!handled) reply(res, 404, { error: "not_found" });
         return;

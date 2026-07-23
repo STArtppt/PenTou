@@ -38,6 +38,8 @@ data/.qmd/
 # Embedding backend config (contains API key)
 data/.config/
 .config/
+# Ingest token & config (token is a secret — spec ingest-gateway §4.3)
+data/ingest/
 
 # IDE and editors
 .idea/

@@ -285,6 +285,19 @@ export const translations = {
     "settings.embedding.phase.ready": "Ready",
     "settings.embedding.phase.error": "Error",
 
+    // Ingest（采集落库底座，spec ingest-gateway US-03 AC3 / US-06 AC2）
+    "settings.tab.ingest": "Collect",
+    "settings.ingest.note": "Collectors (browser extension / CLI watcher) report conversations to this app with the token below. The token only grants \"report\" permission — it cannot read, modify, or delete your library.",
+    "settings.ingest.token": "Ingest Token",
+    "settings.ingest.copy": "Copy",
+    "settings.ingest.copied": "Copied ✓",
+    "settings.ingest.rotate": "Reset Token",
+    "settings.ingest.rotateHint": "Resetting immediately invalidates the old token; update your collectors afterwards.",
+    "settings.ingest.redact": "Redact secrets",
+    "settings.ingest.redactHint": "Replace common credentials (API keys, private keys…) with placeholders before saving.",
+    "settings.ingest.loading": "Loading…",
+    "settings.ingest.loadError": "Failed to load ingest settings",
+
     // AI sidebar
     "aiSidebar.chat": "Chat",
     "aiSidebar.newChat": "New chat",
@@ -594,6 +607,19 @@ export const translations = {
     "settings.embedding.phase.partial": "嵌入中（{done}/{total}）",
     "settings.embedding.phase.ready": "就绪",
     "settings.embedding.phase.error": "出错",
+
+    // Ingest（采集落库底座，spec ingest-gateway US-03 AC3 / US-06 AC2）
+    "settings.tab.ingest": "采集",
+    "settings.ingest.note": "采集端（浏览器插件 / CLI watcher）用下方令牌向本应用上报对话。令牌只有「上报」这一最小权限——不能读取、修改或删除你的库。",
+    "settings.ingest.token": "采集令牌",
+    "settings.ingest.copy": "复制",
+    "settings.ingest.copied": "已复制 ✓",
+    "settings.ingest.rotate": "重置令牌",
+    "settings.ingest.rotateHint": "重置后旧令牌立即失效，请同步更新各采集端配置。",
+    "settings.ingest.redact": "密钥脱敏",
+    "settings.ingest.redactHint": "落库前把常见凭据（API key、私钥等）替换为占位符。",
+    "settings.ingest.loading": "加载中…",
+    "settings.ingest.loadError": "采集设置加载失败",
 
     // AI sidebar
     "aiSidebar.chat": "Chat",

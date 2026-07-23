@@ -198,6 +198,11 @@ const PUBLIC_EXACT = new Set([
   "/healthz",
   "/api/auth/login",
   "/favicon.ico",
+  // ingest 上报 / 探活由路由层的独立 Bearer token 闸门鉴权，采集端无 cookie
+  // （spec ingest-gateway US-03：dev 与 Docker 行为一致）。注意仅这两条精确路径：
+  // /api/ingest/config 与 /api/ingest/token/rotate 仍走会话 guard（US-03 AC4）。
+  "/api/ingest",
+  "/api/ingest/ping",
 ]);
 
 export function authGuard(req: IncomingMessage, ctx: AuthContext): GuardResult {
