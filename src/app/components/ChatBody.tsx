@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Bot, User, Terminal, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff, MessageSquare } from "lucide-react";
+import { Bot, User, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff, MessageSquare } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAppContext, Message, Platform } from "../data";
@@ -12,6 +12,7 @@ import { convertConversationToDocument, LLMError } from "../llm";
 import { excerptConversationToDoc, generateDocId, mergeRewriteWithExistingBody } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
 import { locateAndFlash } from "../utils/searchJump";
+import { BrandIcon } from "./BrandIcon";
 import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { formatDisplayDateTime, formatDisplayTime } from "../utils/dateFormat";
@@ -233,7 +234,7 @@ export function ChatBody() {
             </h1>
             <div className="flex items-center gap-2 text-xs font-medium shrink-0">
               <span className="px-2 py-1 rounded-md bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 flex items-center gap-1.5">
-                <PlatformIcon platform={conversation.platform} />
+                <BrandIcon platform={conversation.platform} size={12} />
                 {conversation.platform}
               </span>
               {conversation.updatedAt && (
@@ -472,7 +473,7 @@ function MessageBubble({
           </div>
         ) : (
           <div className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center border border-zinc-200 dark:border-white/10 text-white dark:text-zinc-900 shadow-sm">
-            <Bot size={18} />
+            <BrandIcon platform={platform} size={18} />
           </div>
         )}
       </div>
@@ -497,9 +498,4 @@ function MessageBubble({
       </div>
     </div>
   );
-}
-
-function PlatformIcon({ platform }: { platform: Platform }) {
-  if (platform === "CLI") return <Terminal size={12} />;
-  return <Bot size={12} />;
 }

@@ -137,3 +137,7 @@ temp/
 
 # npx package staging directory
 npm-package/
+
+# python3 脚本执行时生成的缓存文件
+__pycache__/
+*.py[cod]
