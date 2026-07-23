@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+extension/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -9,6 +10,7 @@ lerna-debug.log*
 # Build outputs
 dist/
 dist-server/
+extension/dist/
 tests/
 vite-plugins/**/*.test.ts
 *.tsbuildinfo

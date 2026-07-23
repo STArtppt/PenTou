@@ -495,7 +495,7 @@ describe("batch semantics and result model", () => {
       },
       headers: authed(dataDir),
     });
-    expect(res.body.results[0].error).toBe("no conversations parsed");
+    expect(res.body.results[0].error).toBe("chatgpt raw payload missing mapping");
     expect(res.body.results[1].error).toBe("invalid conversation payload");
     expect(res.body.results[2].error).toBe("raw data must be a string");
   });
@@ -504,6 +504,56 @@ describe("batch semantics and result model", () => {
 // ── 两级派发（§4.4）───────────────────────────────────────────────────────────
 
 describe("two-level raw dispatch", () => {
+  it("uses built-in ChatGPT and DeepSeek API normalizers by platform", async () => {
+    const dataDir = makeDataDir();
+    const chatgptRaw = JSON.stringify({
+      title: "Live ChatGPT",
+      mapping: {
+        root: { id: "root", parent: null, children: ["u1"], message: null },
+        u1: {
+          id: "u1",
+          parent: "root",
+          children: ["a1"],
+          message: { author: { role: "user" }, content: { parts: ["hello api"] }, create_time: 1783560001 },
+        },
+        a1: {
+          id: "a1",
+          parent: "u1",
+          children: [],
+          message: { author: { role: "assistant" }, content: { parts: ["hi api"] }, create_time: 1783560002 },
+        },
+      },
+    });
+    const deepseekRaw = JSON.stringify({
+      data: {
+        biz_data: {
+          title: "Live DeepSeek",
+          messages: [
+            { role: "user", content: "ds q" },
+            { role: "assistant", fragments: [{ type: "RESPONSE", content: "ds a" }] },
+          ],
+        },
+      },
+    });
+
+    const res = await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: {
+        source: "extension",
+        items: [
+          { platform: "chatgpt", externalId: "gpt-1", format: "raw", data: chatgptRaw },
+          { platform: "deepseek", externalId: "ds-1", format: "raw", data: deepseekRaw },
+        ],
+      },
+      headers: authed(dataDir),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.results[0].conversations[0]).toMatchObject({ action: "created", title: "Live ChatGPT" });
+    expect(res.body.results[1].conversations[0]).toMatchObject({ action: "created", title: "Live DeepSeek" });
+  });
+
   it("prefers a registered platform normalizer over parseFileContent", async () => {
     const dataDir = makeDataDir();
     registerRawNormalizer("myplat", (data) => [{

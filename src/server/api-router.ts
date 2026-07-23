@@ -45,6 +45,7 @@ import {
 } from "./conversation-versions.js";
 import { parseFileContent } from "../shared/parsers.js";
 import { getRawNormalizer } from "../shared/normalizers/registry.js";
+import { registerDefaultRawNormalizers } from "../shared/normalizers/defaults.js";
 import { redactText } from "./redact.js";
 import {
   getIngestToken,
@@ -572,6 +573,7 @@ function guessRawFilename(data: string): string {
  * 失败以 Error 抛出，由逐 item 容错捕获（错误消息即 results[].error）。
  */
 function parseRawConversations(platform: string, data: string, filename?: string): any[] {
+  registerDefaultRawNormalizers();
   const normalizer = getRawNormalizer(platform);
   if (normalizer) {
     const conversations = normalizer(data, filename);

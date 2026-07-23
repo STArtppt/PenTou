@@ -27,6 +27,7 @@
   "exclude": [
     "src/cli/**/*.test.ts",
     "src/server/**/*.test.ts",
+    "src/shared/**/*.test.ts",
     "node_modules",
     "dist",
     "dist-server"

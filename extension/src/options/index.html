@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pentou Collector Options</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <h1>Pentou Collector</h1>
+        <p>Configure where this extension sends captured conversations.</p>
+      </header>
+
+      <section>
+        <label>
+          Pentou server
+          <input id="server" autocomplete="off" />
+        </label>
+        <label>
+          Ingest token
+          <input id="token" type="password" autocomplete="off" />
+        </label>
+        <div class="actions">
+          <button id="test" type="button">Test connection</button>
+          <button id="save" type="button">Save</button>
+        </div>
+        <p id="status" role="status"></p>
+      </section>
+
+      <section>
+        <h2>Platforms</h2>
+        <label class="row">
+          <input id="chatgpt-enabled" type="checkbox" />
+          ChatGPT
+        </label>
+        <label class="row indent">
+          <input id="chatgpt-auto" type="checkbox" />
+          Auto collect after idle
+        </label>
+        <label class="row">
+          <input id="deepseek-enabled" type="checkbox" />
+          DeepSeek
+        </label>
+        <label class="row indent">
+          <input id="deepseek-auto" type="checkbox" />
+          Auto collect after idle
+        </label>
+      </section>
+
+      <section>
+        <h2>Offline queue</h2>
+        <p id="queue"></p>
+      </section>
+    </main>
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>
