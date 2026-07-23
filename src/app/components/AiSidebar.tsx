@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, Plus, Settings, Square, Trash2 } from "lucide-react";
@@ -372,13 +373,15 @@ export function AiSidebar() {
         {!hasLLM && (
           <div className="mb-4 mt-4 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
             <p className="font-medium">{t("aiSidebar.configureModel")}</p>
-            <button
+            <Button
+              variant="primary"
+              size="sm"
+              className="mt-2 h-auto gap-1.5 px-2.5 py-1.5 text-xs"
               onClick={() => setSettingsOpen(true)}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-zinc-950 px-2.5 py-1.5 text-xs font-medium text-white dark:bg-zinc-100 dark:text-zinc-950"
             >
               <Settings size={13} />
               {t("toolbar.settings")}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -405,13 +408,15 @@ export function AiSidebar() {
 
       <footer className="shrink-0 bg-white px-4 pb-4 pt-2 dark:bg-[#151515]">
         {currentAiSession.messages.some((message) => message.role === "assistant" && message.content.trim()) && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            className="mb-3 h-auto gap-1.5 px-2.5 py-1.5 text-xs"
             onClick={handleThreadToDoc}
-            className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5"
           >
             <FileText size={14} />
             {t("aiSidebar.threadToDoc")}
-          </button>
+          </Button>
         )}
         <div className="mb-3 text-[13px] text-zinc-500 dark:text-zinc-400">
           {t("aiSidebar.shortcutTip")} <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">⌘</kbd> <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">I</kbd>
@@ -436,14 +441,16 @@ export function AiSidebar() {
             <span className="min-w-0 flex-1 truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
               {llmConfig.model || t("settings.llm.model")}
             </span>
-            <button
+            <Button
+              variant="primary"
+              size="icon"
               onClick={streamingId ? handleStop : () => handleSend()}
               disabled={!streamingId && !input.trim()}
-              className="flex h-8 w-8 items-center justify-center rounded-md bg-zinc-950 text-white transition-[opacity,transform] hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:scale-100 dark:bg-zinc-100 dark:text-zinc-950"
+              className="size-8 transition-[opacity,transform] hover:scale-[1.02] active:scale-95 disabled:opacity-30"
               title={streamingId ? t("aiSidebar.stop") : t("aiSidebar.send")}
             >
               {streamingId ? <Square size={14} fill="currentColor" /> : <CornerDownLeft size={16} />}
-            </button>
+            </Button>
           </div>
         </div>
       </footer>
@@ -504,16 +511,18 @@ function HistoryPanel({
                 <span className="shrink-0 text-zinc-400 dark:text-zinc-500">{formatRelativeTime(session.updatedAt, language)}</span>
               </div>
             </button>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mr-1 size-7 text-zinc-400 hover:bg-destructive/10 hover:text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(session.id);
               }}
-              className="mr-1 rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:text-zinc-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
               title={t("aiSidebar.delete")}
             >
               <Trash2 size={14} />
-            </button>
+            </Button>
           </div>
         ))}
       </div>
@@ -531,7 +540,7 @@ function EmptyState({ activeView, onAsk }: { activeView: "chat" | "doc"; onAsk: 
           <button
             key={prompt}
             onClick={() => onAsk(prompt)}
-            className="block w-full cursor-pointer text-left text-sm font-medium leading-6 text-[#FF6900] transition-colors hover:text-[#E85D00]"
+            className="block w-full cursor-pointer text-left text-sm font-medium leading-6 text-foreground transition-colors hover:text-foreground/70"
           >
             {prompt}
           </button>
@@ -543,21 +552,18 @@ function EmptyState({ activeView, onAsk }: { activeView: "chat" | "doc"; onAsk: 
 
 function IconButton({ title, disabled, onClick, icon }: { title: string; disabled?: boolean; onClick: () => void; icon: React.ReactNode }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       title={title}
       aria-label={title}
       disabled={disabled}
       onClick={onClick}
-      className={clsx(
-        "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
-        disabled
-          ? "cursor-not-allowed text-zinc-300 dark:text-zinc-700"
-          : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-100",
-      )}
+      className="size-8 text-zinc-600 dark:text-zinc-400"
     >
       {icon}
-    </button>
+    </Button>
   );
 }
 
@@ -599,13 +605,13 @@ function MessageBubble({
         <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           {message.status === "aborted" && <span className="mr-1 text-xs text-zinc-400 dark:text-zinc-500">{t("aiSidebar.aborted")}</span>}
           {streaming && <Loader2 size={13} className="animate-spin text-zinc-400 dark:text-zinc-500" />}
-          <button onClick={onCopy} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-zinc-100" title={t("main.copy")}>
+          <Button variant="ghost" size="icon" className="size-7 text-zinc-400" onClick={onCopy} title={t("main.copy")}>
             {copied ? <Check size={13} /> : <Copy size={13} />}
-          </button>
+          </Button>
           {message.content.trim() && (
-            <button onClick={onToDoc} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-zinc-100" title={t("aiSidebar.toDoc")}>
+            <Button variant="ghost" size="icon" className="size-7 text-zinc-400" onClick={onToDoc} title={t("aiSidebar.toDoc")}>
               <FileText size={13} />
-            </button>
+            </Button>
           )}
         </div>
       )}

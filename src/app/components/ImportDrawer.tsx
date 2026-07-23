@@ -20,6 +20,7 @@ import {
 import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAppContext, ImportSummary } from "../data";
 import { parseFileContent, parseChatGPTExport } from "../parsers";
 import { useTranslation } from "../i18n";
@@ -515,8 +516,9 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
     }
   };
 
-  const clearToken = async () => {
-    if (!window.confirm(t("import.doc.clearConfirm"))) return;
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+
+  const doClearToken = async () => {
     setSavingToken(true);
     try {
       const r = await fetch("/api/mineru/config", {
@@ -618,7 +620,7 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
                 type="button"
                 variant="danger"
                 size="icon"
-                onClick={clearToken}
+                onClick={() => setClearConfirmOpen(true)}
                 disabled={savingToken}
                 title={t("import.doc.clearToken")}
                 aria-label={t("import.doc.clearToken")}
@@ -628,6 +630,16 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
             )}
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{t("import.doc.privacyNote")}</p>
+          <ConfirmDialog
+            open={clearConfirmOpen}
+            onOpenChange={setClearConfirmOpen}
+            title={t("import.doc.clearToken")}
+            description={t("import.doc.clearConfirm")}
+            confirmLabel={t("import.doc.clearToken")}
+            cancelLabel={t("toolbar.cancel")}
+            confirmVariant="danger"
+            onConfirm={() => { void doClearToken(); }}
+          />
         </div>
       </div>
 

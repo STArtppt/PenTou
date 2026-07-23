@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useTranslation } from "../../../i18n";
-import { Field } from "../Field";
+import { Field } from "@/components/ui/field";
 import { SettingsNote } from "../SettingsNote";
 
 export function IngestTab() {

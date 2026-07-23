@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../../../i18n";
-import { Field } from "../Field";
+import { Field } from "@/components/ui/field";
 
 export function GeneralTab({
   theme,

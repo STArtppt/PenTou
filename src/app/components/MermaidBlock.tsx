@@ -4,6 +4,7 @@ import { useAppContext } from "../data";
 import { useTranslation } from "../i18n";
 import { copyText } from "../utils/clipboard";
 import { renderMermaid, type MermaidTheme } from "../utils/mermaid";
+import { Button } from "@/components/ui/button";
 
 type RenderStatus =
   | { kind: "idle" | "loading" }
@@ -90,32 +91,36 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
       <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-100/80 px-4 py-2 dark:border-white/10 dark:bg-[#2A2A2A]">
         <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">mermaid</span>
         <div className="flex items-center gap-1">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setView(showSource ? "preview" : "source")}
             disabled={status.kind !== "ready" && !showSource}
-            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-foregrounddisabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-foreground"
+            className="h-auto gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
             title={showSource ? t("mermaid.showPreview") : t("mermaid.showSource")}
           >
             {showSource ? <Eye size={12} /> : <Code2 size={12} />}
             {showSource ? t("mermaid.preview") : t("mermaid.source")}
-          </button>
+          </Button>
           {showSource ? (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={handleCopy}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-foregrounddark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-foreground"
+              className="h-auto gap-1 rounded px-2 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? t("main.copied") : t("main.copy")}
-            </button>
+            </Button>
           ) : (
             <button
               ref={fullscreenButtonRef}
               type="button"
               onClick={() => setFullscreenOpen(true)}
               disabled={status.kind !== "ready"}
-              className="rounded p-1 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-foregrounddisabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-foreground"
+              className="rounded p-1 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-foreground"
               title={t("mermaid.fullscreen")}
             >
               <Maximize2 size={14} />

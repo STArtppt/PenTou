@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { LLMConfig } from "../../../data";
 import { testLLMConnection } from "../../../llm";
 import { useTranslation } from "../../../i18n";
-import { Field } from "../Field";
+import { Field } from "@/components/ui/field";
 import { SettingsNote } from "../SettingsNote";
 
 export function LLMTab({

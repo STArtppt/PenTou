@@ -48,7 +48,8 @@ function DialogBackdrop({ className, ...props }: DialogBackdropProps) {
       data-slot="dialog-backdrop"
       className={cn(
         // modal = 50; fixed transparency overlay (not a semantic color token)
-        "fixed inset-0 z-50 min-h-dvh bg-black/50 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute",
+        // backdrop-blur defocuses page content so attention lands on the popup
+        "fixed inset-0 z-50 min-h-dvh bg-black/50 backdrop-blur-sm transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute",
         className,
       )}
       {...props}

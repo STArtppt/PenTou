@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslation } from "../../../i18n";
-import { Field } from "../Field";
+import { Field } from "@/components/ui/field";
 import { SettingsNote } from "../SettingsNote";
 
 type MigrationDirection = "push" | "pull";

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -229,16 +230,18 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSaveComment(); } }}
               />
               <div className="flex justify-end gap-1.5 mt-2">
-                <button onClick={closePopup} className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">
+                <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs text-muted-foreground" onClick={closePopup}>
                   {t("anno.cancel")}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="h-auto px-2.5 py-1 text-xs"
                   onClick={handleSaveComment}
                   disabled={!commentDraft.trim()}
-                  className="px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-md disabled:opacity-50 transition-colors hover:bg-primary/90"
                 >
                   {t("anno.save")}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -250,12 +253,14 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
               ) : (
                 <p className="text-xs text-zinc-400 italic mb-2">(highlight)</p>
               )}
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => handleDeleteAnno(popup.annoId)}
-                className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="h-auto gap-1.5 px-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
                 <Trash2 size={11} /> {t("anno.delete")}
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -384,14 +389,16 @@ function DocCodeBlock({ children, className }: any) {
     <div className="relative group mt-4 mb-6">
       <div className="absolute flex items-center justify-between top-0 left-0 right-0 px-4 py-2 bg-zinc-200/50 dark:bg-[#2A2A2A] rounded-t-lg border-b border-zinc-200 dark:border-white/10">
         <span className="text-xs uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">{language}</span>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={handleCopy}
-          className="text-zinc-500 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground transition-colors flex items-center gap-1 text-xs uppercase font-bold tracking-wider"
+          className="h-auto gap-1 rounded px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
           {copied ? t("main.copied") : t("main.copy")}
-        </button>
+        </Button>
       </div>
       <pre className="bg-zinc-50 dark:bg-[#111] border border-zinc-200 dark:border-white/10 rounded-lg p-4 pt-12 overflow-x-auto text-sm font-mono text-zinc-800 dark:text-zinc-300 shadow-sm custom-scrollbar">
         <code className={className}>{children}</code>

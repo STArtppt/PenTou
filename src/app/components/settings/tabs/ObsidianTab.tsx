@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import type { ObsidianConfig } from "../../../data";
 import { useTranslation } from "../../../i18n";
-import { Field } from "../Field";
+import { Field } from "@/components/ui/field";
 
 const MANUAL_VAULT = "__manual__";
 const EMPTY_VALUE = "__empty__";

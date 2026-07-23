@@ -1,7 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { X, RotateCcw, Eye, EyeOff, Trash2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button, type ButtonProps } from "@/components/ui/button";
 import { useAppContext, DocumentVersion, ConversationVersion, VersionType } from "../data";
 import { useTranslation } from "../i18n";
 import { formatDisplayDateTime } from "../utils/dateFormat";
@@ -62,32 +64,56 @@ export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
     setPreviewingVersionId(previewingVersionId === v.id ? null : v.id);
   };
 
-  const handleRollback = async (v: PanelVersion) => {
+  // 危险操作确认走统一 ConfirmDialog（替代原生浏览器确认框）
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    confirmVariant: ButtonProps["variant"];
+    run: () => Promise<void>;
+  } | null>(null);
+
+  const handleRollback = (v: PanelVersion) => {
     if (!activeId) return;
     const currentVer = versions.find((x) => x.id === currentVersionId);
     const currentN = currentVer?.version ?? "?";
-    if (!window.confirm(t("version.confirmRollback", { current: currentN, target: v.version }))) return;
-    try {
-      if (isConv) await rollbackConversation(activeId, v.id);
-      else await rollbackToVersion(activeId, v.id);
-      setPreviewingVersionId(null);
-      setVersionPanelOpen(false);
-    } catch (e: any) {
-      alert(String(e));
-    }
+    setConfirmState({
+      title: t("version.rollback"),
+      description: t("version.confirmRollback", { current: currentN, target: v.version }),
+      confirmLabel: t("version.rollback"),
+      confirmVariant: "primary",
+      run: async () => {
+        try {
+          if (isConv) await rollbackConversation(activeId, v.id);
+          else await rollbackToVersion(activeId, v.id);
+          setPreviewingVersionId(null);
+          setVersionPanelOpen(false);
+        } catch (e: any) {
+          alert(String(e));
+        }
+      },
+    });
   };
 
-  const handleDelete = async (v: PanelVersion) => {
+  const handleDelete = (v: PanelVersion) => {
     if (!activeId || isConv) return; // 会话版本不支持删除（US-03 仅查看 / 回滚）
-    if (!window.confirm(t("version.confirmDelete"))) return;
-    try {
-      await deleteVersion(activeId, v.id);
-    } catch (e: any) {
-      alert(String(e));
-    }
+    setConfirmState({
+      title: t("version.delete"),
+      description: t("version.confirmDelete"),
+      confirmLabel: t("version.delete"),
+      confirmVariant: "danger",
+      run: async () => {
+        try {
+          await deleteVersion(activeId, v.id);
+        } catch (e: any) {
+          alert(String(e));
+        }
+      },
+    });
   };
 
   return (
+    <>
     <AnimatePresence>
       {versionPanelOpen && (
         <>
@@ -117,12 +143,14 @@ export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
                   </p>
                 )}
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-zinc-400"
                 onClick={() => setVersionPanelOpen(false)}
-                className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
               >
                 <X size={16} />
-              </button>
+              </Button>
             </div>
 
             {versions.length <= 1 ? (
@@ -156,6 +184,17 @@ export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
         </>
       )}
     </AnimatePresence>
+    <ConfirmDialog
+      open={!!confirmState}
+      onOpenChange={(o) => { if (!o) setConfirmState(null); }}
+      title={confirmState?.title ?? ""}
+      description={confirmState?.description}
+      confirmLabel={confirmState?.confirmLabel}
+      cancelLabel={t("toolbar.cancel")}
+      confirmVariant={confirmState?.confirmVariant}
+      onConfirm={() => { void confirmState?.run(); }}
+    />
+    </>
   );
 }
 
@@ -229,26 +268,32 @@ function VersionCard({
 
       {!isCurrent && (
         <div className="flex items-center gap-1">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onPreview}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            className="h-auto gap-1 rounded px-2 py-1 text-xs text-muted-foreground"
           >
             {isPreviewing ? <EyeOff size={10} /> : <Eye size={10} />}
             {isPreviewing ? t("version.stopPreview") : t("version.preview")}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onRollback}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-foreground transition-colors"
+            className="h-auto gap-1 rounded px-2 py-1 text-xs text-muted-foreground"
           >
             <RotateCcw size={10} /> {t("version.rollback")}
-          </button>
+          </Button>
           {allowDelete && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onDelete}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors ml-auto"
+              className="ml-auto h-auto gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             >
               <Trash2 size={10} /> {t("version.delete")}
-            </button>
+            </Button>
           )}
         </div>
       )}

@@ -17,6 +17,11 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         danger:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        // Elevated pill: fully rounded, filled surface (white in light / gray in
+        // dark via --popover — lighter than --card so it lifts off dark app
+        // backgrounds), shadow for lift, no border. For prominent standalone CTAs.
+        surface:
+          "rounded-full bg-popover text-popover-foreground shadow-md hover:bg-accent hover:text-accent-foreground",
       },
       size: {
         sm: "h-8 px-3 text-xs",

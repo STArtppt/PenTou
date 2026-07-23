@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-21T03:01:15.061Z",
-  "count": 95,
+  "generatedAt": "2026-07-21T06:01:12.261Z",
+  "count": 90,
   "violations": [
     {
       "rule": "hardcoded-hex",
@@ -11,79 +11,67 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 35,
+      "line": 36,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 60,
+      "line": 61,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 319,
+      "line": 320,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 328,
+      "line": 329,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 406,
+      "line": 409,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 419,
+      "line": 424,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 460,
+      "line": 467,
       "match": "bg-[#35B86B]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 486,
+      "line": 493,
       "match": "dark:bg-[#202020]"
     },
     {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/AiSidebar.tsx",
-      "line": 534,
-      "match": "text-[#FF6900]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/AiSidebar.tsx",
-      "line": 534,
-      "match": "hover:text-[#E85D00]"
-    },
-    {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 35,
+      "line": 36,
       "match": "text-[13px]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 416,
+      "line": 421,
       "match": "text-[13px]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 502,
+      "line": 509,
       "match": "text-[13px]"
     },
     {
@@ -95,19 +83,13 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 199,
+      "line": 200,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 208,
-      "match": "dark:bg-[#1A1A1A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/ChatBody.tsx",
-      "line": 228,
+      "line": 209,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
@@ -119,25 +101,31 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 347,
+      "line": 234,
+      "match": "dark:bg-[#1A1A1A]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/ChatBody.tsx",
+      "line": 356,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 357,
+      "line": 368,
       "match": "dark:bg-[#111]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 453,
+      "line": 468,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 495,
+      "line": 510,
       "match": "text-[15px]"
     },
     {
@@ -167,175 +155,169 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 174,
+      "line": 175,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 200,
+      "line": 201,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 221,
+      "line": 222,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 247,
+      "line": 250,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 385,
+      "line": 390,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 396,
+      "line": 403,
       "match": "dark:bg-[#111]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 438,
+      "line": 445,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 176,
+      "line": 177,
       "match": "text-[15px]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 524,
+      "line": 531,
       "match": "text-[13px]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 289,
+      "line": 290,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 291,
+      "line": 292,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 322,
+      "line": 323,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 324,
+      "line": 325,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 333,
+      "line": 334,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 364,
+      "line": 365,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 391,
+      "line": 392,
       "match": "dark:bg-[#222]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 409,
+      "line": 410,
       "match": "dark:bg-[#222]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 426,
+      "line": 427,
       "match": "dark:bg-[#222]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 444,
+      "line": 445,
       "match": "dark:bg-[#222]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 610,
-      "match": "dark:bg-[#1A1A1A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/ImportDrawer.tsx",
-      "line": 641,
-      "match": "dark:bg-[#1A1A1A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/ImportDrawer.tsx",
-      "line": 642,
+      "line": 612,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
       "line": 653,
-      "match": "dark:bg-[#2A2A2A]"
-    },
-    {
-      "rule": "window-confirm",
-      "file": "src/app/components/ImportDrawer.tsx",
-      "line": 519,
-      "match": "window.confirm("
+      "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
-      "file": "src/app/components/MermaidBlock.tsx",
-      "line": 89,
-      "match": "dark:bg-[#151515]"
+      "file": "src/app/components/ImportDrawer.tsx",
+      "line": 654,
+      "match": "dark:bg-[#1A1A1A]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/ImportDrawer.tsx",
+      "line": 665,
+      "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/MermaidBlock.tsx",
       "line": 90,
+      "match": "dark:bg-[#151515]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/MermaidBlock.tsx",
+      "line": 91,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/MermaidBlock.tsx",
-      "line": 128,
+      "line": 133,
       "match": "dark:bg-[#111]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/MermaidBlock.tsx",
-      "line": 144,
+      "line": 149,
       "match": "dark:bg-[#111]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/MermaidBlock.tsx",
-      "line": 151,
+      "line": 156,
       "match": "dark:bg-[#151515]"
     },
     {
@@ -389,151 +371,151 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 218,
+      "line": 219,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 281,
+      "line": 282,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 317,
+      "line": 318,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 709,
+      "line": 710,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 709,
+      "line": 710,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 752,
+      "line": 753,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 763,
+      "line": 764,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 817,
+      "line": 807,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 817,
+      "line": 807,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 861,
+      "line": 867,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 861,
+      "line": 867,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 929,
+      "line": 938,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 975,
+      "line": 984,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 989,
+      "line": 998,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1384,
+      "line": 1401,
       "match": "dark:bg-[#2C2C2E]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1479,
+      "line": 1500,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1479,
+      "line": 1500,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1514,
+      "line": 1551,
       "match": "bg-[#FAFAFA]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1514,
+      "line": 1551,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 1830,
+      "line": 1867,
       "match": "dark:bg-[#2C2C2E]"
     },
     {
       "rule": "arbitrary-z-index",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 218,
+      "line": 219,
       "match": "z-[80]"
     },
     {
       "rule": "arbitrary-z-index",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 281,
+      "line": 282,
       "match": "z-[90]"
     },
     {
       "rule": "arbitrary-z-index",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 317,
+      "line": 318,
       "match": "z-[80]"
     },
     {
       "rule": "arbitrary-z-index",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 922,
+      "line": 931,
       "match": "z-[85]"
     },
     {
       "rule": "arbitrary-z-index",
       "file": "src/app/components/Sidebar.tsx",
-      "line": 929,
+      "line": 938,
       "match": "z-[90]"
     },
     {
@@ -545,26 +527,14 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/VersionPanel.tsx",
-      "line": 106,
+      "line": 132,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/VersionPanel.tsx",
-      "line": 204,
+      "line": 243,
       "match": "dark:bg-[#1A1A1A]"
-    },
-    {
-      "rule": "window-confirm",
-      "file": "src/app/components/VersionPanel.tsx",
-      "line": 69,
-      "match": "window.confirm("
-    },
-    {
-      "rule": "window-confirm",
-      "file": "src/app/components/VersionPanel.tsx",
-      "line": 82,
-      "match": "window.confirm("
     },
     {
       "rule": "hardcoded-hex",

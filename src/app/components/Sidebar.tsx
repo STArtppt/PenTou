@@ -20,6 +20,7 @@ import {
   Sun,
   MoreHorizontal,
   FolderOpen,
+  FolderPlus,
   Folder as FolderIcon,
   MessageSquare,
   Import,
@@ -779,26 +780,15 @@ export function Sidebar() {
           </Button>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="flex-[2] gap-1.5 border-foreground font-semibold shadow-sm"
-            onClick={() => setDrawerOpen(true)}
-            disabled={selectionMode}
-          >
-            <Import size={16} /> {t("sidebar.import")}
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1 gap-1.5"
-            onClick={handleNewFolder}
-            disabled={selectionMode}
-            title={t("sidebar.newFolder")}
-          >
-            <FolderOpen size={16} /> {t("sidebar.new")}
-          </Button>
-        </div>
+        {/* Primary action: Import (elevated full-width surface pill) */}
+        <Button
+          variant="surface"
+          className="w-full gap-1.5 font-semibold"
+          onClick={() => setDrawerOpen(true)}
+          disabled={selectionMode}
+        >
+          <Import size={16} /> {t("sidebar.import")}
+        </Button>
       </div>
 
       {/* Lists */}
@@ -817,25 +807,41 @@ export function Sidebar() {
               <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
                 <span>{t("sidebar.folders")}</span>
                 <div className="flex items-center">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNewFolder}
+                    disabled={selectionMode}
+                    className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+                    title={t("sidebar.newFolder")}
+                    aria-label={t("sidebar.newFolder")}
+                  >
+                    <FolderPlus size={14} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={toggleConvSort}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-foreground dark:text-zinc-500 dark:hover:bg-white/5"
+                    className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
                     title={convSortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}
                     aria-label={convSortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}
                   >
                     {convSortAsc ? <ArrowUpNarrowWide size={14} /> : <ArrowDownNarrowWide size={14} />}
-                  </button>
+                  </Button>
                   {folders.length > 0 && (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       onClick={toggleAllChatFolders}
-                      className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-foreground dark:text-zinc-500 dark:hover:bg-white/5"
+                      className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
                       title={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
                       aria-label={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
                     >
                       {areAllChatFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -868,6 +874,8 @@ export function Sidebar() {
           <DocumentList
             documents={filteredDocuments}
             folderOpen={docFolderOpen}
+            onNewFolder={handleNewFolder}
+            newFolderDisabled={selectionMode}
             onToggleAllFolders={() => {
               const areAllOpen = documentFolders.length > 0 && documentFolders.every((folder) => docFolderOpen[folder.id] ?? false);
               const nextOpen = !areAllOpen;
@@ -883,13 +891,14 @@ export function Sidebar() {
       {/* Batch Select (entry button OR toolbar) */}
       <div className="shrink-0 p-3 border-t border-zinc-200 dark:border-white/10">
         {!selectionMode ? (
-          <button
+          <Button
+            variant="ghost"
             onClick={enterSelection}
-            className="flex items-center justify-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors w-full p-2 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg font-medium"
+            className="w-full gap-2 text-muted-foreground"
           >
             <CheckSquare size={16} />
             {t("sidebar.multiSelect")}
-          </button>
+          </Button>
         ) : (
           <BatchToolbar
             selectedCount={selectedCount}
@@ -1055,35 +1064,43 @@ function BatchToolbar({
         </span>
       </div>
       <div className="flex gap-1.5">
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={onMoveClick}
           disabled={!hasSelection}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-foreground/40 hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-200 disabled:hover:text-zinc-700 dark:disabled:hover:border-white/10 dark:disabled:hover:text-zinc-300"
+          className="h-auto flex-1 gap-1 px-2 py-1.5 text-xs"
         >
           <FolderInput size={12} /> {t("sidebar.moveTo", { n: selectedCount })}
-        </button>
+        </Button>
         {showObsidian && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onObsidianClick}
             disabled={!hasSelection}
-            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-foreground/40 hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-zinc-200 disabled:hover:text-zinc-700 dark:disabled:hover:border-white/10 dark:disabled:hover:text-zinc-300"
+            className="h-auto flex-1 gap-1 px-2 py-1.5 text-xs"
           >
             <Send size={12} /> {t("sidebar.obsidianExport")}
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={onDeleteClick}
           disabled={!hasSelection}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          className="h-auto flex-1 gap-1 border-destructive/30 px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 size={12} /> {t("sidebar.deleteN", { n: selectedCount })}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onCancel}
-          className="px-2 py-1.5 text-xs font-medium rounded-md text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors"
+          className="h-auto gap-1 px-2 py-1.5 text-xs text-muted-foreground"
         >
           {t("sidebar.exitSelect")}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1459,11 +1476,15 @@ function PlatformIcon({ platform }: { platform: Platform }) {
 function DocumentList({
   documents,
   folderOpen,
+  onNewFolder,
+  newFolderDisabled,
   onToggleAllFolders,
   onToggleFolderOpen,
 }: {
   documents: Document[];
   folderOpen: Record<string, boolean>;
+  onNewFolder: () => void;
+  newFolderDisabled?: boolean;
   onToggleAllFolders: () => void;
   onToggleFolderOpen: (id: string) => void;
 }) {
@@ -1478,17 +1499,33 @@ function DocumentList({
       <div className="mt-2 mb-4">
         <div className="sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 bg-[#FAFAFA] px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
           <span>{t("sidebar.folders")}</span>
-          {documentFolders.length > 0 && (
-            <button
+          <div className="flex items-center">
+            <Button
               type="button"
-              onClick={onToggleAllFolders}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-foreground dark:text-zinc-500 dark:hover:bg-white/5"
-              title={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
-              aria-label={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+              variant="ghost"
+              size="icon"
+              onClick={onNewFolder}
+              disabled={newFolderDisabled}
+              className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+              title={t("sidebar.newFolder")}
+              aria-label={t("sidebar.newFolder")}
             >
-              {areAllFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
-            </button>
-          )}
+              <FolderPlus size={14} />
+            </Button>
+            {documentFolders.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onToggleAllFolders}
+                className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+                title={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+                aria-label={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+              >
+                {areAllFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+              </Button>
+            )}
+          </div>
         </div>
         <div className="space-y-0.5">
           {documentFolders.length === 0 ? (

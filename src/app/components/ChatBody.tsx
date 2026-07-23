@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Bot, User, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff, MessageSquare } from "lucide-react";
 import clsx from "clsx";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAppContext, Message, Platform } from "../data";
 import { RightNav } from "./RightNav";
@@ -209,12 +210,14 @@ export function ChatBody() {
         <Bot size={48} className="mb-4 opacity-50" />
         <h2 className="text-xl font-semibold mb-2 text-zinc-600 dark:text-zinc-300">{t("main.noConv")}</h2>
         <p className="text-sm mb-6">{t("main.selectConv")}</p>
-        <button
+        <Button
+          variant="primary"
+          size="lg"
+          className="gap-2 font-semibold shadow-sm"
           onClick={() => setDrawerOpen(true)}
-          className="flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm"
         >
           <Import size={18} /> {t("main.importData")}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -249,33 +252,39 @@ export function ChatBody() {
             </div>
           </div>
           <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400 shrink-0">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setVersionPanelOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-foreground transition-colors"
+              className="h-auto gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground"
             >
               <History size={14} />
               {t("toolbar.versionHistory")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleConvertToDoc}
               disabled={converting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-foreground transition-colors"
+              className="h-auto gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground"
             >
               {converting ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
               {t("toolbar.convertToDoc", { defaultValue: "转为文档" })}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={toggleAiSidebar}
               className={clsx(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                "h-auto gap-1.5 rounded-md px-3 py-1.5 text-xs",
                 aiSidebarOpen
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                  : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-foreground",
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "text-muted-foreground",
               )}
             >
               <MessageSquare size={14} />
               {t("toolbar.askAi")}
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -346,13 +355,15 @@ function CodeBlock({ children, className }: any) {
     <div className="relative group mt-4 mb-6">
       <div className="absolute flex items-center justify-between top-0 left-0 right-0 px-4 py-2 bg-zinc-200/50 dark:bg-[#2A2A2A] rounded-t-lg border-b border-zinc-200 dark:border-white/10">
         <span className="text-xs uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">{codeLanguage}</span>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleCopy}
-          className="text-zinc-500 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground transition-colors flex items-center gap-1 text-xs uppercase font-bold tracking-wider"
+          className="h-auto gap-1 rounded px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
           {copied ? t("main.copied") : t("main.copy")}
-        </button>
+        </Button>
       </div>
       <pre className="bg-zinc-50 dark:bg-[#111] border border-zinc-200 dark:border-white/10 rounded-lg p-4 pt-12 overflow-x-auto text-sm font-mono text-zinc-800 dark:text-zinc-300 shadow-sm custom-scrollbar">
         <code className={className}>{children}</code>
@@ -392,21 +403,25 @@ function MessageHeader({
           {formatDisplayDateTime(timestamp, language)}
         </span>
       )}
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={handleCopy}
-        className="opacity-0 group-hover/header:opacity-100 p-1 rounded-md text-zinc-400 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 transition-all"
+        className="size-7 text-zinc-400 opacity-0 transition-all group-hover/header:opacity-100"
         title={t("main.copyMessage")}
       >
         {copied ? <Check size={14} /> : <Copy size={14} />}
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={onExcerpt}
         disabled={excerpting}
-        className="opacity-0 group-hover/header:opacity-100 p-1 rounded-md text-zinc-400 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 transition-all"
+        className="size-7 text-zinc-400 opacity-0 transition-all group-hover/header:opacity-100"
         title={t("main.excerptConversation")}
       >
         {excerpting ? <Loader2 size={14} className="animate-spin" /> : <Quote size={14} />}
-      </button>
+      </Button>
     </div>
   );
 }
