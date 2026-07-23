@@ -166,12 +166,23 @@ function escapeFrontmatterValue(val: string): string {
   return val;
 }
 
+// 每条消息的原始时间以注释行落盘（spec conversation-time-and-sort §4.3）：
+// 紧随角色标题，读回时剥离；非法/缺失时间不写，读回回退 frontmatter date。
+const MSG_TS_RE = /^<!--\s*msg-ts:\s*([^>]*?)\s*-->\s*/;
+
+function msgTsLine(timestamp: unknown): string {
+  if (typeof timestamp !== "string" || !timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return `<!-- msg-ts: ${date.toISOString()} -->\n`;
+}
+
 export function conversationToMd(conv: any): string {
   const messages: any[] = conv.messages ?? [];
   const msgBlock = messages
     .map((m: any) => {
       const role = m.role === "user" ? "## User" : `## ${conv.platform ?? "AI"}`;
-      return `${role}\n\n${m.content}\n`;
+      return `${role}\n${msgTsLine(m.timestamp)}\n${m.content}\n`;
     })
     .join("\n---\n\n");
 
@@ -270,13 +281,21 @@ export function parseMdFile(id: string, content: string): any {
       let content = body.slice(startIdx, endIdx).trim();
       content = content.replace(/\s*---$/, "").trim();
 
+      // 提取消息级时间标记；无标记（存量文件）回退 frontmatter date（spec §5）
+      let timestamp = meta.date ?? new Date().toISOString();
+      const tsMatch = content.match(MSG_TS_RE);
+      if (tsMatch) {
+        content = content.slice(tsMatch[0].length).trim();
+        if (tsMatch[1]) timestamp = tsMatch[1];
+      }
+
       if (!content) continue;
 
       messages.push({
         id: `${id}_m${msgIndex++}`,
         role,
         content,
-        timestamp: meta.date ?? new Date().toISOString(),
+        timestamp,
       });
     }
   }
@@ -530,6 +549,19 @@ export interface UpsertConversationOptions {
  * 携带 externalKey 时先走一级查找（spec ingest-gateway §4.1）：命中直接进 skip/merge 判定，
  * 未命中降级指纹路径；无 externalKey 的入口行为完全不变。
  */
+function earliestMessageTime(messages: any[]): string | null {
+  let min: number = Infinity;
+  let minTs: string | null = null;
+  for (const m of messages ?? []) {
+    if (typeof m?.timestamp !== "string" || !m.timestamp) continue;
+    const t = new Date(m.timestamp).getTime();
+    if (Number.isNaN(t) || t >= min) continue;
+    min = t;
+    minTs = m.timestamp;
+  }
+  return minTs;
+}
+
 export function upsertConversation(
   convDir: string,
   incoming: any,
@@ -540,6 +572,14 @@ export function upsertConversation(
     ...(opts.externalKey ? { externalKey: opts.externalKey } : {}),
     ...(opts.ingestSource ? { ingestSource: opts.ingestSource } : {}),
   });
+  // date = 原平台最早发起时间（spec conversation-time-and-sort US-02）：解析器以导入
+  // 时刻兜底 date 时（如 CLI 采集落 pull 时间），用最早消息时间纠正；早于消息的
+  // 源创建时间（如 ChatGPT create_time）保留；完全无消息时间则维持现状兜底。
+  const earliest = earliestMessageTime(normalizedIncoming.messages);
+  const dateMs = new Date(normalizedIncoming.date ?? "").getTime();
+  if (earliest && (Number.isNaN(dateMs) || dateMs > new Date(earliest).getTime())) {
+    normalizedIncoming.date = earliest;
+  }
   const sig = conversationSignature(normalizedIncoming);
   if (opts.externalKey) {
     const existing = findConversationByExternalKey(convDir, opts.externalKey);

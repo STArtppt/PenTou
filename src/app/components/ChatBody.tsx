@@ -15,7 +15,7 @@ import { locateAndFlash } from "../utils/searchJump";
 import { BrandIcon } from "./BrandIcon";
 import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
-import { formatDisplayDateTime, formatDisplayTime } from "../utils/dateFormat";
+import { formatDisplayDateTime } from "../utils/dateFormat";
 import { useScrollActivity } from "../hooks/useScrollActivity";
 
 export function ChatBody() {
@@ -383,7 +383,7 @@ function MessageHeader({
       <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{name}</span>
       {timestamp && isValidDate(timestamp) && (
         <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">
-          {formatDisplayTime(timestamp, language)}
+          {formatDisplayDateTime(timestamp, language)}
         </span>
       )}
       <button

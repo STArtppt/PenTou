@@ -23,6 +23,8 @@ import {
   ChevronRight,
   ChevronsDownUp,
   ChevronsUpDown,
+  ArrowDownNarrowWide,
+  ArrowUpNarrowWide,
   LogOut,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -491,9 +493,31 @@ export function Sidebar() {
 
   const platformOptions: Platform[] = ["ChatGPT", "DeepSeek", "Gemini", "Claude", "CLI", "Cursor", "Copilot", "Codex", "Hermes"];
 
+  // 会话按原平台发起时间排序，默认正序（spec conversation-time-and-sort US-03）
+  const [convSortAsc, setConvSortAsc] = useState<boolean>(
+    () => localStorage.getItem("pentou-conv-sort") !== "desc",
+  );
+  const toggleConvSort = () => {
+    setConvSortAsc((prev) => {
+      localStorage.setItem("pentou-conv-sort", prev ? "desc" : "asc");
+      return !prev;
+    });
+  };
+
   // 搜索已统一收敛到命令面板浮层（spec hybrid-search US-01 AC4）；
   // 侧栏列表不再按 searchQuery 实时过滤，直接展示全量。
-  const filteredConversations = conversations;
+  const filteredConversations = useMemo(() => {
+    const dir = convSortAsc ? 1 : -1;
+    return [...conversations].sort((a, b) => {
+      const ta = new Date(a.date ?? "").getTime();
+      const tb = new Date(b.date ?? "").getTime();
+      const va = Number.isNaN(ta) ? 0 : ta;
+      const vb = Number.isNaN(tb) ? 0 : tb;
+      // 同时间以标题稳定兜底，避免抖动（spec §5 边界 2）
+      if (va === vb) return (a.title ?? "").localeCompare(b.title ?? "");
+      return (va - vb) * dir;
+    });
+  }, [conversations, convSortAsc]);
   const filteredDocuments = documents;
 
   const exitSelection = () => {
@@ -749,17 +773,28 @@ export function Sidebar() {
             <div className="mt-2 mb-4">
               <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
                 <span>{t("sidebar.folders")}</span>
-                {folders.length > 0 && (
+                <div className="flex items-center">
                   <button
                     type="button"
-                    onClick={toggleAllChatFolders}
+                    onClick={toggleConvSort}
                     className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-orange-500 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-yellow-400"
-                    title={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
-                    aria-label={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+                    title={convSortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}
+                    aria-label={convSortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}
                   >
-                    {areAllChatFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+                    {convSortAsc ? <ArrowUpNarrowWide size={14} /> : <ArrowDownNarrowWide size={14} />}
                   </button>
-                )}
+                  {folders.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={toggleAllChatFolders}
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-orange-500 dark:text-zinc-500 dark:hover:bg-white/5 dark:hover:text-yellow-400"
+                      title={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+                      aria-label={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
+                    >
+                      {areAllChatFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="space-y-0.5">
                 {folders.length === 0 ? (

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { Readable } from "node:stream";
-import { handleApiRequest } from "./api-router";
+import { handleApiRequest, conversationToMd, parseMdFile } from "./api-router";
 import { DOCS_DIR, setDocsDataDir } from "../../vite-plugins/documentsPlugin";
 import { refreshNow, _resetForTest, _setEmbedFnForTest } from "./search-service";
 
@@ -434,6 +434,80 @@ describe("conversation import dedup + versioning", () => {
     expect(fs.existsSync(path.join(abs, "conversations", `${conv.id}.versions`))).toBe(true);
     await callApi({ dataDir: rel, method: "DELETE", url: `/api/conversations/${conv.id}` });
     expect(fs.existsSync(path.join(abs, "conversations", `${conv.id}.versions`))).toBe(false);
+  });
+});
+
+describe("message timestamp roundtrip (spec conversation-time-and-sort US-01)", () => {
+  const conv = {
+    id: "conv_ts_rt",
+    title: "Timestamps",
+    platform: "Claude",
+    date: "2026-07-12T09:30:12.000Z",
+    folderId: null,
+    messages: [
+      { id: "m1", role: "user", content: "今天北京天气如何？", timestamp: "2026-07-12T09:30:12.000Z" },
+      { id: "m2", role: "ai", content: "以下是天气……", timestamp: "2026-07-12T09:30:45.000Z" },
+      { id: "m3", role: "user", content: "明天呢", timestamp: "2026-07-12T10:02:00.000Z" },
+      { id: "m4", role: "ai", content: "明天……", timestamp: "2026-07-12T10:02:30.000Z" },
+    ],
+  };
+
+  it("preserves each message's original timestamp through md roundtrip", () => {
+    const parsed = parseMdFile(conv.id, conversationToMd(conv));
+    expect(parsed.messages.map((m: any) => m.timestamp)).toEqual(conv.messages.map((m) => m.timestamp));
+    // ts 注释被剥离，不进入 content
+    for (const m of parsed.messages) expect(m.content).not.toContain("msg-ts");
+    expect(parsed.date).toBe(conv.date);
+  });
+
+  it("roundtrip is idempotent (second serialization equals the first)", () => {
+    const once = conversationToMd(parseMdFile(conv.id, conversationToMd(conv)));
+    expect(once).toBe(conversationToMd(conv));
+  });
+
+  it("falls back to frontmatter date for legacy files without msg-ts (US-01 AC2)", () => {
+    const legacy = `---\nid: conv_legacy\ntitle: Legacy\nplatform: ChatGPT\ndate: 2026-06-01T00:00:00.000Z\nfolderId: null\n---\n\n## User\n\nhello\n\n---\n\n## ChatGPT\n\nhi\n`;
+    const parsed = parseMdFile("conv_legacy", legacy);
+    expect(parsed.messages.map((m: any) => m.timestamp)).toEqual([
+      "2026-06-01T00:00:00.000Z",
+      "2026-06-01T00:00:00.000Z",
+    ]);
+  });
+
+  it("corrects an import-time date to the earliest message timestamp (US-02 AC1)", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const body = {
+      ...conv,
+      id: "conv_ts_date",
+      date: "2026-07-13T23:59:00.000Z", // 解析兜底落的导入时刻（晚于全部消息）
+    };
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body });
+    expect(res.body.conversation.date).toBe("2026-07-12T09:30:12.000Z");
+  });
+
+  it("keeps a source creation date earlier than the first message (US-02 AC1)", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const body = { ...conv, id: "conv_ts_created", date: "2026-07-12T09:00:00.000Z" };
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body });
+    expect(res.body.conversation.date).toBe("2026-07-12T09:00:00.000Z");
+  });
+
+  it("skips the ts line for invalid timestamps and merged same-role blocks keep the first time (§5 边界 1 / §4.4 决策 3)", () => {
+    const withBad = {
+      ...conv,
+      messages: [
+        { id: "m1", role: "user", content: "q", timestamp: "not-a-date" },
+        { id: "m2", role: "ai", content: "a1", timestamp: "2026-07-12T09:30:45.000Z" },
+        { id: "m3", role: "ai", content: "a2", timestamp: "2026-07-12T09:31:00.000Z" },
+      ],
+    };
+    const parsed = parseMdFile(withBad.id, conversationToMd(withBad));
+    // m1 非法时间 → 回退 date；m2+m3 同角色合并 → 取首条时间
+    expect(parsed.messages.map((m: any) => [m.role, m.timestamp])).toEqual([
+      ["user", withBad.date],
+      ["ai", "2026-07-12T09:30:45.000Z"],
+    ]);
+    expect(parsed.messages[1].content).toBe("a1\n\na2");
   });
 });
 
