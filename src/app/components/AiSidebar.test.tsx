@@ -49,6 +49,29 @@ function buildSession(id: string, title: string, updatedAt: string): AiChatSessi
   };
 }
 
+function buildAssistantSession(): AiChatSession {
+  return {
+    id: "chat_with_answer",
+    title: "Answer session",
+    createdAt: "2026-06-18T02:30:00.000Z",
+    updatedAt: "2026-06-18T02:30:00.000Z",
+    messages: [
+      {
+        id: "u1",
+        role: "user",
+        content: "Summarize this",
+        status: "done",
+      },
+      {
+        id: "a1",
+        role: "assistant",
+        content: "# 总结\n\n第一段。\n\n第二段。\n\n1. 第一项\n2. 第二项",
+        status: "done",
+      },
+    ],
+  };
+}
+
 async function renderSidebar() {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -132,6 +155,23 @@ describe("AiSidebar", () => {
     expect(firstPrompt?.parentElement?.parentElement?.className).toContain("pb-2");
     expect(firstPrompt?.parentElement?.parentElement?.className).not.toContain("pb-8");
     expect(firstPrompt?.className).toContain("cursor-pointer");
+    unmount();
+  });
+
+  it("renders assistant markdown with explicit spacing hierarchy", async () => {
+    mocks.appContext.currentAiSession = buildAssistantSession();
+
+    const { container, unmount } = await renderSidebar();
+    const markdownRoot = container.querySelector(".ai-sidebar-markdown");
+    const heading = container.querySelector("h1");
+    const paragraphs = markdownRoot?.querySelectorAll("p") ?? [];
+    const orderedList = markdownRoot?.querySelector("ol");
+
+    expect(heading?.className).toContain("mt-5");
+    expect(heading?.className).toContain("mb-2");
+    expect(paragraphs[0]?.className).toContain("mb-3");
+    expect(orderedList?.className).toContain("space-y-1.5");
+    expect(markdownRoot).not.toBeNull();
     unmount();
   });
 });

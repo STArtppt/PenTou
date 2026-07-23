@@ -21,7 +21,45 @@ import { MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 
 // 图片获得与对话/文档一致的渲染（spec media-assets US-01）
 const aiMarkdownComponents = {
+  h1: ({ node, ...props }: any) => <h1 className="mt-5 mb-2 text-[1.65rem] font-semibold leading-tight tracking-[-0.02em] text-zinc-950 dark:text-zinc-50" {...props} />,
+  h2: ({ node, ...props }: any) => <h2 className="mt-5 mb-2 border-b border-zinc-200/80 pb-1.5 text-[1.35rem] font-semibold leading-tight tracking-[-0.015em] text-zinc-900 dark:border-white/10 dark:text-zinc-100" {...props} />,
+  h3: ({ node, ...props }: any) => <h3 className="mt-4 mb-2 text-[1.1rem] font-semibold leading-snug text-zinc-900 dark:text-zinc-100" {...props} />,
+  p: ({ node, ...props }: any) => <p className="mb-3 leading-7 last:mb-0" {...props} />,
+  ul: ({ node, ...props }: any) => <ul className="mb-3 list-disc space-y-1.5 pl-5 marker:text-zinc-400 dark:marker:text-zinc-600" {...props} />,
+  ol: ({ node, ...props }: any) => <ol className="mb-3 list-decimal space-y-1.5 pl-5 marker:font-medium marker:text-zinc-500 dark:marker:text-zinc-400" {...props} />,
+  li: ({ node, ...props }: any) => <li className="pl-1 leading-7" {...props} />,
+  blockquote: ({ node, ...props }: any) => (
+    <blockquote className="my-4 rounded-r-md border-l-2 border-zinc-300 bg-zinc-50/80 py-2 pl-3 text-zinc-700 dark:border-zinc-600 dark:bg-white/5 dark:text-zinc-300" {...props} />
+  ),
+  pre: ({ children, ...props }: any) => (
+    <pre className="my-4 overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-[13px] leading-6 text-zinc-800 shadow-sm custom-scrollbar dark:border-white/10 dark:bg-[#1A1A1A] dark:text-zinc-200" {...props}>
+      {children}
+    </pre>
+  ),
+  code: ({ node, className, children, ...props }: any) => {
+    const isBlock = typeof className === "string" && className.includes("language-");
+    if (isBlock) {
+      return <code className={clsx(className, "font-mono")} {...props}>{children}</code>;
+    }
+    return (
+      <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[0.92em] text-zinc-800 dark:bg-white/10 dark:text-zinc-200" {...props}>
+        {children}
+      </code>
+    );
+  },
   img: ({ node, src, alt }: any) => <MarkdownImage src={src} alt={alt} />,
+  a: ({ node, ...props }: any) => (
+    <a className="text-blue-600 underline decoration-blue-200 underline-offset-2 transition-colors hover:text-orange-500 dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:text-yellow-400" target="_blank" rel="noopener noreferrer" {...props} />
+  ),
+  table: ({ node, ...props }: any) => (
+    <div className="my-4 overflow-x-auto rounded-lg border border-zinc-200 dark:border-white/10">
+      <table className="min-w-full divide-y divide-zinc-200 dark:divide-white/10" {...props} />
+    </div>
+  ),
+  thead: ({ node, ...props }: any) => <thead className="bg-zinc-50 dark:bg-white/5" {...props} />,
+  tbody: ({ node, ...props }: any) => <tbody className="divide-y divide-zinc-200 dark:divide-white/10 bg-white dark:bg-[#1A1A1A]" {...props} />,
+  th: ({ node, ...props }: any) => <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-700 dark:text-zinc-200" {...props} />,
+  td: ({ node, ...props }: any) => <td className="px-3 py-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300" {...props} />,
 };
 
 const CONTEXT_CHAR_LIMIT = 12000;
@@ -544,7 +582,7 @@ function MessageBubble({
         "max-w-full text-sm leading-6",
         isUser
           ? "inline-block rounded-lg bg-zinc-950 px-3 py-2 text-white dark:bg-zinc-100 dark:text-zinc-950"
-          : "block px-0 py-0 text-zinc-800 dark:text-zinc-200",
+          : "ai-sidebar-markdown block break-words px-0 py-0 text-zinc-800 dark:text-zinc-200",
       )}>
         {message.status === "error" ? (
           <div>
