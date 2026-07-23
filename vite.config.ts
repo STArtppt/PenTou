@@ -31,6 +31,12 @@ export default defineConfig({
     viteCompression({ algorithm: 'brotliCompress', ext: '.br' }),
     viteCompression({ algorithm: 'gzip', ext: '.gz' }),
   ],
+  // Listen on all interfaces so phones on the same LAN can open
+  // http://<your-lan-ip>:5173 (mobile-responsive real-device testing).
+  // Dev has no auth — only use on trusted networks.
+  server: {
+    host: true,
+  },
   resolve: {
     alias: {
       // Alias @ to the src directory
