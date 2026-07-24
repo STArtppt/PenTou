@@ -1,1 +1,0 @@
-../../../../skills/design-system-loop/references/consume-checklist.md
