@@ -1,0 +1,24 @@
+{
+  "$comment": "Plane B 产品技能登记表。新增/改造技能后同步此文件与 src/docs/project-overview.md。",
+  "version": 1,
+  "skills": [
+    {
+      "name": "conversation-to-doc",
+      "scenario": "对话转文档（选风格）",
+      "apiDeps": ["conversations:read", "llm", "documents"],
+      "status": "planned"
+    },
+    {
+      "name": "annotation-driven-rewrite",
+      "scenario": "批注驱动 AI 重写",
+      "apiDeps": ["annotations", "llm", "documents"],
+      "status": "planned"
+    },
+    {
+      "name": "ask-ai-context",
+      "scenario": "Ask AI 上下文 + 语义检索",
+      "apiDeps": ["search", "embedding", "llm"],
+      "status": "planned"
+    }
+  ]
+}
