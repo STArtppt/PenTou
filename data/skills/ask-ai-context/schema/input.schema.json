@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/ask-ai-context/input",
+  "title": "ask-ai-context input",
+  "type": "object",
+  "properties": {
+    "query": { "type": "string", "description": "用户问题" },
+    "scope": { "type": "string", "description": "可选：当前对话/文档上下文" },
+    "topK": { "type": "integer", "description": "可选：检索片段数，默认 6" }
+  },
+  "required": ["query"],
+  "additionalProperties": false
+}

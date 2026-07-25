@@ -1,5 +1,12 @@
 export type AiSidebarMessageStatus = "streaming" | "done" | "aborted" | "error";
 
+/** 检索命中来源（ask-ai-context 检索增强；实时会话内展示，不持久化到 md）。 */
+export interface AiCitation {
+  type: "conversation" | "document";
+  id: string;
+  title: string;
+}
+
 export interface AiSidebarMessage {
   id: string;
   role: "user" | "assistant";
@@ -7,6 +14,10 @@ export interface AiSidebarMessage {
   status: AiSidebarMessageStatus;
   error?: string;
   contextLabel?: string;
+  /** 检索增强（transient）：语义检索状态与命中片段。 */
+  retrievalStatus?: "searching" | "done";
+  retrievalCount?: number;
+  citations?: AiCitation[];
 }
 
 export interface AiChatSession {

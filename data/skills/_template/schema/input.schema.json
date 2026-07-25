@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/_template/input",
+  "title": "<skill-name> input",
+  "type": "object",
+  "properties": {
+    "<param>": { "type": "string", "description": "<说明>" }
+  },
+  "required": [],
+  "additionalProperties": false
+}

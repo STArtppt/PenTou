@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/_template/output",
+  "title": "<skill-name> output",
+  "type": "object",
+  "properties": {
+    "<result>": { "type": "string", "description": "<产物>" }
+  },
+  "required": [],
+  "additionalProperties": true
+}

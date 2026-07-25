@@ -18,7 +18,7 @@
       "name": "ask-ai-context",
       "scenario": "Ask AI 上下文 + 语义检索",
       "apiDeps": ["search", "embedding", "llm"],
-      "status": "planned"
+      "status": "active"
     }
   ]
 }

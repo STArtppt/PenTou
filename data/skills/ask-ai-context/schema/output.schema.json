@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/ask-ai-context/output",
+  "title": "ask-ai-context output",
+  "type": "object",
+  "properties": {
+    "answer": { "type": "string", "description": "LLM 回答（Markdown）" },
+    "citations": {
+      "type": "array",
+      "description": "回答所用检索片段来源",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["conversation", "document"] },
+          "id": { "type": "string" },
+          "title": { "type": "string" }
+        },
+        "required": ["type", "id", "title"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["answer", "citations"],
+  "additionalProperties": false
+}

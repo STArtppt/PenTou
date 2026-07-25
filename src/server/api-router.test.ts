@@ -93,6 +93,17 @@ function multipartFiles(files: Array<{ name: string; content: string; type?: str
   };
 }
 
+describe("health endpoint (spec skill-runtime)", () => {
+  it("GET /api/health returns ok without side effects", async () => {
+    const { abs } = makeRelativeTempDataDir();
+    const res = await callApi({ dataDir: abs, url: "/api/health" });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(res.body.service).toBe("pentou");
+    expect(typeof res.body.version).toBe("string");
+  });
+});
+
 describe("documents API dataDir handling", () => {
   it("normalizes relative document data dirs to absolute paths", () => {
     const { rel } = makeRelativeTempDataDir();

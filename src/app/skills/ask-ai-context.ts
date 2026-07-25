@@ -1,0 +1,109 @@
+/**
+ * ask-ai-context — plane B 产品技能（spec ask-ai-context）。
+ * 工作流（线性）：api 语义检索 → transform 组上下文+套 prompt → llm 客户端作答。
+ * 权威描述见 data/skills/ask-ai-context/SKILL.md；本文件是 runner 的可执行定义，须与之对齐。
+ */
+import type { SkillDef, RunCtx } from "../skill-runtime";
+import type { ChatMessage } from "../llm";
+import { DEFAULT_PROMPT_AI_SIDEBAR } from "../llm";
+
+/** /api/search 命中片段（与 src/server/search-service SearchHit 的消费子集）。 */
+export interface RetrievalHit {
+  type: "conversation" | "document";
+  id: string;
+  title: string;
+  snippetText: string;
+}
+
+const DEFAULT_TOP_K_INTERNAL = 6;
+
+/**
+ * 语义检索 building block：经 `GET /api/search` 取命中片段。
+ * 技能的 `search` 步与前端 Ask AI 侧栏共用同一路径（同一 `/api/*` 契约）。
+ */
+export async function fetchRetrievalHits(
+  query: string,
+  deps: { apiBase: string; fetchImpl: typeof fetch },
+  topK: number = DEFAULT_TOP_K_INTERNAL,
+): Promise<RetrievalHit[]> {
+  const url = `${deps.apiBase}/api/search?q=${encodeURIComponent(query)}&mode=hybrid&limit=${topK}`;
+  const res = await deps.fetchImpl(url);
+  if (!res.ok) throw new Error(`search failed: ${res.status}`);
+  const data = (await res.json()) as { hits?: RetrievalHit[] };
+  return data.hits ?? [];
+}
+
+/** 把命中片段格式化为可注入上下文的文本块；无命中返回明确标记。 */
+export function formatContextBlock(hits: RetrievalHit[]): string {
+  return hits.length
+    ? hits.map((h, i) => `[${i + 1}] ${h.title}\n${h.snippetText}`).join("\n\n")
+    : "（无检索命中）";
+}
+
+export interface AskAiCitation {
+  type: "conversation" | "document";
+  id: string;
+  title: string;
+}
+export interface AskAiOutput {
+  answer: string;
+  citations: AskAiCitation[];
+}
+
+export const askAiContext: SkillDef = {
+  id: "ask-ai-context",
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: { type: "string" },
+      scope: { type: "string" },
+      topK: { type: "integer" },
+    },
+    required: ["query"],
+    additionalProperties: false,
+  },
+  steps: [
+    {
+      id: "search",
+      kind: "api",
+      run: async (ctx: RunCtx): Promise<RetrievalHit[]> => {
+        const { query, topK } = ctx.input as { query: string; topK?: number };
+        return fetchRetrievalHits(query, ctx.deps, typeof topK === "number" ? topK : undefined);
+      },
+    },
+    {
+      id: "context",
+      kind: "transform",
+      run: async (ctx: RunCtx): Promise<ChatMessage[]> => {
+        const { query, scope } = ctx.input as { query: string; scope?: string };
+        const hits = (ctx.results.search as RetrievalHit[]) ?? [];
+        const contextBlock = formatContextBlock(hits);
+        const userContent = [
+          scope ? `# 当前上下文\n${scope}` : "",
+          `# 检索片段\n${contextBlock}`,
+          `# 问题\n${query}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+        return [
+          { role: "system", content: DEFAULT_PROMPT_AI_SIDEBAR },
+          { role: "user", content: userContent },
+        ];
+      },
+    },
+    {
+      id: "answer",
+      kind: "llm",
+      run: async (ctx: RunCtx): Promise<string> => {
+        const messages = ctx.results.context as ChatMessage[];
+        return ctx.deps.callLLM(ctx.deps.llmConfig, messages, undefined, ctx.deps.signal);
+      },
+    },
+  ],
+  buildOutput: (ctx: RunCtx): AskAiOutput => {
+    const answer = (ctx.results.answer as string) ?? "";
+    const hits = (ctx.results.search as RetrievalHit[]) ?? [];
+    const citations: AskAiCitation[] = hits.map((h) => ({ type: h.type, id: h.id, title: h.title }));
+    return { answer, citations };
+  },
+};

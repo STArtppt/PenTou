@@ -43,6 +43,16 @@ data/skills/
 - 技能**源码**（本目录）随仓库 track；**运行产物**落 gitignore 的 `data/` 子目录，切勿混入本目录。
 - 成熟后可整体抽取为独立仓库 `pentou-skills` 发布。
 
+### SKILL 契约（runner 消费约定）
+
+- `SKILL.md` 的 **Workflow** 是**线性有序**步骤，每步标注 `kind`：
+  - `api` — 调声明的 `/api/*` 端点取数据；
+  - `llm` — 客户端调 LLM（复用 `src/app/llm.ts`），带 `promptRef`；
+  - `transform` — 纯变换（拼接上下文、套 prompt 等）。
+- `schema/input.schema.json` / `schema/output.schema.json` 为 **JSON Schema（draft-07）**，runner 执行前用 input schema 校验入参。
+- runner 顺序执行步骤并串联上下文；本期只支持线性工作流（无分支/循环）。
+- `SKILL.md` 是**人读 + 外部 agent 读**的权威描述；runner 的可执行定义（`src/app` 内建注册）须与之对齐。
+
 ## 当前技能（规划中）
 
 | 技能 | 场景 | 运行时依赖 `/api/*` | 状态 |

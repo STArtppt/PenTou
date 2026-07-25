@@ -1,0 +1,14 @@
+{
+  "input": {
+    "query": "我们为什么选择本地优先存储？",
+    "topK": 3
+  },
+  "output": {
+    "answer": "根据检索到的对话，本地优先存储的主要理由是数据主权与离线可用……（上下文充分时基于片段作答）",
+    "citations": [
+      { "type": "conversation", "id": "conv-abc", "title": "架构选型讨论" },
+      { "type": "document", "id": "doc-xyz", "title": "存储设计说明" }
+    ]
+  },
+  "note": "无检索命中时 citations 为空数组，answer 须说明上下文不足。"
+}

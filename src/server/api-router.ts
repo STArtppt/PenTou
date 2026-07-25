@@ -883,8 +883,15 @@ export async function handleApiRequest(
   const aiChatsDir = path.join(ctx.dataDir, "ai-chats");
   const foldersFile = path.join(ctx.dataDir, "folders.json");
 
-  // ── /api/ingest 族（spec ingest-gateway；token 闸门与 CORS 在处理器内部）──
   const pathOnly = url.split("?")[0];
+
+  // ── GET /api/health （plane B 探活；无副作用、无鉴权，spec skill-runtime） ──
+  if (pathOnly === "/api/health" && method === "GET") {
+    json(res, 200, { status: "ok", service: "pentou", version: ctx.version ?? "0.0.0" });
+    return true;
+  }
+
+  // ── /api/ingest 族（spec ingest-gateway；token 闸门与 CORS 在处理器内部）──
   if (pathOnly === "/api/ingest" || pathOnly.startsWith("/api/ingest/")) {
     return handleIngestRequest(req, res, ctx, convDir);
   }

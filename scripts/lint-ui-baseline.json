@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T08:05:03.215Z",
+  "generatedAt": "2026-07-24T09:10:28.454Z",
   "count": 82,
   "violations": [
     {
@@ -11,38 +11,26 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 40,
+      "line": 41,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 65,
+      "line": 66,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 406,
+      "line": 435,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 424,
+      "line": 453,
       "match": "dark:bg-[#1A1A1A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/AiSidebar.tsx",
-      "line": 484,
-      "match": "dark:bg-[#151515]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/AiSidebar.tsx",
-      "line": 504,
-      "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
@@ -53,31 +41,43 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 529,
+      "line": 533,
+      "match": "dark:bg-[#151515]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/AiSidebar.tsx",
+      "line": 542,
+      "match": "dark:bg-[#151515]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/AiSidebar.tsx",
+      "line": 558,
       "match": "bg-[#35B86B]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 555,
+      "line": 584,
       "match": "dark:bg-[#202020]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 40,
+      "line": 41,
       "match": "text-[13px]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 420,
+      "line": 449,
       "match": "text-[13px]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 571,
+      "line": 600,
       "match": "text-[13px]"
     },
     {

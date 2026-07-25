@@ -33,6 +33,16 @@ vi.mock("./ImageLightbox", () => ({
   imageUrlTransform: (url: string) => url,
 }));
 
+vi.mock("../llm", () => ({
+  DEFAULT_PROMPT_AI_SIDEBAR: "sys",
+  LLMError: class LLMError extends Error {},
+  serializeConversation: () => "conv",
+  chatCompletion: async (_cfg: unknown, _messages: unknown, onChunk?: (c: string) => void) => {
+    onChunk?.("answer");
+    return "answer";
+  },
+}));
+
 function buildSession(id: string, title: string, updatedAt: string): AiChatSession {
   return {
     id,
@@ -156,6 +166,47 @@ describe("AiSidebar", () => {
     expect(firstPrompt?.parentElement?.parentElement?.className).toContain("pb-2");
     expect(firstPrompt?.parentElement?.parentElement?.className).not.toContain("pb-8");
     expect(firstPrompt?.className).toContain("cursor-pointer");
+    unmount();
+  });
+
+  it("does not revert retrieval status to searching after answering (regression)", async () => {
+    // fetch mock：/api/search 返回一条命中
+    const fetchStub = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ hits: [{ type: "conversation", id: "c1", title: "Ctx", snippetText: "snippet" }] }),
+    }));
+    vi.stubGlobal("fetch", fetchStub as unknown as typeof fetch);
+
+    // setCurrentAiSession 真正回写到 mock context（支持对象与函数式更新）
+    mocks.appContext.setCurrentAiSession = (arg: unknown) => {
+      mocks.appContext.currentAiSession =
+        typeof arg === "function" ? (arg as (s: AiChatSession) => AiChatSession)(mocks.appContext.currentAiSession) : arg;
+    };
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.currentAiSession = createEmptyAiChatSession();
+
+    const { container, unmount } = await renderSidebar();
+
+    // 走空态快捷提问按钮，直接触发一次完整发送
+    const quickPrompt = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("What did I discuss with AI?"),
+    );
+    expect(quickPrompt).toBeDefined();
+    await act(async () => {
+      Simulate.click(quickPrompt!);
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    const finalAssistant = mocks.appContext.currentAiSession.messages.find(
+      (m: { role: string }) => m.role === "assistant",
+    );
+    expect(finalAssistant).toBeDefined();
+    // 核心断言：作答后不能回退成 searching；应为 done 且保留 citations
+    expect(finalAssistant.retrievalStatus).toBe("done");
+    expect(finalAssistant.citations).toHaveLength(1);
+    expect(finalAssistant.content).toBe("answer");
+
+    vi.unstubAllGlobals();
     unmount();
   });
 

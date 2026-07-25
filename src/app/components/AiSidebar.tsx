@@ -18,6 +18,7 @@ import {
   generateAiMessageId,
 } from "../ai-chats";
 import { DEFAULT_PROMPT_AI_SIDEBAR, LLMError, chatCompletion, serializeConversation, ChatMessage } from "../llm";
+import { fetchRetrievalHits, formatContextBlock } from "../skills/ask-ai-context";
 import { generateDocId } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
 import { useTranslation } from "../i18n";
@@ -201,6 +202,7 @@ export function AiSidebar() {
       content: "",
       status: "streaming",
       contextLabel: contextDisplayLabel,
+      retrievalStatus: "searching",
     };
     const baseSession: AiChatSession = {
       ...currentAiSession,
@@ -217,8 +219,35 @@ export function AiSidebar() {
     const controller = new AbortController();
     abortRef.current = controller;
     let partial = "";
+
+    // 检索增强（ask-ai-context，Option 1）：先经 /api/search 取相关片段注入上下文；
+    // 与技能走同一 /api 契约。检索失败不阻断作答，退回仅用当前视图上下文。
+    let citations: NonNullable<AiSidebarMessage["citations"]> = [];
+    let retrievalBlock = "";
     try {
-      const messages = buildLLMMessages(baseSession.messages, question, context.content);
+      const hits = await fetchRetrievalHits(question, { apiBase: "", fetchImpl: fetch.bind(window) });
+      citations = hits.map((h) => ({ type: h.type, id: h.id, title: h.title }));
+      if (hits.length) retrievalBlock = formatContextBlock(hits);
+    } catch {
+      /* 检索失败：忽略，仅用当前上下文作答 */
+    }
+    // 把检索结果落进一个新的会话快照，供后续 finish / catch 复用；不能只靠函数式 setState，
+    // 否则 finishAssistantMessage 从过期的 baseSession 重建会把 retrievalStatus 改回 searching、丢掉 citations。
+    const answeredBase: AiChatSession = {
+      ...baseSession,
+      messages: baseSession.messages.map((message) =>
+        message.id === assistantMessage.id
+          ? { ...message, retrievalStatus: "done" as const, retrievalCount: citations.length, citations }
+          : message,
+      ),
+    };
+    setCurrentAiSession(answeredBase);
+
+    try {
+      const augmentedContext = retrievalBlock
+        ? `${context.content}\n\n# 检索到的相关片段\n\n${retrievalBlock}`.trim()
+        : context.content;
+      const messages = buildLLMMessages(answeredBase.messages, question, augmentedContext);
       partial = await chatCompletion(
         llmConfig,
         messages,
@@ -234,18 +263,18 @@ export function AiSidebar() {
         },
         controller.signal,
       );
-      const doneSession = finishAssistantMessage(baseSession, assistantMessage.id, partial, controller.signal.aborted ? "aborted" : "done");
+      const doneSession = finishAssistantMessage(answeredBase, assistantMessage.id, partial, controller.signal.aborted ? "aborted" : "done");
       await persist(doneSession);
     } catch (e: any) {
       const summary = e instanceof LLMError
         ? `LLM Error ${e.context.status}: ${e.message}`
         : String(e?.message ?? e);
       const errorSession: AiChatSession = {
-        ...baseSession,
+        ...answeredBase,
         updatedAt: new Date().toISOString(),
-        messages: baseSession.messages.map((message) =>
+        messages: answeredBase.messages.map((message) =>
           message.id === assistantMessage.id
-            ? { ...message, content: "", status: "error", error: summary }
+            ? { ...message, content: "", status: "error", error: summary, retrievalStatus: undefined }
             : message
         ),
       };
@@ -669,6 +698,27 @@ function MessageBubble({
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={aiMarkdownComponents} urlTransform={imageUrlTransform}>{message.content || (streaming ? "..." : "")}</ReactMarkdown>
         )}
       </div>
+      {!isUser && message.retrievalStatus && (
+        <div className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+          {message.retrievalStatus === "searching" ? (
+            <span className="inline-flex items-center gap-1">
+              <Loader2 size={11} className="animate-spin" />
+              {t("aiSidebar.retrievalSearching")}
+            </span>
+          ) : (message.retrievalCount ?? 0) > 0 ? (
+            <span>{t("aiSidebar.retrievalFound", { n: message.retrievalCount ?? 0 })}</span>
+          ) : (
+            <span>{t("aiSidebar.retrievalNone")}</span>
+          )}
+          {message.citations && message.citations.length > 0 && (
+            <ul className="mt-1 space-y-0.5 pl-1">
+              {message.citations.map((c) => (
+                <li key={`${c.type}:${c.id}`} className="truncate">· {c.title}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {!isUser && (
         <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           {message.status === "aborted" && <span className="mr-1 text-xs text-zinc-400 dark:text-zinc-500">{t("aiSidebar.aborted")}</span>}
