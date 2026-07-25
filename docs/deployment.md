@@ -52,14 +52,17 @@ docker run -d \
 docker logs pentou | head -20
 # 应见：
 # [info] Pentou listening on :7766, dataDir=/app/data
-# [info] obscura detected: linux-arm64 v0.2.x          (或：WARN: obscura binary missing)
-# [info] markitdown probe: not installed (optional)
+# （分享链接依赖 /app/bin/obscura；镜像基于 Debian slim/glibc，勿自建 Alpine 变体）
+
+# 自检 obscura 可执行（文件存在但 exec 报 no such file → 多为 musl/glibc 不匹配）
+docker exec pentou ls -l /app/bin/obscura
+docker exec pentou /app/bin/obscura --version   # 应打印版本，而不是 "no such file or directory"
 
 curl -fsS http://127.0.0.1:7766/healthz
 # 应返回 {"ok":true,"version":"x.y.z","uptimeSec":N}
 ```
 
-如果两条都过，容器健康。下一步配反代。
+如果健康检查与 obscura `--version` 都过，容器健康。下一步配反代。
 
 ---
 

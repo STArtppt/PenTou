@@ -36,21 +36,33 @@ export interface ObscuraOptions {
 
 const downloadInFlight = new Map<string, Promise<boolean>>();
 
-/** 按宿主平台/架构返回 obscura release 资产名；不支持的组合返回 null。 */
-function obscuraAssetName(): string | null {
-  const platform = os.platform();
-  let arch: string = os.arch();
-  if (arch === "amd64") arch = "x64";
-  if (arch === "aarch64") arch = "arm64";
+/**
+ * 按平台/架构返回 obscura release 资产名；不支持的组合返回 null。
+ * 导出供回归测试锁定映射（尤其 linux-arm64 与 glibc 资产名）。
+ */
+export function resolveObscuraAssetName(
+  platform: NodeJS.Platform | string = os.platform(),
+  arch: string = os.arch(),
+): string | null {
+  let normalizedArch = arch;
+  if (normalizedArch === "amd64") normalizedArch = "x64";
+  if (normalizedArch === "aarch64") normalizedArch = "arm64";
 
   if (platform === "win32") return "obscura-x86_64-windows.zip";
-  if (platform === "darwin") return arch === "arm64" ? "obscura-aarch64-macos.tar.gz" : "obscura-x86_64-macos.tar.gz";
+  if (platform === "darwin") {
+    return normalizedArch === "arm64" ? "obscura-aarch64-macos.tar.gz" : "obscura-x86_64-macos.tar.gz";
+  }
   if (platform === "linux") {
-    // 上游暂无 linux-aarch64 构建；该平台分享链接导入降级不可用。
-    if (arch === "arm64") return null;
-    return "obscura-x86_64-linux.tar.gz";
+    // Upstream ships glibc-linked linux builds for both arches (not musl/Alpine).
+    if (normalizedArch === "arm64") return "obscura-aarch64-linux.tar.gz";
+    if (normalizedArch === "x64") return "obscura-x86_64-linux.tar.gz";
+    return null;
   }
   return null;
+}
+
+function obscuraAssetName(): string | null {
+  return resolveObscuraAssetName();
 }
 
 /** 下载并解压 obscura 到 binDir；成功返回 true。失败仅警告并返回 false（优雅降级）。 */
@@ -85,8 +97,11 @@ async function downloadObscura(binDir: string, binPath: string): Promise<boolean
     execFileSync("tar", [isZip ? "-xf" : "-xzf", tempFile, "-C", binDir], { stdio: "ignore" });
     try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
 
-    if (os.platform() !== "win32" && fs.existsSync(binPath)) {
-      fs.chmodSync(binPath, 0o755);
+    if (os.platform() !== "win32") {
+      for (const name of [OBSCURA_FILE, "obscura-worker"]) {
+        const p = path.join(binDir, name);
+        if (fs.existsSync(p)) fs.chmodSync(p, 0o755);
+      }
     }
 
     if (fs.existsSync(binPath)) {
@@ -336,8 +351,22 @@ export async function fetchHtmlWithObscura(url: string, options?: ObscuraOptions
       stderrTail = appendTail(stderrTail, chunk, OBSCURA_STDERR_TAIL_BYTES);
     });
 
-    child.on("error", (error) => {
-      finish(() => reject(error));
+    child.on("error", (error: NodeJS.ErrnoException) => {
+      finish(() => {
+        // Linux: file exists but PT_INTERP (glibc loader) missing → spawn ENOENT.
+        // Alpine/musl images historically hit this with official obscura builds.
+        if (error?.code === "ENOENT") {
+          reject(
+            new Error(
+              `Obscura binary not executable at ${obscuraPath} (ENOENT). ` +
+                "If the file exists, the image likely lacks the glibc dynamic linker " +
+                "(use a Debian/glibc base such as node:*-slim, not Alpine/musl).",
+            ),
+          );
+          return;
+        }
+        reject(error);
+      });
     });
 
     child.on("close", (code, signal) => {

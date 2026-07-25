@@ -27,12 +27,8 @@ function getAssetName() {
     return arch === 'arm64' ? 'obscura-aarch64-macos.tar.gz' : 'obscura-x86_64-macos.tar.gz';
   }
   if (platform === 'linux') {
-    if (arch === 'arm64') {
-      // Upstream obscura releases don't ship a linux-aarch64 build today.
-      // Run without it — the app boots; only /api/import/link is degraded.
-      console.warn('[obscura] no linux-arm64 binary upstream; share-link import will be disabled in this image.');
-      return null;
-    }
+    // Upstream ships both glibc-linked linux builds (not musl/Alpine).
+    if (arch === 'arm64') return 'obscura-aarch64-linux.tar.gz';
     return 'obscura-x86_64-linux.tar.gz';
   }
   console.error('Unsupported platform:', platform);
@@ -80,8 +76,16 @@ async function downloadAndExtract() {
 
     fs.unlinkSync(tempFile);
 
-    if ((process.env.TARGET_PLATFORM || os.platform()) !== 'win32' && fs.existsSync(OBSCURA_PATH)) {
-      fs.chmodSync(OBSCURA_PATH, '755');
+    if ((process.env.TARGET_PLATFORM || os.platform()) !== 'win32') {
+      for (const name of [OUT_NAME, 'obscura-worker']) {
+        const p = path.join(BIN_DIR, name);
+        if (fs.existsSync(p)) fs.chmodSync(p, 0o755);
+      }
+    }
+
+    if (!fs.existsSync(OBSCURA_PATH)) {
+      console.warn('[obscura] archive extracted but binary not found; share-link import will be disabled.');
+      return;
     }
 
     console.log('Obscura downloaded and extracted successfully.');
