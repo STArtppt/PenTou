@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { IngestClient, IngestHttpError, IngestNetworkError, isAuthIngestError, isRetryableIngestError } from "./ingest-client";
+import {
+  IngestClient,
+  IngestHttpError,
+  IngestNetworkError,
+  isAuthIngestError,
+  isRateLimitedIngestError,
+  isRetryableIngestError,
+} from "./ingest-client";
 import type { IngestItem } from "./types";
 
 function item(id: string): IngestItem {
@@ -18,13 +25,23 @@ describe("IngestClient", () => {
     expect(sizes).toEqual([50, 50, 1]);
   });
 
-  it("classifies 401, 5xx, and network failures", async () => {
-    const unauthorized = new IngestHttpError(401, "401 unauthorized");
+  it("classifies 401, 429, 5xx, and network failures", async () => {
+    const unauthorized = new IngestHttpError(401, "401 invalid_token");
+    const rateLimited = new IngestHttpError(429, "429 too_many_attempts");
     const unavailable = new IngestHttpError(503, "503 unavailable");
     const network = new IngestNetworkError("ECONNREFUSED");
 
     expect(isAuthIngestError(unauthorized)).toBe(true);
     expect(isRetryableIngestError(unauthorized)).toBe(false);
+
+    // 429 is a rate-limit (not an auth error) and must be retried with backoff.
+    expect(isRateLimitedIngestError(rateLimited)).toBe(true);
+    expect(isAuthIngestError(rateLimited)).toBe(false);
+    expect(isRetryableIngestError(rateLimited)).toBe(true);
+
+    expect(isRateLimitedIngestError(unauthorized)).toBe(false);
+    expect(isRateLimitedIngestError(unavailable)).toBe(false);
+    expect(isRateLimitedIngestError(network)).toBe(false);
     expect(isRetryableIngestError(unavailable)).toBe(true);
     expect(isRetryableIngestError(network)).toBe(true);
   });

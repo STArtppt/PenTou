@@ -12,7 +12,7 @@ import type {
   PullSummary,
   SessionFile,
 } from "./types.js";
-import { IngestClient, isAuthIngestError, isRetryableIngestError } from "./ingest-client.js";
+import { IngestClient, isAuthIngestError, isRateLimitedIngestError, isRetryableIngestError } from "./ingest-client.js";
 import { writeConfig } from "./config.js";
 import { isVirtualKey, parseSessionKey } from "./sqlite.js";
 import { EmptyPayloadError, parseRawConversations } from "../../shared/raw-dispatch.js";
@@ -450,6 +450,7 @@ export class CollectorWatchEngine {
   private retryTimer: NodeJS.Timeout | null = null;
   private retryAttempt = 0;
   private retryState = "";
+  private rateLimitNotified = false;
 
   constructor(config: CollectorConfig, adapters: CollectorAdapter[], options: WatchOptions = {}) {
     this.config = config;
@@ -595,12 +596,21 @@ export class CollectorWatchEngine {
       if (anyError) return true;
       this.config.snapshots[entry.file] = entry.snapshot;
       this.persistConfig();
+      this.rateLimitNotified = false; // 成功后复位，下一轮限速可再次提示
       if (this.verbose) this.logger.log(`synced ${entry.file}`);
       return true;
     } catch (error: any) {
       if (isAuthIngestError(error)) {
         this.logger.error(`ingest auth failed (401). Check token in Settings -> Collector: ${error.message}`);
         return false;
+      }
+      // 429 会走下方 isRetryableIngestError 分支入队重试；这里只额外给一次可行动提示，
+      // 避免用户把"IP 被限速"误当成"要改 token"。用 rateLimitNotified 去重，防刷屏。
+      if (isRateLimitedIngestError(error) && !this.rateLimitNotified) {
+        this.rateLimitNotified = true;
+        this.logger.warn(
+          `ingest rate-limited (429). The Pentou server locked this IP after repeated failed uploads; it clears when the server restarts or after a few minutes. Retrying with backoff...`,
+        );
       }
       const adapter = adapterForFile(this.adapters, entry.file);
       if (!adapter) {

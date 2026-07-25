@@ -96,3 +96,7 @@ export function isRetryableIngestError(error: unknown): boolean {
 export function isAuthIngestError(error: unknown): boolean {
   return error instanceof IngestHttpError && error.status === 401;
 }
+
+export function isRateLimitedIngestError(error: unknown): boolean {
+  return error instanceof IngestHttpError && error.status === 429;
+}

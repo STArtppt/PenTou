@@ -3,7 +3,7 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { defaultConfig, normalizeServer, readConfig, resolveUserPath, writeConfig, CONFIG_PATH } from "./config.js";
 import { createAdapters } from "./adapters/index.js";
-import { IngestClient } from "./ingest-client.js";
+import { IngestClient, isRateLimitedIngestError } from "./ingest-client.js";
 import { CollectorWatchEngine, pullOnce } from "./engine.js";
 import type { CollectorConfig } from "./types.js";
 
@@ -131,6 +131,13 @@ async function initCollector(flags: ParsedArgs["flags"]): Promise<void> {
   try {
     await client.ping();
   } catch (error: any) {
+    // 429 是 IP 限速（多为旧 watcher 用错 token 刷屏所致），token 本身可能是对的——
+    // 不要误导用户去改 token，提示清限速的正确动作（重启服务 / 稍候）。
+    if (isRateLimitedIngestError(error)) {
+      fail(
+        `ingest rate-limited (429). The Pentou server locked this IP after repeated failed attempts — the token may be correct. Restart the Pentou server (or wait a few minutes) to clear the lock, then retry.`,
+      );
+    }
     fail(`cannot verify ingest token (${error?.message ?? error}). Check Settings -> Collector and retry.`);
   }
 
