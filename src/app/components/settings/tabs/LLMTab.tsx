@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -136,6 +137,7 @@ export function LLMTab({
   const handleSave = () => {
     setSettings(draft);
     setTestState("idle");
+    toast.success(t("settings.llm.saved"));
   };
 
   const handleTest = async () => {

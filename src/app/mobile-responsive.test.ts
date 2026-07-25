@@ -69,7 +69,8 @@ describe("mobile responsive layout contract", () => {
   it("App remaps overlay state across the 768px boundary and moves toasts on mobile", () => {
     const app = read("src/app/App.tsx");
     expect(app).toContain("const isMobile = useIsMobile();");
-    expect(app).toContain('position={isMobile ? "top-center" : "bottom-right"}');
+    // 统一 top-center（含桌面）：顶部居中天然避开右下 Ask AI FAB（spec §5 I4）
+    expect(app).toContain('position="top-center"');
     // 断点映射：跨越时收起所有覆盖层
     expect(app).toContain("}, [isMobile, setAiSidebarOpen, setDrawerOpen, setSettingsOpen, setSearchOpen, setMobileNavOpen]);");
   });

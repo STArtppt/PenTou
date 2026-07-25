@@ -5,7 +5,7 @@ import { Sidebar } from "./components/Sidebar";
 import { MainContent } from "./components/MainContent";
 import { AppProvider, useAppContext } from "./data";
 import { useIsMobile } from "./hooks/useIsMobile";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
 const ImportDrawer = lazy(() =>
   import("./components/ImportDrawer").then(m => ({ default: m.ImportDrawer }))
@@ -255,8 +255,8 @@ function AppContent() {
           {(primed || searchEverOpened) && <SearchPalette />}
           {(primed || aiSidebarEverOpened) && <AiSidebar />}
         </Suspense>
-        {/* FAB 与 Toast 位置冲突（spec §5 I4）：移动端 toast 上移到 top-center，避免与右下 Ask AI FAB 重叠 */}
-        <Toaster position={isMobile ? "top-center" : "bottom-right"} richColors />
+        {/* 统一 top-center（startist 默认）：顶部居中天然避开右下 Ask AI FAB（spec §5 I4） */}
+        <Toaster position="top-center" />
       </div>
     </DndProvider>
   );
