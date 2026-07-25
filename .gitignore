@@ -47,6 +47,9 @@ data/.session-secret
 # Per-machine local UI state (folder tree); tracked historically on main, aligned with public branch
 data/folders.json
 data/document-folders.json
+# npx-launcher default runtime data dir (<cwd>/pentou-data): real conversations + .session-secret.
+# Accidentally committed in abf7e4f while smoke-testing from repo root — never track.
+pentou-data/
 
 # IDE and editors
 .idea/
@@ -61,6 +64,7 @@ data/document-folders.json
 *.sublime-project
 *.sublime-workspace
 .pnpm-store/
+.grok/
 
 # OS files
 .DS_Store

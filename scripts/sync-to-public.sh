@@ -22,12 +22,14 @@ SOURCE_BRANCH="${SOURCE_BRANCH:-main}"
 NOREPLY_EMAIL="${SYNC_NOREPLY_EMAIL:-}"
 AUTHOR_NAME="${SYNC_AUTHOR_NAME:-}"
 
-# 与 .githooks/pre-commit 黑名单保持一致
+# 与 public 分支 .githooks/pre-commit 黑名单保持一致（改这里必须同步改 hook 与 guide §2.3.9）
+# 注意：`skills` 只挡根级 plane A 工程技能；plane B 产品技能 `data/skills/` 可分发，故意不列入。
 BLACKLIST_PATHS=(
-  CLAUDE.md AGENTS.md EXAMPLES.md
+  CLAUDE.md AGENTS.md EXAMPLES.md DESIGN.md
   skills rules guidelines
-  .claude .waylog
-  src/docs
+  .claude .grok .waylog
+  src/docs openspec
+  pentou-data
 )
 
 usage() {
