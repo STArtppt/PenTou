@@ -1,8 +1,9 @@
 # Pentou 一键启动指南（npx）
 
-本文档面向想在自己电脑上运行 Pentou 的用户。无需克隆代码、无需安装 Git / pnpm、无需任何构建知识。
+本文档面向想在自己电脑上**立刻用起来**的用户。无需克隆代码、无需安装 Git / pnpm、无需任何构建知识。
 适用平台：macOS / Windows / Linux。
-如果你要部署到服务器 / NAS 供公网或多人访问，请改用 Docker 部署（见 [deployment.md](./deployment.md)）。
+
+PenTou 已具备日常高可用价值：本机一条命令启动后，即可导入/自动采集对话、全文检索、提炼文档与侧边栏问答；数据全部留在本地。产品能力总览见 [product-intro.md](./product-intro.md)。若要部署到服务器 / NAS 供公网或多人访问，请改用 Docker（见 [deployment.md](./deployment.md)）。
 
 ---
 
