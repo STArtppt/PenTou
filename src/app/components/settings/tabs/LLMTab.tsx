@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +32,7 @@ import {
   tabTitleForProvider,
   BUILTIN_PROVIDERS,
 } from "../../../llm-settings";
-import { SettingsNote } from "../SettingsNote";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function LLMTab({
   settings,
@@ -161,7 +161,13 @@ export function LLMTab({
 
   return (
     <div className="w-full min-w-0 max-w-full space-y-5 overflow-x-hidden p-6">
-      <SettingsNote className="break-words">{t("settings.llm.securityNote")}</SettingsNote>
+      <Alert>
+        <ShieldCheck />
+        <AlertTitle>{t("settings.llm.securityNoteTitle")}</AlertTitle>
+        <AlertDescription className="break-words">
+          {t("settings.llm.securityNote")}
+        </AlertDescription>
+      </Alert>
 
       {/*
         w-0 flex-1: classic flex scroll containment — parent width is capped by

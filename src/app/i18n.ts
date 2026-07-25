@@ -270,7 +270,8 @@ export const translations = {
     "settings.llm.testing": "Testing...",
     "settings.llm.testOk": "Connected ✓",
     "settings.llm.testFail": "Failed: {status}",
-    "settings.llm.securityNote": "🔒 API Key is stored only in your browser's localStorage and is never sent to the server. Even in Docker deployments, the key stays in your browser and connects directly to the LLM provider.",
+    "settings.llm.securityNoteTitle": "Keys stay on your device",
+    "settings.llm.securityNote": "API Key is stored only in your browser's localStorage and is never sent to the server. Even in Docker deployments, the key stays in your browser and connects directly to the LLM provider.",
     "settings.obsidian.vaultName": "Vault Name",
     "settings.obsidian.save": "Save",
     "settings.obsidian.hint": "Select your Obsidian vault to enable one-click export. Documents are written directly into the vault.",
@@ -317,7 +318,8 @@ export const translations = {
     "search.partial": "Building semantic index — results may be incomplete",
 
     // Settings · Semantic search / embedding backend (hybrid-search §4.7)
-    "settings.embedding.note": "🔒 Privacy: when enabled, your conversation and document text — and each query — are sent to this embedding service to build a semantic index. The API key is stored on the server (not your browser). Disabled by default; turn it off to clear all vectors and the stored key.",
+    "settings.embedding.noteTitle": "Privacy",
+    "settings.embedding.note": "When enabled, your conversation and document text — and each query — are sent to this embedding service to build a semantic index. The API key is stored on the server (not your browser). Disabled by default; turn it off to clear all vectors and the stored key.",
     "settings.embedding.enable": "Enable semantic search",
     "settings.embedding.enableHint": "Layer online embeddings on top of full-text search (RRF fusion).",
     "settings.embedding.endpoint": "Embeddings Endpoint",
@@ -336,6 +338,7 @@ export const translations = {
 
     // Ingest（采集落库底座，spec ingest-gateway US-03 AC3 / US-06 AC2）
     "settings.tab.ingest": "Collect",
+    "settings.ingest.noteTitle": "About the ingest token",
     "settings.ingest.note": "Collectors (browser extension / CLI watcher) report conversations to this app with the token below. The token only grants \"report\" permission — it cannot read, modify, or delete your library.",
     "settings.ingest.token": "Ingest Token",
     "settings.ingest.copy": "Copy",
@@ -346,8 +349,10 @@ export const translations = {
     "settings.ingest.redactHint": "Replace common credentials (API keys, private keys…) with placeholders before saving.",
     "settings.ingest.loading": "Loading…",
     "settings.ingest.loadError": "Failed to load ingest settings",
+    "settings.errorTitle": "Something went wrong",
 
     // Migration
+    "settings.migration.noteTitle": "About migration",
     "settings.migration.note": "Move data directly between two Pentou instances. Passwords are only used by this server process for the current request and are not saved.",
     "settings.migration.direction": "Direction",
     "settings.migration.push": "Push to remote",
@@ -675,7 +680,8 @@ export const translations = {
     "settings.llm.testing": "测试中...",
     "settings.llm.testOk": "连接成功 ✓",
     "settings.llm.testFail": "失败：{status}",
-    "settings.llm.securityNote": "🔒 API Key 仅存于本机浏览器，不上传到服务器。即使 PenTou 后续支持 Docker 云端部署，API Key 也始终留在浏览器并直连 LLM 接口。",
+    "settings.llm.securityNoteTitle": "密钥仅存本地",
+    "settings.llm.securityNote": "API Key 仅存于本机浏览器，不上传到服务器。即使 PenTou 后续支持 Docker 云端部署，API Key 也始终留在浏览器并直连 LLM 接口。",
     "settings.obsidian.vaultName": "Vault 名称",
     "settings.obsidian.save": "保存",
     "settings.obsidian.hint": "选择你的 Obsidian Vault 以启用一键导出，文档将直接写入 Vault 目录。",
@@ -722,7 +728,8 @@ export const translations = {
     "search.partial": "语义索引建立中，结果可能不全",
 
     // 设置 · 语义检索 / 嵌入后端（hybrid-search §4.7）
-    "settings.embedding.note": "🔒 隐私提示：开启后，你的对话与文档正文、以及每次查询都会发送到该嵌入服务以建立语义索引。API Key 存储在服务端（非浏览器）。默认关闭；关闭即清空全部向量与已存 key。",
+    "settings.embedding.noteTitle": "隐私提示",
+    "settings.embedding.note": "开启后，你的对话与文档正文、以及每次查询都会发送到该嵌入服务以建立语义索引。API Key 存储在服务端（非浏览器）。默认关闭；关闭即清空全部向量与已存 key。",
     "settings.embedding.enable": "启用语义检索",
     "settings.embedding.enableHint": "在全文检索之上叠加在线 embedding 向量层（RRF 融合）。",
     "settings.embedding.endpoint": "Embeddings 端点",
@@ -741,6 +748,7 @@ export const translations = {
 
     // Ingest（采集落库底座，spec ingest-gateway US-03 AC3 / US-06 AC2）
     "settings.tab.ingest": "采集",
+    "settings.ingest.noteTitle": "关于采集令牌",
     "settings.ingest.note": "采集端（浏览器插件 / CLI watcher）用下方令牌向本应用上报对话。令牌只有「上报」这一最小权限——不能读取、修改或删除你的库。",
     "settings.ingest.token": "采集令牌",
     "settings.ingest.copy": "复制",
@@ -751,8 +759,10 @@ export const translations = {
     "settings.ingest.redactHint": "落库前把常见凭据（API key、私钥等）替换为占位符。",
     "settings.ingest.loading": "加载中…",
     "settings.ingest.loadError": "采集设置加载失败",
+    "settings.errorTitle": "出错了",
 
     // 迁移
+    "settings.migration.noteTitle": "关于数据迁移",
     "settings.migration.note": "在两个 Pentou 实例之间直连迁移数据。密码只在本次请求中由当前服务进程使用，不会保存。",
     "settings.migration.direction": "方向",
     "settings.migration.push": "推送到远端",

@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Loader2, UploadCloud, DownloadCloud, ShieldAlert } from "lucide-react";
+import { Loader2, UploadCloud, DownloadCloud, ShieldAlert, Info, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslation } from "../../../i18n";
 import { Field } from "@/components/ui/field";
-import { SettingsNote } from "../SettingsNote";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 type MigrationDirection = "push" | "pull";
 type MigrationPlan = {
@@ -147,7 +147,11 @@ export function MigrationTab() {
 
   return (
     <div className="space-y-5 p-6">
-      <SettingsNote>{t("settings.migration.note")}</SettingsNote>
+      <Alert>
+        <Info />
+        <AlertTitle>{t("settings.migration.noteTitle")}</AlertTitle>
+        <AlertDescription>{t("settings.migration.note")}</AlertDescription>
+      </Alert>
 
       <Field label={t("settings.migration.direction")}>
         <div className="grid grid-cols-2 gap-2">
@@ -221,7 +225,13 @@ export function MigrationTab() {
         {testMessage && <span className="text-xs text-green-600 dark:text-green-400">{testMessage}</span>}
       </div>
 
-      {error && <SettingsNote tone="destructive">{error}</SettingsNote>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle />
+          <AlertTitle>{t("settings.errorTitle")}</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {plan && (
         <div className="space-y-4">
@@ -304,29 +314,32 @@ export function MigrationTab() {
       )}
 
       {result && (
-        <SettingsNote tone={result.ok ? "success" : "warning"} className="text-sm">
-          <div className="font-medium">
+        <Alert variant={result.ok ? "default" : "destructive"}>
+          {result.ok ? <CheckCircle2 /> : <AlertTriangle />}
+          <AlertTitle>
             {result.message ??
               (result.ok ? t("settings.migration.done") : t("settings.migration.doneWithFailures"))}
-          </div>
-          <div className="mt-1 text-xs">
-            {t("settings.migration.report", {
-              transferred: result.transferred,
-              skipped: result.skipped,
-              failures: result.failures.length,
-              seconds: Math.round(result.durationMs / 100) / 10,
-            })}
-          </div>
-          {result.failures.length > 0 && (
-            <div className="mt-2 max-h-24 overflow-y-auto font-mono text-xs">
-              {result.failures.map((item) => (
-                <div key={`${item.path}-${item.reason}`}>
-                  {item.path}: {item.reason}
-                </div>
-              ))}
+          </AlertTitle>
+          <AlertDescription className="block">
+            <div className="text-xs">
+              {t("settings.migration.report", {
+                transferred: result.transferred,
+                skipped: result.skipped,
+                failures: result.failures.length,
+                seconds: Math.round(result.durationMs / 100) / 10,
+              })}
             </div>
-          )}
-        </SettingsNote>
+            {result.failures.length > 0 && (
+              <div className="mt-2 max-h-24 overflow-y-auto font-mono text-xs">
+                {result.failures.map((item) => (
+                  <div key={`${item.path}-${item.reason}`}>
+                    {item.path}: {item.reason}
+                  </div>
+                ))}
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );

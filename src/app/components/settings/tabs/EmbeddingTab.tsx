@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useAppContext } from "../../../data";
 import { useTranslation } from "../../../i18n";
 import { Field } from "@/components/ui/field";
-import { SettingsNote } from "../SettingsNote";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function EmbeddingTab() {
   const { t } = useTranslation();
@@ -52,7 +53,11 @@ export function EmbeddingTab() {
 
   return (
     <div className="space-y-5 p-6">
-      <SettingsNote>{t("settings.embedding.note")}</SettingsNote>
+      <Alert>
+        <ShieldCheck />
+        <AlertTitle>{t("settings.embedding.noteTitle")}</AlertTitle>
+        <AlertDescription>{t("settings.embedding.note")}</AlertDescription>
+      </Alert>
 
       <div className="flex items-start gap-3">
         <Switch id="embedding-enable" checked={enabled} onCheckedChange={setEnabled} className="mt-0.5" />

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Info, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useTranslation } from "../../../i18n";
 import { Field } from "@/components/ui/field";
-import { SettingsNote } from "../SettingsNote";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function IngestTab() {
   const { t } = useTranslation();
@@ -66,14 +66,22 @@ export function IngestTab() {
   if (state === "error") {
     return (
       <div className="p-6">
-        <SettingsNote tone="destructive">{t("settings.ingest.loadError")}</SettingsNote>
+        <Alert variant="destructive">
+          <AlertTriangle />
+          <AlertTitle>{t("settings.errorTitle")}</AlertTitle>
+          <AlertDescription>{t("settings.ingest.loadError")}</AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
     <div className="space-y-5 p-6">
-      <SettingsNote>{t("settings.ingest.note")}</SettingsNote>
+      <Alert>
+        <Info />
+        <AlertTitle>{t("settings.ingest.noteTitle")}</AlertTitle>
+        <AlertDescription>{t("settings.ingest.note")}</AlertDescription>
+      </Alert>
 
       <Field label={t("settings.ingest.token")}>
         <div className="flex gap-2">
