@@ -235,33 +235,31 @@ docker compose up -d   # 重启容器，新密码即时生效
 
 ---
 
-## 6. （可选）在容器内启用 markitdown 支持 PDF/Docx 等导入
+## 6. （可选）配置 MinerU 以导入 PDF/Office/图片
 
-镜像默认**不含** markitdown（为了保持 ≤ 180 MB）。需要 PDF/Docx 时按需安装：
+文档导入分两条路：
 
-```bash
-docker exec -it pentou sh
-apk add --no-cache python3 py3-pip
-pip install --break-system-packages 'markitdown[pdf,docx,pptx,xlsx]'
-exit
-```
+| 类型 | 扩展名 | 处理方式 |
+| --- | --- | --- |
+| 本地格式 | `.md` `.txt` `.json` `.csv` `.xml` | 容器内直接解析，**开箱即用，无需任何配置** |
+| MinerU 格式 | `.pdf` `.doc(x)` `.ppt(x)` `.xls(x)` `.html`、常见图片 | 调用 MinerU 云端解析，需配置 API Token |
 
-回到浏览器，打开「文档导入」抽屉，状态块应变为 `✅ 已安装且依赖完整`，**无需重启容器**（探测每次实时执行）。
+MinerU 是**托管服务**（`https://mineru.net`），**不需要在容器里安装任何东西**。配置方式：
 
-> ⚠️ markitdown 装在容器层而**不在数据卷里**。一旦容器被重建（`docker rm` 或 `docker pull` 新镜像后 recreate），需要重新安装。
->
-> 想让它跟随容器升级，新建一个继承镜像的 Dockerfile：
->
-> ```dockerfile
-> FROM ghcr.io/startppt/pentou:latest
-> USER root
-> RUN apk add --no-cache python3 py3-pip \
->  && pip install --break-system-packages 'markitdown[pdf,docx,pptx,xlsx]' \
->  && rm -rf /root/.cache
-> USER pentou
-> ```
->
-> `docker build -t pentou-with-md .`，然后 compose 中 image 改为 `pentou-with-md`。
+1. 到 [mineru.net](https://mineru.net) 申请 API Token；
+2. 浏览器打开 PenTou → 「导入」→「文档导入」抽屉 → 填入 Token 并保存。
+
+Token 存于数据卷的 `.config/mineru.json`（权限 `0600`），因此**容器重建、镜像升级后都不会丢**，整卷备份也会带上它。
+
+> 注意：**一键迁移不会搬运 Token**。迁移只覆盖 `conversations` / `documents` / `ai-chats` / `assets` 四个目录，
+> 换实例后需要在新实例重新填一次 —— 这是刻意的，避免凭据跟着数据到处跑。
+
+> ⚠️ **隐私边界**：PDF、Office、图片、HTML 会**上传到 MinerU 云端**解析；本地格式（`.md` / `.txt` / `.json` / `.csv` / `.xml`）不出本机。
+> 不希望任何内容离开本机时，不要配置 Token —— 此时本地格式照常可用，MinerU 格式会提示未配置。
+
+> 📌 容器需要能**出站访问** `mineru.net`。若部署在只出不进的隔离网络里，需要放行该域名，否则解析会超时失败。
+
+单次导入限制：单文件 ≤ 30 MB，最多 30 个文件，合计 ≤ 150 MB。
 
 ---
 
@@ -391,10 +389,11 @@ rsync -avh --delete /srv/pentou/data/ user@backup-host:/backup/pentou/data/
 - [ ] 日志里**没有**密码、cookie value、对话/文档正文。
 - [ ] `LOG_LEVEL=debug` 重启后能看到 auth 中间件的校验细节。
 
-### 9.9 markitdown（可选）
+### 9.9 MinerU（可选）
 
-- [ ] 不装时：导入抽屉显示 `❌ 未安装`，引导命令可被复制；`.md/.txt/.json` 仍能上传成功。
-- [ ] 装上后：抽屉立即变绿（无需重启容器）；PDF 上传成功。
+- [ ] 未配置 Token 时：`.md/.txt/.json/.csv/.xml` 仍能上传成功；PDF 提示需要配置 MinerU。
+- [ ] 配置 Token 后：PDF 上传并解析成功（**无需重启容器**）。
+- [ ] `docker rm` 后按同一 compose 重建：Token 仍在（存于数据卷），无需重新填。
 
 ### 9.10 多架构
 
