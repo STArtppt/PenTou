@@ -21,7 +21,7 @@ export const DEFAULT_PROMPT_AI_SIDEBAR = `你是嵌入文档阅读器的 AI 助�
 export const DEFAULT_LLM_CONFIG: LLMConfig = {
   endpoint: "https://api.deepseek.com/v1",
   apiKey: "",
-  model: "deepseek-chat",
+  model: "deepseek-v4-flash",
   systemPromptConvertConv: DEFAULT_PROMPT_CONVERT,
   systemPromptRewriteByAnnotations: DEFAULT_PROMPT_REWRITE,
 };

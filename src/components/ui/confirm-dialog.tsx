@@ -8,6 +8,10 @@ import { Button, type ButtonProps } from "@/components/ui/button";
  * dismiss — the user must choose an action). Modal layer z-50; backdrop blurs
  * page content to focus attention. Replaces window.confirm.
  *
+ * Backdrop uses `forceRender` so the mask still paints when this dialog is
+ * nested inside another Dialog/Drawer — Base UI suppresses nested backdrops by
+ * default and expects the parent to dim itself instead.
+ *
  * Convenience API (controlled):
  *   <ConfirmDialog open={open} onOpenChange={setOpen} title=… description=…
  *     confirmLabel="Delete" confirmVariant="danger" onConfirm={fn} />
@@ -42,6 +46,7 @@ function ConfirmDialog({
       <BaseAlertDialog.Portal>
         <BaseAlertDialog.Backdrop
           data-slot="confirm-dialog-backdrop"
+          forceRender
           className="fixed inset-0 z-50 min-h-dvh bg-black/50 backdrop-blur-sm transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute"
         />
         <BaseAlertDialog.Popup

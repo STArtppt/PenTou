@@ -107,7 +107,7 @@ describe("applyProviderSwitch", () => {
     );
     expect(next.provider).toBe("deepseek");
     expect(next.endpoint).toBe("https://api.deepseek.com/v1");
-    expect(next.model).toBe("deepseek-chat");
+    expect(next.model).toBe("deepseek-v4-flash");
     expect(next.apiKey).toBe("keep-me");
     expect(next.useCustomModel).toBe(false);
   });

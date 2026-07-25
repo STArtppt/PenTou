@@ -26,7 +26,9 @@ export const BUILTIN_PROVIDERS: ProviderPreset[] = [
     id: "deepseek",
     label: "DeepSeek",
     baseUrl: "https://api.deepseek.com/v1",
-    models: ["deepseek-chat", "deepseek-reasoner"],
+    // DeepSeek-V4 (2026-04); deepseek-chat / deepseek-reasoner retired 2026-07-24
+    // https://api-docs.deepseek.com/quick_start/pricing
+    models: ["deepseek-v4-flash", "deepseek-v4-pro"],
   },
   {
     id: "openai",
