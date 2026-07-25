@@ -165,9 +165,9 @@ export function LLMTab({
 
       {/*
         w-0 flex-1: classic flex scroll containment — parent width is capped by
-        the dialog column; list scrolls internally; + stays pinned.
-        (ScrollArea's display:table child used to expand to content width so
-        overflow-x never kicked in.)
+        the dialog column; the tab list scrolls internally; + stays pinned.
+        Horizontal overflow is owned here (overflow-hidden), independent of the
+        outer ScrollArea which only drives vertical scroll.
       */}
       <div className="flex w-full min-w-0 items-center gap-1">
         <div className="w-0 min-w-0 flex-1 overflow-hidden">

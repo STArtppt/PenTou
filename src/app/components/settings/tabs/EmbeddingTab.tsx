@@ -57,7 +57,7 @@ export function EmbeddingTab() {
       <div className="flex items-start gap-3">
         <Switch id="embedding-enable" checked={enabled} onCheckedChange={setEnabled} className="mt-0.5" />
         <div className="space-y-0.5">
-          <Label htmlFor="embedding-enable" className="text-sm text-zinc-800 dark:text-zinc-100">
+          <Label htmlFor="embedding-enable">
             {t("settings.embedding.enable")}
           </Label>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{t("settings.embedding.enableHint")}</p>

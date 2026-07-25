@@ -1,25 +1,36 @@
-import * as React from "react";
-import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
-import { Check } from "lucide-react";
+import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
+import { CheckIcon } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
-const Checkbox = React.forwardRef<
-  React.ElementRef<typeof CheckboxPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <CheckboxPrimitive.Root
-    ref={ref}
-    className={cn(
-      "peer h-4 w-4 shrink-0 rounded border border-zinc-300 shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-orange-500 data-[state=checked]:bg-orange-500 data-[state=checked]:text-white dark:border-white/20 dark:data-[state=checked]:border-yellow-400 dark:data-[state=checked]:bg-yellow-400 dark:data-[state=checked]:text-zinc-900",
-      className,
-    )}
-    {...props}
-  >
-    <CheckboxPrimitive.Indicator className={cn("flex items-center justify-center text-current")}>
-      <Check className="h-3 w-3" />
-    </CheckboxPrimitive.Indicator>
-  </CheckboxPrimitive.Root>
-));
-Checkbox.displayName = CheckboxPrimitive.Root.displayName;
+type CheckboxProps = Omit<BaseCheckbox.Root.Props, "className"> & {
+  className?: string;
+};
 
-export { Checkbox };
+/**
+ * Checkbox on the Base UI Checkbox primitive. Checked state uses --primary
+ * (grayscale), never decorative color. Neutral token surface; gray focus ring
+ * with an offset gap (DESIGN: focus = ring-2 ring-ring ring-offset-2
+ * ring-offset-background).
+ */
+function Checkbox({ className, ...props }: CheckboxProps) {
+  return (
+    <BaseCheckbox.Root
+      data-slot="checkbox"
+      className={cn(
+        "peer flex size-4 shrink-0 items-center justify-center rounded border border-input bg-background shadow-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground data-indeterminate:border-primary data-indeterminate:bg-primary data-indeterminate:text-primary-foreground",
+        className,
+      )}
+      {...props}
+    >
+      <BaseCheckbox.Indicator
+        data-slot="checkbox-indicator"
+        className="flex items-center justify-center text-current"
+      >
+        <CheckIcon className="size-3" />
+      </BaseCheckbox.Indicator>
+    </BaseCheckbox.Root>
+  );
+}
+
+export { Checkbox, type CheckboxProps };

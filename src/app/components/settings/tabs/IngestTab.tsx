@@ -107,7 +107,7 @@ export function IngestTab() {
       <div className="flex items-start gap-3">
         <Switch id="ingest-redact" checked={redact} onCheckedChange={handleRedactChange} className="mt-0.5" />
         <div className="space-y-0.5">
-          <Label htmlFor="ingest-redact" className="text-sm text-zinc-800 dark:text-zinc-100">
+          <Label htmlFor="ingest-redact">
             {t("settings.ingest.redact")}
           </Label>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{t("settings.ingest.redactHint")}</p>
