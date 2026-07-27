@@ -17,6 +17,10 @@ npx -y @startist/pentou@latest
 
 数据默认落在当前目录的 `pentou-data/`，只监听本机，无需密码。完整入门见 [`docs/user-guide.md`](./docs/user-guide.md)。
 
+![PenTou 主界面：左侧平台文件夹侧栏，中间对话正文，右侧常驻 AI 问答面板](./assets/demo/screenshot-Chats-main-interface.png)
+
+<sub>三栏主界面：平台文件夹侧栏（含条数） · 对话正文 · 常驻 AI 问答（自动携带当前对话作为上下文）</sub>
+
 ---
 
 ## 为什么现在值得用
@@ -41,9 +45,13 @@ npx -y @startist/pentou@latest
 - **Ingest Gateway**：幂等 upsert、密钥脱敏、超长会话自动降级瘦身，反复同步不产生垃圾副本。
 - **导入自动归类**：按平台落入对应文件夹，减少手动整理。
 
+![导入面板：拖拽导出文件、粘贴分享链接，以及 CLI 采集器与浏览器插件的接入说明](./assets/demo/screenshot-Import-interface.png)
+
+<sub>导入面板一处收口四条通道：平台导出文件、分享链接、CLI 采集器、浏览器插件，并直接列出各通道已支持的平台</sub>
+
 ### 2. 本地 Markdown 即真相源
 
-每条对话是 `data/conversations/<id>.md`（frontmatter + 消息正文）。索引可随时重建；目录可 Git 化、可整夹备份、可跨机拷贝。
+每条对话是数据目录下的一个 Markdown 文件（frontmatter + 消息正文）：npx 形态为 `pentou-data/conversations/<id>.md`，源码 / Docker 形态为 `data/conversations/<id>.md`。索引可随时重建；目录可 Git 化、可整夹备份、可跨机拷贝。
 
 ### 3. 检索与再加工
 
@@ -51,6 +59,10 @@ npx -y @startist/pentou@latest
 - **文档闭环**：一键转文档 / 消息摘录 / MinerU 解析 PDF·Docx·PPTX；批注驱动 AI 重写，版本可回滚。
 - **AI 侧边栏**：基于当前对话/文档上下文即时问答（BYOK），回答可再沉淀为文档。
 - **Obsidian 推送**：加工完成后一键进入你的最终知识库。
+
+![文档视图：正文居中排版，右侧自动生成目录，顶栏可编辑、让 AI 重写、查看版本历史、导入 Obsidian](./assets/demo/screenshot-Docs-main-interface.png)
+
+<sub>文档视图：右侧自动目录导航；顶栏一排就是加工闭环——编辑、让 AI 重写、版本历史、导入 Obsidian、问问 AI</sub>
 
 ### 4. 可用的产品体验
 
@@ -65,9 +77,9 @@ npx -y @startist/pentou@latest
 | --- | --- | --- |
 | **本机 `npx`** | 个人日常、零运维 | `npx -y @startist/pentou@latest` → [`docs/user-guide.md`](./docs/user-guide.md) |
 | **Docker** | NAS / 云主机长期服务 | [`docs/deployment.md`](./docs/deployment.md) |
-| **源码开发** | 贡献者 / 二次开发 | 见下方「本地开发」 |
+| **源码开发** | 贡献者 / 二次开发 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) |
 
-实例之间支持**一键迁移**（推送 / 拉取 + 差异预览），试用转正、多端同步、云回迁本机不必手拷文件。
+实例之间支持**一键迁移**（推送 / 拉取 + 差异预览），试用转正、多端同步、云回迁本机不必手拷文件。迁移能力目前是 R1：功能可用，真实双实例验收、中断续传与大媒体库流式传输仍在补。
 
 ---
 
@@ -103,6 +115,49 @@ docker run -d \
 
 ---
 
+## 让 AI 替你完成
+
+完全没有编程基础也能装。把下面整段提示词复制给任意 AI Agent（Claude Code、Cursor、Codex 等），让它替你检查环境、处理报错、启动 PenTou 并创建桌面一键启动脚本：
+
+<details>
+<summary>点开复制提示词</summary>
+
+```text
+请帮我在当前目录启动 Pentou（一个本地优先的 AI 对话管理器），并确保以后可以一键启动。
+
+目标命令：
+npx -y @startist/pentou@latest
+
+请严格按以下步骤执行：
+
+1. 环境检查：确认 node、npm、npx 是否可用，node 版本是否 >= 20。
+2. 执行目标命令。如果失败，不要停在报错处，请判断原因并处理，直到命令可以成功执行：
+   - 缺少 Node.js 或版本过低：按我当前的操作系统安装或引导我安装 LTS 版本；
+   - 网络 / registry 超时：尝试配置可用的 npm 镜像源后重试；
+   - 权限、缓存、PATH 或 npm 配置问题：修复后重试；
+   - 每次修复后重新运行目标命令验证，直到成功。
+3. 启动成功的判定标准：终端出现访问地址（形如 http://127.0.0.1:7766），且浏览器能打开该页面。
+   如果浏览器没有自动打开，把终端里的访问地址完整复制给我。
+4. 在我的桌面创建一个一键启动脚本，供以后直接启动：
+   - macOS：创建可双击的 .command 脚本（记得 chmod +x）；
+   - Windows：创建 .bat 脚本；
+   - Linux：创建可执行的 .sh 脚本；
+   - 脚本逻辑：进入本次启动所用的数据目录，然后执行 npx -y @startist/pentou@latest。
+5. 实际运行一次这个脚本，确认它能正确启动 Pentou（验证后可以停止服务）。
+6. 最后用简洁的中文告诉我：
+   - Pentou 的访问地址；
+   - 数据保存在哪个文件夹（备份时复制它即可）；
+   - 桌面脚本的完整路径，以及以后双击哪个文件启动。
+
+注意：不要安装与上述目标无关的任何软件；不要修改与 Node.js / npm 无关的系统配置。
+```
+
+</details>
+
+想自己动手的话，[`docs/user-guide.md`](./docs/user-guide.md) 里有三平台的桌面脚本写法与 FAQ；想跑源码或提 PR 见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
+
+---
+
 ## 文档导航
 
 | 文档 | 用途 |
@@ -113,32 +168,6 @@ docker run -d \
 | [`docs/deployment.md`](./docs/deployment.md) | Docker 部署与反代 |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | 贡献指南 |
 | [`SECURITY.md`](./SECURITY.md) | 安全策略与漏洞报告 |
-
----
-
-## 本地开发
-
-```bash
-pnpm install
-pnpm dev          # http://localhost:5173 ，开发态免鉴权
-```
-
-生产模式本机验证：
-
-```bash
-PENTOU_PASSWORD='your-password' DATA_DIR='./data' pnpm build:all && pnpm start
-# http://localhost:7766/
-```
-
-- **前端**：React + Vite + Tailwind CSS v4  
-- **后端**：自研 Vite 插件中间件（本地 I/O、导入解析、ingest、检索等）  
-- **存储**：Markdown 文件 + SQLite FTS（索引可重建）
-
-测试：
-
-```bash
-pnpm test
-```
 
 ---
 

@@ -28,6 +28,22 @@ pnpm dev   # 浏览器打开 http://localhost:5173
 
 开发模式不强制鉴权（本地直连无远程风险）。
 
+### 生产模式本机验证
+
+环境变量必须加在 `pnpm start` 这一句上——`pnpm start` 缺 `PENTOU_PASSWORD` 会直接 FATAL 退出，`DATA_DIR` 不给则回落到 Docker 路径 `/app/data`：
+
+```bash
+pnpm build:all
+PENTOU_PASSWORD='your-password' DATA_DIR='./data' pnpm start
+# 浏览器打开 http://localhost:7766/，会被引导到 /login
+```
+
+### 架构速览
+
+- **前端**：React + Vite + Tailwind CSS v4
+- **后端**：开发态是自研 Vite 插件中间件，生产态是同构的独立 Node 服务（`src/server/`，构建产物 `dist-server/`）——两态共用同一套 `/api/*` 实现
+- **存储**：Markdown 文件 + SQLite FTS（索引可重建，Markdown 是唯一真相源）
+
 ### 分支与 commit message
 
 - 从 `main` 拉分支：`feat/xxx` / `fix/xxx` / `docs/xxx`
@@ -40,6 +56,7 @@ pnpm dev   # 浏览器打开 http://localhost:5173
 
 ### PR 自查清单
 
+- [ ] `pnpm test` 通过；改到 UI 再跑 `pnpm build`，改到服务端再跑 `pnpm build:server`
 - [ ] `pnpm dev` 本地能跑，golden path 没坏
 - [ ] 改动控制在最小范围，无顺手"改善"无关代码
 - [ ] 若新增依赖：评估必要性、license 是否兼容 MIT
@@ -50,7 +67,7 @@ pnpm dev   # 浏览器打开 http://localhost:5173
 - TypeScript 严格模式
 - React + Vite + Tailwind CSS v4
 - 优先函数式组件 + Hooks
-- 不引入 UI 组件库（项目刻意保持轻量）
+- UI 走项目自有的 `@startist` registry primitives（shadcn 约定），不再额外引入第三方组件库
 
 ## 许可
 

@@ -150,8 +150,9 @@ docker run -d \
 ## 三、技术栈（简）
 
 - **前端**：React + Vite + Tailwind CSS v4；UI 走统一 registry / 设计系统  
-- **后端**：自研 Vite 插件中间件（I/O、导入、ingest、检索、文档、采集配置等）；npm 包以预构建产物分发  
+- **后端**：开发态自研 Vite 插件中间件，生产态同构的独立 Node 服务（`src/server/` → `dist-server/`），承载 I/O、导入、ingest、检索、文档、采集配置等 `/api/*`；npm 包以预构建产物分发  
 - **存储**：Markdown 真相源 + SQLite FTS（及可选向量层）  
+- **协作**：spec 驱动建设闭环 / debug 修复闭环，详见 [CONTRIBUTING.md](../CONTRIBUTING.md)  
 
 ---
 

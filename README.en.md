@@ -17,6 +17,10 @@ npx -y @startist/pentou@latest
 
 Data lands in `pentou-data/` in the current directory. It listens on localhost only, so no password is required. Full walkthrough: [`docs/user-guide.md`](./docs/user-guide.md) (in Chinese).
 
+![PenTou main window: platform folder sidebar on the left, conversation body in the middle, docked AI chat panel on the right](./assets/demo/screenshot-Chats-main-interface.png)
+
+<sub>The three-pane window: platform folders with counts · conversation body · a docked AI panel that already carries the open conversation as context</sub>
+
 ---
 
 ## Why it's worth using now
@@ -41,9 +45,13 @@ Data lands in `pentou-data/` in the current directory. It listens on localhost o
 - **Ingest gateway**: idempotent upserts, secret redaction, and automatic slimming of oversized sessions — syncing repeatedly won't litter your library with duplicates.
 - **Auto-filing on import**: conversations land in the folder matching their platform, so there's less to tidy by hand.
 
+![Import panel: drag in export files, paste a share link, and set up the CLI collector or browser extension](./assets/demo/screenshot-Import-interface.png)
+
+<sub>One panel for all four channels — platform exports, share links, CLI collector, browser extension — each listing the platforms it already supports</sub>
+
 ### 2. Local Markdown as the source of truth
 
-Each conversation is a Markdown file (frontmatter plus message body) under your data directory. The index can be rebuilt at any time; the directory can be put under Git, backed up wholesale, or copied to another machine.
+Each conversation is a Markdown file (frontmatter plus message body) under your data directory: `pentou-data/conversations/<id>.md` when launched via npx, `data/conversations/<id>.md` from source or in Docker. The index can be rebuilt at any time; the directory can be put under Git, backed up wholesale, or copied to another machine.
 
 ### 3. Search and rework
 
@@ -51,6 +59,10 @@ Each conversation is a Markdown file (frontmatter plus message body) under your 
 - **Document loop**: one-click conversion to a document, message excerpts, and MinerU parsing for PDF / Docx / PPTX. Annotations drive AI rewrites, and every version can be rolled back.
 - **AI sidebar**: ask questions against the current conversation or document (bring your own key); answers can be saved back as documents.
 - **Obsidian export**: push finished material into your permanent knowledge base.
+
+![Document view: body text centred, an auto-generated outline on the right, and a toolbar for editing, AI rewriting, version history and Obsidian export](./assets/demo/screenshot-Docs-main-interface.png)
+
+<sub>The document view (shown with the Chinese UI): an auto-generated outline on the right, and the whole rework loop in one toolbar — edit, AI rewrite, version history, push to Obsidian, ask AI</sub>
 
 ### 4. A product you can actually live in
 
@@ -65,9 +77,9 @@ Each conversation is a Markdown file (frontmatter plus message body) under your 
 | --- | --- | --- |
 | **Local `npx`** | Personal daily use, zero ops | `npx -y @startist/pentou@latest` → [`docs/user-guide.md`](./docs/user-guide.md) |
 | **Docker** | Long-running service on a NAS or cloud host | [`docs/deployment.md`](./docs/deployment.md) |
-| **From source** | Contributors and forks | See "Local development" below |
+| **From source** | Contributors and forks | [`CONTRIBUTING.md`](./CONTRIBUTING.md) |
 
-Instances support **one-click migration** (push / pull with a diff preview), so moving from a trial to a permanent setup, syncing across machines, or pulling from the cloud back to your laptop never requires copying files by hand.
+Instances support **one-click migration** (push / pull with a diff preview), so moving from a trial to a permanent setup, syncing across machines, or pulling from the cloud back to your laptop never requires copying files by hand. Migration is at R1: it works, but acceptance against two real instances, resume-after-interruption and streaming transfer for large media libraries are still being filled in.
 
 ---
 
@@ -103,6 +115,54 @@ The image supports `linux/amd64` and `linux/arm64`. Anything exposed to the inte
 
 ---
 
+## Let an AI agent do it for you
+
+You don't need to write a line of code to install this. Paste the prompt below into any AI agent (Claude Code, Cursor, Codex, …) and let it check your environment, work through any errors, start PenTou, and leave a one-click launcher on your desktop:
+
+<details>
+<summary>Click to copy the prompt</summary>
+
+```text
+Please start Pentou (a local-first AI conversation manager) in the current directory,
+and make sure I can start it with one click from now on.
+
+Target command:
+npx -y @startist/pentou@latest
+
+Follow these steps strictly:
+
+1. Environment check: confirm node, npm and npx are available, and that node is >= 20.
+2. Run the target command. If it fails, do not stop at the error — diagnose and fix it,
+   then retry until the command succeeds:
+   - Node.js missing or too old: install (or walk me through installing) the LTS release
+     for my operating system;
+   - Network / registry timeouts: configure a working npm mirror and retry;
+   - Permission, cache, PATH or npm config problems: fix them and retry;
+   - Re-run the target command after every fix until it works.
+3. Success means: the terminal prints an address (like http://127.0.0.1:7766) and that page
+   opens in a browser. If the browser does not open by itself, give me the full address.
+4. Create a one-click launcher on my desktop for future use:
+   - macOS: a double-clickable .command script (remember chmod +x);
+   - Windows: a .bat script;
+   - Linux: an executable .sh script;
+   - The script should cd into the data directory used for this run, then execute
+     npx -y @startist/pentou@latest.
+5. Actually run that script once to confirm it starts Pentou (you can stop the server after).
+6. Finally, tell me in plain language:
+   - the address where Pentou is running;
+   - which folder holds my data (copying that folder is my backup);
+   - the full path of the desktop script, and which file to double-click next time.
+
+Do not install anything unrelated to the goal above, and do not change system configuration
+unrelated to Node.js / npm.
+```
+
+</details>
+
+Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese) has the desktop launcher scripts for all three platforms plus an FAQ. To run from source or open a PR, see [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
+---
+
 ## Documentation
 
 | Document | Purpose |
@@ -113,34 +173,6 @@ The image supports `linux/amd64` and `linux/arm64`. Anything exposed to the inte
 | [`docs/deployment.md`](./docs/deployment.md) | Docker deployment and reverse proxy (Chinese) |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution guide |
 | [`SECURITY.md`](./SECURITY.md) | Security policy and vulnerability reporting |
-
----
-
-## Local development
-
-```bash
-git clone https://github.com/STArtppt/PenTou.git
-cd PenTou
-pnpm install
-pnpm dev          # http://localhost:5173 , no auth in dev mode
-```
-
-Verifying a production build locally:
-
-```bash
-PENTOU_PASSWORD='your-password' DATA_DIR='./data' pnpm build:all && pnpm start
-# http://localhost:7766/
-```
-
-Tests:
-
-```bash
-pnpm test
-```
-
-- **Frontend**: React + Vite + Tailwind CSS v4
-- **Backend**: purpose-built Vite plugin middleware (local I/O, import parsing, ingest, search, and more)
-- **Storage**: Markdown files plus SQLite FTS, with a rebuildable index
 
 ---
 
