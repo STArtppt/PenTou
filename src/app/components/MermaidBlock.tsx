@@ -5,6 +5,7 @@ import { useTranslation } from "../i18n";
 import { copyText } from "../utils/clipboard";
 import { renderMermaid, type MermaidTheme } from "../utils/mermaid";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/IconTooltip";
 import {
   Lightbox,
   LightboxBackdrop,
@@ -123,16 +124,17 @@ export function MermaidBlock({ source }: MermaidBlockProps) {
               {copied ? t("main.copied") : t("main.copy")}
             </Button>
           ) : (
-            <button
-              ref={fullscreenButtonRef}
-              type="button"
-              onClick={() => setFullscreenOpen(true)}
-              disabled={status.kind !== "ready"}
-              className="rounded p-1 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-foreground"
-              title={t("mermaid.fullscreen")}
-            >
-              <Maximize2 size={14} />
-            </button>
+            <IconTooltip label={t("mermaid.fullscreen")}>
+              <button
+                ref={fullscreenButtonRef}
+                type="button"
+                onClick={() => setFullscreenOpen(true)}
+                disabled={status.kind !== "ready"}
+                className="rounded p-1 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-foreground"
+              >
+                <Maximize2 size={14} />
+              </button>
+            </IconTooltip>
           )}
         </div>
       </div>
@@ -281,36 +283,42 @@ function MermaidFullscreenModal({ svg, bindFunctions, theme, labels, onClose }: 
         >
           <LightboxTitle className="sr-only">{labels.title}</LightboxTitle>
           <LightboxToolbar onClick={(event) => event.stopPropagation()}>
-            <button type="button" onClick={() => zoomBy(1 / 1.2)} className="rounded p-2 hover:bg-white/10" title={labels.zoomOut}>
-              <Minus size={16} />
-            </button>
+            <IconTooltip label={labels.zoomOut}>
+              <button type="button" onClick={() => zoomBy(1 / 1.2)} className="rounded p-2 hover:bg-white/10">
+                <Minus size={16} />
+              </button>
+            </IconTooltip>
             <span className="w-14 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
-            <button type="button" onClick={() => zoomBy(1.2)} className="rounded p-2 hover:bg-white/10" title={labels.zoomIn}>
-              <Plus size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setScale(1);
-                setPan({ x: 0, y: 0 });
-              }}
-              className="rounded p-2 hover:bg-white/10"
-              title={labels.reset}
-            >
-              <RotateCcw size={16} />
-            </button>
-            <button
-              type="button"
-              onMouseDown={(event) => {
-                event.stopPropagation();
-                onClose();
-              }}
-              onClick={(event) => event.stopPropagation()}
-              className="rounded p-2 hover:bg-white/10"
-              title={labels.close}
-            >
-              <X size={16} />
-            </button>
+            <IconTooltip label={labels.zoomIn}>
+              <button type="button" onClick={() => zoomBy(1.2)} className="rounded p-2 hover:bg-white/10">
+                <Plus size={16} />
+              </button>
+            </IconTooltip>
+            <IconTooltip label={labels.reset}>
+              <button
+                type="button"
+                onClick={() => {
+                  setScale(1);
+                  setPan({ x: 0, y: 0 });
+                }}
+                className="rounded p-2 hover:bg-white/10"
+              >
+                <RotateCcw size={16} />
+              </button>
+            </IconTooltip>
+            <IconTooltip label={labels.close}>
+              <button
+                type="button"
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                  onClose();
+                }}
+                onClick={(event) => event.stopPropagation()}
+                className="rounded p-2 hover:bg-white/10"
+              >
+                <X size={16} />
+              </button>
+            </IconTooltip>
           </LightboxToolbar>
 
           <div

@@ -91,7 +91,7 @@ describe("MermaidBlock", () => {
     expect(container.querySelector(".mermaid-svg")?.innerHTML).toContain("<svg");
 
     await act(async () => {
-      (container.querySelector('button[title="Show source"]') as HTMLButtonElement).click();
+      (container.querySelector('button[title="Show source"], button[aria-label="Show source"]') as HTMLButtonElement).click();
     });
 
     expect(container.querySelector("pre")?.textContent).toContain("flowchart TD");
@@ -127,16 +127,16 @@ describe("MermaidBlock", () => {
     const { container, unmount } = await renderBlock();
 
     await act(async () => {
-      (container.querySelector('button[title="Fullscreen"]') as HTMLButtonElement).click();
+      (container.querySelector('[aria-label="Fullscreen"] button, button[title="Fullscreen"], button[aria-label="Fullscreen"]') as HTMLButtonElement).click();
     });
 
-    expect(document.querySelector('button[title="Close"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label="Close"] button, button[title="Close"], button[aria-label="Close"]')).not.toBeNull();
 
     await act(async () => {
-      document.querySelector<HTMLButtonElement>('button[title="Close"]')?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      document.querySelector<HTMLButtonElement>('[aria-label="Close"] button, button[title="Close"], button[aria-label="Close"]')?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     });
 
-    expect(document.querySelector('button[title="Close"]')).toBeNull();
+    expect(document.querySelector('[aria-label="Close"] button, button[title="Close"], button[aria-label="Close"]')).toBeNull();
     unmount();
   });
 
@@ -144,7 +144,7 @@ describe("MermaidBlock", () => {
     const { container, unmount } = await renderBlock();
 
     await act(async () => {
-      (container.querySelector('button[title="Fullscreen"]') as HTMLButtonElement).click();
+      (container.querySelector('[aria-label="Fullscreen"] button, button[title="Fullscreen"], button[aria-label="Fullscreen"]') as HTMLButtonElement).click();
     });
 
     await waitFor(() => {
@@ -158,12 +158,12 @@ describe("MermaidBlock", () => {
     await act(async () => {
       surface.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(document.querySelector('button[title="Close"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label="Close"] button, button[title="Close"], button[aria-label="Close"]')).not.toBeNull();
 
     await act(async () => {
       mask.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(document.querySelector('button[title="Close"]')).toBeNull();
+    expect(document.querySelector('[aria-label="Close"] button, button[title="Close"], button[aria-label="Close"]')).toBeNull();
     unmount();
   });
 
@@ -171,7 +171,7 @@ describe("MermaidBlock", () => {
     const { container, unmount } = await renderBlock();
 
     await act(async () => {
-      (container.querySelector('button[title="Fullscreen"]') as HTMLButtonElement).click();
+      (container.querySelector('[aria-label="Fullscreen"] button, button[title="Fullscreen"], button[aria-label="Fullscreen"]') as HTMLButtonElement).click();
     });
 
     await waitFor(() => expect(document.querySelector('[data-testid="mermaid-fullscreen-surface"]')).not.toBeNull());
@@ -186,7 +186,7 @@ describe("MermaidBlock", () => {
     const { container, unmount } = await renderBlock();
 
     await act(async () => {
-      (container.querySelector('button[title="Fullscreen"]') as HTMLButtonElement).click();
+      (container.querySelector('[aria-label="Fullscreen"] button, button[title="Fullscreen"], button[aria-label="Fullscreen"]') as HTMLButtonElement).click();
     });
 
     await waitFor(() => expect(document.querySelector('[data-testid="mermaid-fullscreen-surface"]')).not.toBeNull());
@@ -200,7 +200,7 @@ describe("MermaidBlock", () => {
     const { container, unmount } = await renderBlock();
 
     await act(async () => {
-      (container.querySelector('button[title="Fullscreen"]') as HTMLButtonElement).click();
+      (container.querySelector('[aria-label="Fullscreen"] button, button[title="Fullscreen"], button[aria-label="Fullscreen"]') as HTMLButtonElement).click();
     });
 
     // 迁 @startist/lightbox 后 Popup 内容经 Base UI Portal 异步挂载，wheel 监听在其后注册。

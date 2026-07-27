@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { Bot, User, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff, MessageSquare } from "lucide-react";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/IconTooltip";
 import { toast } from "sonner";
 import { useAppContext, Message, Platform } from "../data";
 import { RightNav } from "./RightNav";
@@ -371,25 +372,27 @@ function MessageHeader({
           </span>
         )}
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={handleCopy}
-        className="size-7 text-zinc-400 opacity-100 transition-all md:opacity-0 md:group-hover/header:opacity-100"
-        title={t("main.copyMessage")}
-      >
-        {copied ? <Check size={14} /> : <Copy size={14} />}
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onExcerpt}
-        disabled={excerpting}
-        className="size-7 text-zinc-400 opacity-100 transition-all md:opacity-0 md:group-hover/header:opacity-100"
-        title={t("main.excerptConversation")}
-      >
-        {excerpting ? <Loader2 size={14} className="animate-spin" /> : <Quote size={14} />}
-      </Button>
+      <IconTooltip label={t("main.copyMessage")}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleCopy}
+          className="size-7 text-zinc-400 opacity-100 transition-all md:opacity-0 md:group-hover/header:opacity-100"
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+        </Button>
+      </IconTooltip>
+      <IconTooltip label={t("main.excerptConversation")}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onExcerpt}
+          disabled={excerpting}
+          className="size-7 text-zinc-400 opacity-100 transition-all md:opacity-0 md:group-hover/header:opacity-100"
+        >
+          {excerpting ? <Loader2 size={14} className="animate-spin" /> : <Quote size={14} />}
+        </Button>
+      </IconTooltip>
     </div>
   );
 }

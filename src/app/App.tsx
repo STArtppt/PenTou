@@ -6,6 +6,7 @@ import { MainContent } from "./components/MainContent";
 import { AppProvider, useAppContext } from "./data";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const ImportDrawer = lazy(() =>
   import("./components/ImportDrawer").then(m => ({ default: m.ImportDrawer }))
@@ -110,6 +111,7 @@ function AppContent() {
 
   return (
     <DndProvider backend={HTML5Backend}>
+      <TooltipProvider delay={300}>
       <div className="flex h-dvh w-full bg-white dark:bg-[#1A1A1A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans selection:bg-foreground/25 selection:text-foreground transition-colors duration-200">
         <style dangerouslySetInnerHTML={{ __html: `
           .custom-scrollbar::-webkit-scrollbar {
@@ -258,6 +260,7 @@ function AppContent() {
         {/* 统一 top-center（startist 默认）：顶部居中天然避开右下 Ask AI FAB（spec §5 I4） */}
         <Toaster position="top-center" />
       </div>
+      </TooltipProvider>
     </DndProvider>
   );
 }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/IconTooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -753,40 +754,42 @@ export function Sidebar() {
             <span className="group-hover:text-foreground transition-colors">PenTou</span>
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 text-muted-foreground"
-              onClick={() => setSettingsOpen(true)}
-              title={t("toolbar.settings")}
-            >
-              <Settings size={18} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 text-muted-foreground"
-              onClick={async () => {
-                try {
-                  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-                } catch { /* dev mode has no logout endpoint; fall through to redirect */ }
-                window.location.href = "/login";
-              }}
-              title="Logout"
-            >
-              <LogOut size={18} />
-            </Button>
-            {isMobile && (
+            <IconTooltip label={t("toolbar.settings")}>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-8 text-muted-foreground"
-                onClick={() => setMobileNavOpen(false)}
-                title={t("mobile.closeMenu")}
-                aria-label={t("mobile.closeMenu")}
+                onClick={() => setSettingsOpen(true)}
               >
-                <X size={18} />
+                <Settings size={18} />
               </Button>
+            </IconTooltip>
+            <IconTooltip label={t("toolbar.logout")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground"
+                onClick={async () => {
+                  try {
+                    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                  } catch { /* dev mode has no logout endpoint; fall through to redirect */ }
+                  window.location.href = "/login";
+                }}
+              >
+                <LogOut size={18} />
+              </Button>
+            </IconTooltip>
+            {isMobile && (
+              <IconTooltip label={t("mobile.closeMenu")}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-muted-foreground"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  <X size={18} />
+                </Button>
+              </IconTooltip>
             )}
           </div>
         </div>
@@ -807,16 +810,16 @@ export function Sidebar() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-8 shrink-0 text-muted-foreground"
-            onClick={() => setSearchOpen(true)}
-            title={t("search.button")}
-            aria-label={t("search.button")}
-          >
-            <Search size={16} />
-          </Button>
+          <IconTooltip label={t("search.button")}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8 shrink-0 text-muted-foreground"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search size={16} />
+            </Button>
+          </IconTooltip>
         </div>
 
         {/* Primary action: Import (elevated full-width surface pill).
@@ -851,42 +854,42 @@ export function Sidebar() {
                 <div className="flex items-center">
                   {/* 新建文件夹在移动端隐藏：其弹窗为桌面态居中模态，未适配触屏（US 调整批次 issue 3） */}
                   {!isMobile && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleNewFolder}
-                      disabled={selectionMode}
-                      className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
-                      title={t("sidebar.newFolder")}
-                      aria-label={t("sidebar.newFolder")}
-                    >
-                      <FolderPlus size={14} />
-                    </Button>
+                    <IconTooltip label={t("sidebar.newFolder")}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleNewFolder}
+                        disabled={selectionMode}
+                        className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+                      >
+                        <FolderPlus size={14} />
+                      </Button>
+                    </IconTooltip>
                   )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={toggleConvSort}
-                    className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
-                    title={convSortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}
-                    aria-label={convSortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}
-                  >
-                    {convSortAsc ? <ArrowUpNarrowWide size={14} /> : <ArrowDownNarrowWide size={14} />}
-                  </Button>
-                  {folders.length > 0 && (
+                  <IconTooltip label={convSortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      onClick={toggleAllChatFolders}
+                      onClick={toggleConvSort}
                       className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
-                      title={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
-                      aria-label={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
                     >
-                      {areAllChatFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+                      {convSortAsc ? <ArrowUpNarrowWide size={14} /> : <ArrowDownNarrowWide size={14} />}
                     </Button>
+                  </IconTooltip>
+                  {folders.length > 0 && (
+                    <IconTooltip label={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleAllChatFolders}
+                        className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+                      >
+                        {areAllChatFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+                      </Button>
+                    </IconTooltip>
                   )}
                 </div>
               </div>
@@ -1096,6 +1099,10 @@ function BatchToolbar({
   const { t } = useTranslation();
   const Icon =
     selectAllState === "all" ? CheckSquare : selectAllState === "partial" ? Minus : Square;
+  const moveLabel = t("sidebar.moveTo", { n: selectedCount });
+  const deleteLabel = t("sidebar.deleteN", { n: selectedCount });
+  const obsidianLabel = t("sidebar.obsidianExport");
+  const exitLabel = t("sidebar.exitSelect");
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400">
@@ -1112,44 +1119,52 @@ function BatchToolbar({
           {t("sidebar.selectedN", { n: selectedCount })}
         </span>
       </div>
-      <div className="flex gap-1.5">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onMoveClick}
-          disabled={!hasSelection}
-          className="h-auto flex-1 gap-1 px-2 py-1.5 text-xs"
-        >
-          <FolderInput size={12} /> {t("sidebar.moveTo", { n: selectedCount })}
-        </Button>
-        {showObsidian && (
+      <div className="flex items-center gap-1.5">
+        <IconTooltip label={moveLabel}>
           <Button
             variant="outline"
-            size="sm"
-            onClick={onObsidianClick}
+            size="icon"
+            onClick={onMoveClick}
             disabled={!hasSelection}
-            className="h-auto flex-1 gap-1 px-2 py-1.5 text-xs"
+            className="size-8"
           >
-            <Send size={12} /> {t("sidebar.obsidianExport")}
+            <FolderInput size={14} />
           </Button>
+        </IconTooltip>
+        {showObsidian && (
+          <IconTooltip label={obsidianLabel}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onObsidianClick}
+              disabled={!hasSelection}
+              className="size-8"
+            >
+              <Send size={14} />
+            </Button>
+          </IconTooltip>
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onDeleteClick}
-          disabled={!hasSelection}
-          className="h-auto flex-1 gap-1 border-destructive/30 px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-        >
-          <Trash2 size={12} /> {t("sidebar.deleteN", { n: selectedCount })}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onCancel}
-          className="h-auto gap-1 px-2 py-1.5 text-xs text-muted-foreground"
-        >
-          {t("sidebar.exitSelect")}
-        </Button>
+        <IconTooltip label={deleteLabel}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onDeleteClick}
+            disabled={!hasSelection}
+            className="size-8 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 size={14} />
+          </Button>
+        </IconTooltip>
+        <IconTooltip label={exitLabel}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCancel}
+            className="size-8 text-muted-foreground"
+          >
+            <X size={14} />
+          </Button>
+        </IconTooltip>
       </div>
     </div>
   );
@@ -1254,16 +1269,17 @@ function FolderItem({
           </span>
         </button>
         {!selectionMode && !isMobile && (
-          <button
-            onClick={toggleMenu}
-            className={clsx(
-              "p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/20 transition-opacity shrink-0",
-              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-foreground"
-            )}
-            title={t("sidebar.moreActions")}
-          >
-            <MoreHorizontal size={14} />
-          </button>
+          <IconTooltip label={t("sidebar.moreActions")}>
+            <button
+              onClick={toggleMenu}
+              className={clsx(
+                "p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/20 transition-opacity shrink-0",
+                menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-foreground"
+              )}
+            >
+              <MoreHorizontal size={14} />
+            </button>
+          </IconTooltip>
         )}
       </div>
 
@@ -1555,31 +1571,31 @@ function DocumentList({
           <div className="flex items-center">
             {/* 新建文件夹在移动端隐藏（US 调整批次 issue 3，同会话列表） */}
             {!hideNewFolder && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onNewFolder}
-                disabled={newFolderDisabled}
-                className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
-                title={t("sidebar.newFolder")}
-                aria-label={t("sidebar.newFolder")}
-              >
-                <FolderPlus size={14} />
-              </Button>
+              <IconTooltip label={t("sidebar.newFolder")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onNewFolder}
+                  disabled={newFolderDisabled}
+                  className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+                >
+                  <FolderPlus size={14} />
+                </Button>
+              </IconTooltip>
             )}
             {documentFolders.length > 0 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onToggleAllFolders}
-                className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
-                title={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
-                aria-label={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}
-              >
-                {areAllFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
-              </Button>
+              <IconTooltip label={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleAllFolders}
+                  className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+                >
+                  {areAllFoldersOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+                </Button>
+              </IconTooltip>
             )}
           </div>
         </div>
@@ -1705,16 +1721,17 @@ function DocumentFolderItem({
           </span>
         </button>
         {!selectionMode && !isMobile && (
-          <button
-            onClick={toggleMenu}
-            className={clsx(
-              "p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/20 transition-opacity shrink-0",
-              menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-foreground"
-            )}
-            title={t("sidebar.moreActions")}
-          >
-            <MoreHorizontal size={14} />
-          </button>
+          <IconTooltip label={t("sidebar.moreActions")}>
+            <button
+              onClick={toggleMenu}
+              className={clsx(
+                "p-1 rounded hover:bg-zinc-200 dark:hover:bg-white/20 transition-opacity shrink-0",
+                menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-foreground"
+              )}
+            >
+              <MoreHorizontal size={14} />
+            </button>
+          </IconTooltip>
         )}
       </div>
 

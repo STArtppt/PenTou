@@ -11,6 +11,7 @@ import React, {
 import { ChevronLeft, ChevronRight, ImageOff, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { defaultUrlTransform } from "react-markdown";
 import { useTranslation } from "../i18n";
+import { IconTooltip } from "@/components/IconTooltip";
 import {
   Lightbox,
   LightboxBackdrop,
@@ -282,65 +283,79 @@ export function ImageLightbox({ items, initialIndex, onClose }: ImageLightboxPro
             {index + 1} / {total}
           </span>
         )}
-        <button type="button" onClick={() => zoomBy(1 / 1.2)} className="rounded p-2 hover:bg-white/10" title={t("image.zoomOut")}>
-          <Minus size={16} />
-        </button>
+        <IconTooltip label={t("image.zoomOut")}>
+          <button type="button" onClick={() => zoomBy(1 / 1.2)} className="rounded p-2 hover:bg-white/10">
+            <Minus size={16} />
+          </button>
+        </IconTooltip>
         <span className="w-14 text-center text-xs tabular-nums">{Math.round(scale * 100)}%</span>
-        <button type="button" onClick={() => zoomBy(1.2)} className="rounded p-2 hover:bg-white/10" title={t("image.zoomIn")}>
-          <Plus size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={resetView}
-          className="rounded p-2 hover:bg-white/10"
-          title={t("image.reset")}
-        >
-          <RotateCcw size={16} />
-        </button>
-        <button
-          type="button"
-          onMouseDown={(event) => {
-            event.stopPropagation();
-            onClose();
-          }}
-          onClick={(event) => event.stopPropagation()}
-          className="rounded p-2 hover:bg-white/10"
-          title={t("image.close")}
-        >
-          <X size={16} />
-        </button>
+        <IconTooltip label={t("image.zoomIn")}>
+          <button type="button" onClick={() => zoomBy(1.2)} className="rounded p-2 hover:bg-white/10">
+            <Plus size={16} />
+          </button>
+        </IconTooltip>
+        <IconTooltip label={t("image.reset")}>
+          <button
+            type="button"
+            onClick={resetView}
+            className="rounded p-2 hover:bg-white/10"
+          >
+            <RotateCcw size={16} />
+          </button>
+        </IconTooltip>
+        <IconTooltip label={t("image.close")}>
+          <button
+            type="button"
+            onMouseDown={(event) => {
+              event.stopPropagation();
+              onClose();
+            }}
+            onClick={(event) => event.stopPropagation()}
+            className="rounded p-2 hover:bg-white/10"
+          >
+            <X size={16} />
+          </button>
+        </IconTooltip>
       </div>
 
       {multi && (
         <>
-          <button
-            type="button"
-            data-testid="image-lightbox-prev"
-            disabled={!canPrev}
-            onClick={(event) => {
-              event.stopPropagation();
-              goPrev();
-            }}
-            className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-lg border border-white/10 bg-zinc-900/90 p-2 text-zinc-100 shadow-2xl transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
-            title={t("image.prev")}
-            aria-label={t("image.prev")}
+          <IconTooltip
+            label={t("image.prev")}
+            side="right"
+            className="absolute left-4 top-1/2 z-10 -translate-y-1/2"
           >
-            <ChevronLeft size={20} />
-          </button>
-          <button
-            type="button"
-            data-testid="image-lightbox-next"
-            disabled={!canNext}
-            onClick={(event) => {
-              event.stopPropagation();
-              goNext();
-            }}
-            className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-lg border border-white/10 bg-zinc-900/90 p-2 text-zinc-100 shadow-2xl transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
-            title={t("image.next")}
-            aria-label={t("image.next")}
+            <button
+              type="button"
+              data-testid="image-lightbox-prev"
+              disabled={!canPrev}
+              onClick={(event) => {
+                event.stopPropagation();
+                goPrev();
+              }}
+              className="rounded-lg border border-white/10 bg-zinc-900/90 p-2 text-zinc-100 shadow-2xl transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ChevronLeft size={20} />
+            </button>
+          </IconTooltip>
+          <IconTooltip
+            label={t("image.next")}
+            side="left"
+            className="absolute right-4 top-1/2 z-10 -translate-y-1/2"
           >
-            <ChevronRight size={20} />
-          </button>
+            <button
+              type="button"
+              data-testid="image-lightbox-next"
+              disabled={!canNext}
+              onClick={(event) => {
+                event.stopPropagation();
+                goNext();
+              }}
+              className="rounded-lg border border-white/10 bg-zinc-900/90 p-2 text-zinc-100 shadow-2xl transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </IconTooltip>
         </>
       )}
 

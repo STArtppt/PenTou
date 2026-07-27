@@ -168,6 +168,8 @@ export const translations = {
     "toolbar.save": "Save",
     "toolbar.cancel": "Cancel",
     "toolbar.settings": "Settings",
+    "toolbar.logout": "Log out",
+    "toolbar.close": "Close",
     "toolbar.askAi": "Ask AI",
 
     // Document view
@@ -579,6 +581,8 @@ export const translations = {
     "toolbar.save": "保存",
     "toolbar.cancel": "取消",
     "toolbar.settings": "设置",
+    "toolbar.logout": "退出登录",
+    "toolbar.close": "关闭",
     "toolbar.askAi": "问问 AI",
 
     // Document view

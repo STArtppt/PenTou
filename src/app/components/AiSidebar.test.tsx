@@ -142,7 +142,9 @@ describe("AiSidebar", () => {
 
   it("renders the history popover without crashing", async () => {
     const { container, unmount } = await renderSidebar();
-    const historyButton = container.querySelector<HTMLButtonElement>('button[title="Chat history"]');
+    const historyButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Chat history"] button, button[aria-label="Chat history"]',
+    );
 
     expect(historyButton).not.toBeNull();
 

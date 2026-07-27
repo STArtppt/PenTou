@@ -1,4 +1,5 @@
 import { Menu, Import } from "lucide-react";
+import { IconTooltip } from "@/components/IconTooltip";
 import { useAppContext } from "../data";
 import { useTranslation } from "../i18n";
 import { formatDisplayDateTime } from "../utils/dateFormat";
@@ -28,13 +29,14 @@ export function MobileTopBar() {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-1 border-b border-zinc-200 bg-white/90 px-1 backdrop-blur-md dark:border-white/10 dark:bg-[#1A1A1A]/90 md:hidden">
-      <button
-        onClick={() => setMobileNavOpen(true)}
-        aria-label={t("mobile.openMenu")}
-        className="flex size-11 shrink-0 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
-      >
-        <Menu size={20} />
-      </button>
+      <IconTooltip label={t("mobile.openMenu")}>
+        <button
+          onClick={() => setMobileNavOpen(true)}
+          className="flex size-11 shrink-0 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
+        >
+          <Menu size={20} />
+        </button>
+      </IconTooltip>
 
       <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-1 text-center">
         <span className="w-full truncate text-sm font-semibold text-zinc-800 dark:text-zinc-100">
@@ -47,13 +49,14 @@ export function MobileTopBar() {
         )}
       </div>
 
-      <button
-        onClick={() => setDrawerOpen(true)}
-        aria-label={t("mobile.import")}
-        className="flex size-11 shrink-0 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
-      >
-        <Import size={20} />
-      </button>
+      <IconTooltip label={t("mobile.import")}>
+        <button
+          onClick={() => setDrawerOpen(true)}
+          className="flex size-11 shrink-0 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
+        >
+          <Import size={20} />
+        </button>
+      </IconTooltip>
     </header>
   );
 }

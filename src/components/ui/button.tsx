@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Button as BaseButton } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
 
@@ -42,14 +43,23 @@ type ButtonProps = Omit<BaseButton.Props, "className"> &
     className?: string;
   };
 
-function Button({ className, variant, size, ...props }: ButtonProps) {
-  return (
-    <BaseButton
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  );
-}
+/**
+ * forwardRef is required for React 18 consumers: Base UI Tooltip/Dialog/etc.
+ * attach anchor refs via the render prop. On React 19 `ref` is a normal prop
+ * and would flow through `...props`, but React 18 strips it unless forwarded.
+ */
+const Button = React.forwardRef<HTMLElement, ButtonProps>(
+  ({ className, variant, size, ...props }, ref) => {
+    return (
+      <BaseButton
+        ref={ref}
+        data-slot="button"
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    );
+  },
+);
+Button.displayName = "Button";
 
 export { Button, buttonVariants, type ButtonProps };

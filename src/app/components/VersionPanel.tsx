@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button, type ButtonProps } from "@/components/ui/button";
+import { IconTooltip } from "@/components/IconTooltip";
 import { useAppContext, DocumentVersion, ConversationVersion, VersionType } from "../data";
 import { useTranslation } from "../i18n";
 import { formatDisplayDateTime } from "../utils/dateFormat";
@@ -143,14 +144,16 @@ export function VersionPanel({ kind = "document" }: { kind?: VersionKind }) {
                   </p>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7 text-zinc-400"
-                onClick={() => setVersionPanelOpen(false)}
-              >
-                <X size={16} />
-              </Button>
+              <IconTooltip label={t("toolbar.close")}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-zinc-400"
+                  onClick={() => setVersionPanelOpen(false)}
+                >
+                  <X size={16} />
+                </Button>
+              </IconTooltip>
             </div>
 
             {versions.length <= 1 ? (

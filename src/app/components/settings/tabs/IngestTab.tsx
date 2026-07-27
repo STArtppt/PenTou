@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Info, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/IconTooltip";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -91,17 +92,17 @@ export function IngestTab() {
             readOnly
             onFocus={(e) => e.target.select()}
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="shrink-0"
-            onClick={handleCopy}
-            title={copied ? t("settings.ingest.copied") : t("settings.ingest.copy")}
-            aria-label={copied ? t("settings.ingest.copied") : t("settings.ingest.copy")}
-          >
-            {copied ? <Check /> : <Copy />}
-          </Button>
+          <IconTooltip label={copied ? t("settings.ingest.copied") : t("settings.ingest.copy")}>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              onClick={handleCopy}
+            >
+              {copied ? <Check /> : <Copy />}
+            </Button>
+          </IconTooltip>
         </div>
       </Field>
 

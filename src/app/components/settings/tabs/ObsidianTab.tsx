@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/IconTooltip";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -137,17 +138,17 @@ export function ObsidianTab({
               <SelectItem value={MANUAL_VAULT}>{t("settings.obsidian.manualEntry")}</SelectItem>
             </SelectContent>
           </Select>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={() => fetchVaults(true)}
-            disabled={loadingVaults}
-            title={t("settings.obsidian.refresh")}
-            aria-label={t("settings.obsidian.refresh")}
-          >
-            <RefreshCw size={16} className={loadingVaults ? "animate-spin" : undefined} />
-          </Button>
+          <IconTooltip label={t("settings.obsidian.refresh")}>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => fetchVaults(true)}
+              disabled={loadingVaults}
+            >
+              <RefreshCw size={16} className={loadingVaults ? "animate-spin" : undefined} />
+            </Button>
+          </IconTooltip>
         </div>
       </Field>
       {selected === MANUAL_VAULT && (

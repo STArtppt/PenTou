@@ -19,6 +19,7 @@ import {
 import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/IconTooltip";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAppContext, ImportSummary } from "../data";
@@ -427,15 +428,17 @@ export function ImportDrawer() {
                 </h2>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{subtitle}</p>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => !isImporting && setDrawerOpen(false)}
-                disabled={isImporting}
-                className="size-9 text-zinc-500"
-              >
-                <X size={20} />
-              </Button>
+              <IconTooltip label={t("toolbar.close")}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => !isImporting && setDrawerOpen(false)}
+                  disabled={isImporting}
+                  className="size-9 text-zinc-500"
+                >
+                  <X size={20} />
+                </Button>
+              </IconTooltip>
             </div>
 
             <div
@@ -799,17 +802,17 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
               {savingToken ? t("import.doc.saving") : t("import.doc.saveToken")}
             </Button>
             {configured && (
-              <Button
-                type="button"
-                variant="danger"
-                size="icon"
-                onClick={() => setClearConfirmOpen(true)}
-                disabled={savingToken}
-                title={t("import.doc.clearToken")}
-                aria-label={t("import.doc.clearToken")}
-              >
-                <Trash2 size={16} />
-              </Button>
+              <IconTooltip label={t("import.doc.clearToken")}>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="icon"
+                  onClick={() => setClearConfirmOpen(true)}
+                  disabled={savingToken}
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </IconTooltip>
             )}
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{t("import.doc.privacyNote")}</p>

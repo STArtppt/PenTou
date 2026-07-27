@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/IconTooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, MessageSquare, Plus, Settings, Square, Trash2, X } from "lucide-react";
@@ -472,16 +473,17 @@ export function AiSidebar() {
             <span className="min-w-0 flex-1 truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
               {llmConfig.model || t("settings.llm.model")}
             </span>
-            <Button
-              variant="primary"
-              size="icon"
-              onClick={streamingId ? handleStop : () => handleSend()}
-              disabled={!streamingId && !input.trim()}
-              className="size-8 transition-[opacity,transform] hover:scale-[1.02] active:scale-95 disabled:opacity-30"
-              title={streamingId ? t("aiSidebar.stop") : t("aiSidebar.send")}
-            >
-              {streamingId ? <Square size={14} fill="currentColor" /> : <CornerDownLeft size={16} />}
-            </Button>
+            <IconTooltip label={streamingId ? t("aiSidebar.stop") : t("aiSidebar.send")}>
+              <Button
+                variant="primary"
+                size="icon"
+                onClick={streamingId ? handleStop : () => handleSend()}
+                disabled={!streamingId && !input.trim()}
+                className="size-8 transition-[opacity,transform] hover:scale-[1.02] active:scale-95 disabled:opacity-30"
+              >
+                {streamingId ? <Square size={14} fill="currentColor" /> : <CornerDownLeft size={16} />}
+              </Button>
+            </IconTooltip>
           </div>
         </div>
       </footer>
@@ -602,18 +604,19 @@ function HistoryPanel({
                 <span className="shrink-0 text-zinc-400 dark:text-zinc-500">{formatRelativeTime(session.updatedAt, language)}</span>
               </div>
             </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="mr-1 size-7 text-zinc-400 hover:bg-destructive/10 hover:text-destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(session.id);
-              }}
-              title={t("aiSidebar.delete")}
-            >
-              <Trash2 size={14} />
-            </Button>
+            <IconTooltip label={t("aiSidebar.delete")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mr-1 size-7 text-zinc-400 hover:bg-destructive/10 hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(session.id);
+                }}
+              >
+                <Trash2 size={14} />
+              </Button>
+            </IconTooltip>
           </div>
         ))}
       </div>
@@ -649,18 +652,18 @@ function EmptyState({ activeView, onAsk, faded }: { activeView: "chat" | "doc"; 
 
 function IconButton({ title, disabled, onClick, icon }: { title: string; disabled?: boolean; onClick: () => void; icon: React.ReactNode }) {
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      title={title}
-      aria-label={title}
-      disabled={disabled}
-      onClick={onClick}
-      className="size-8 text-zinc-600 dark:text-zinc-400"
-    >
-      {icon}
-    </Button>
+    <IconTooltip label={title}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        disabled={disabled}
+        onClick={onClick}
+        className="size-8 text-zinc-600 dark:text-zinc-400"
+      >
+        {icon}
+      </Button>
+    </IconTooltip>
   );
 }
 
@@ -723,13 +726,17 @@ function MessageBubble({
         <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           {message.status === "aborted" && <span className="mr-1 text-xs text-zinc-400 dark:text-zinc-500">{t("aiSidebar.aborted")}</span>}
           {streaming && <Loader2 size={13} className="animate-spin text-zinc-400 dark:text-zinc-500" />}
-          <Button variant="ghost" size="icon" className="size-7 text-zinc-400" onClick={onCopy} title={t("main.copy")}>
-            {copied ? <Check size={13} /> : <Copy size={13} />}
-          </Button>
-          {message.content.trim() && (
-            <Button variant="ghost" size="icon" className="size-7 text-zinc-400" onClick={onToDoc} title={t("aiSidebar.toDoc")}>
-              <FileText size={13} />
+          <IconTooltip label={t("main.copy")}>
+            <Button variant="ghost" size="icon" className="size-7 text-zinc-400" onClick={onCopy}>
+              {copied ? <Check size={13} /> : <Copy size={13} />}
             </Button>
+          </IconTooltip>
+          {message.content.trim() && (
+            <IconTooltip label={t("aiSidebar.toDoc")}>
+              <Button variant="ghost" size="icon" className="size-7 text-zinc-400" onClick={onToDoc}>
+                <FileText size={13} />
+              </Button>
+            </IconTooltip>
           )}
         </div>
       )}
