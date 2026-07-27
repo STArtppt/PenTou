@@ -77,7 +77,7 @@ Each conversation is a Markdown file (frontmatter plus message body) under your 
 | --- | --- | --- |
 | **Local `npx`** | Personal daily use, zero ops | `npx -y @startist/pentou@latest` → [`docs/user-guide.md`](./docs/user-guide.md) |
 | **Docker** | Long-running service on a NAS or cloud host | [`docs/deployment.md`](./docs/deployment.md) |
-| **From source** | Contributors and forks | [`CONTRIBUTING.md`](./CONTRIBUTING.md) |
+| **From source** | Contributors and forks | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) |
 
 Instances support **one-click migration** (push / pull with a diff preview), so moving from a trial to a permanent setup, syncing across machines, or pulling from the cloud back to your laptop never requires copying files by hand. Migration is at R1: it works, but acceptance against two real instances, resume-after-interruption and streaming transfer for large media libraries are still being filled in.
 
@@ -159,7 +159,7 @@ unrelated to Node.js / npm.
 
 </details>
 
-Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese) has the desktop launcher scripts for all three platforms plus an FAQ. To run from source or open a PR, see [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese) has the desktop launcher scripts for all three platforms plus an FAQ. To run from source or open a PR, see [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md).
 
 ---
 
@@ -171,8 +171,8 @@ Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese)
 | [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | Full product introduction and capability reference (Chinese) |
 | [`docs/user-guide.md`](./docs/user-guide.md) | Local `npx` user guide (Chinese) |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker deployment and reverse proxy (Chinese) |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution guide |
-| [`SECURITY.md`](./SECURITY.md) | Security policy and vulnerability reporting |
+| [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | Contribution guide |
+| [`docs/SECURITY.md`](./docs/SECURITY.md) | Security policy and vulnerability reporting |
 
 ---
 

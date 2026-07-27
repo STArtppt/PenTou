@@ -12,7 +12,7 @@ fi
 
 # Entire src/docs/ is the spec-driven internal collab tree — never publish.
 # User-facing docs live under top-level docs/ (curated by the maintainer).
-BLACKLIST_REGEX='^(CLAUDE\.md|AGENTS\.md|EXAMPLES\.md|DESIGN\.md|skills/|rules/|guidelines/|\.claude/|\.grok/|\.waylog/|src/docs/|openspec/|pentou-data/)'
+BLACKLIST_REGEX='^(CLAUDE\.md|AGENTS\.md|DESIGN\.md|skills/|rules/|guidelines/|\.claude/|\.grok/|\.waylog/|src/docs/|openspec/|pentou-data/)'
 
 OFFENDERS=$(git diff --cached --name-only --diff-filter=ACM | grep -E "$BLACKLIST_REGEX" || true)
 

@@ -77,7 +77,7 @@ npx -y @startist/pentou@latest
 | --- | --- | --- |
 | **本机 `npx`** | 个人日常、零运维 | `npx -y @startist/pentou@latest` → [`docs/user-guide.md`](./docs/user-guide.md) |
 | **Docker** | NAS / 云主机长期服务 | [`docs/deployment.md`](./docs/deployment.md) |
-| **源码开发** | 贡献者 / 二次开发 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) |
+| **源码开发** | 贡献者 / 二次开发 | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) |
 
 实例之间支持**一键迁移**（推送 / 拉取 + 差异预览），试用转正、多端同步、云回迁本机不必手拷文件。迁移能力目前是 R1：功能可用，真实双实例验收、中断续传与大媒体库流式传输仍在补。
 
@@ -154,7 +154,7 @@ npx -y @startist/pentou@latest
 
 </details>
 
-想自己动手的话，[`docs/user-guide.md`](./docs/user-guide.md) 里有三平台的桌面脚本写法与 FAQ；想跑源码或提 PR 见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
+想自己动手的话，[`docs/user-guide.md`](./docs/user-guide.md) 里有三平台的桌面脚本写法与 FAQ；想跑源码或提 PR 见 [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md)。
 
 ---
 
@@ -166,8 +166,8 @@ npx -y @startist/pentou@latest
 | [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | 完整产品介绍与能力说明 |
 | [`docs/user-guide.md`](./docs/user-guide.md) | 本机 `npx` 用户指南 |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker 部署与反代 |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | 贡献指南 |
-| [`SECURITY.md`](./SECURITY.md) | 安全策略与漏洞报告 |
+| [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | 贡献指南 |
+| [`docs/SECURITY.md`](./docs/SECURITY.md) | 安全策略与漏洞报告 |
 
 ---
 

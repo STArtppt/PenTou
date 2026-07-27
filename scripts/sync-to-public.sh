@@ -25,7 +25,7 @@ AUTHOR_NAME="${SYNC_AUTHOR_NAME:-}"
 # 与 public 分支 .githooks/pre-commit 黑名单保持一致（改这里必须同步改 hook 与 guide §2.3.9）
 # 注意：`skills` 只挡根级 plane A 工程技能；plane B 产品技能 `data/skills/` 可分发，故意不列入。
 BLACKLIST_PATHS=(
-  CLAUDE.md AGENTS.md EXAMPLES.md DESIGN.md
+  CLAUDE.md AGENTS.md DESIGN.md
   skills rules guidelines
   .claude .grok .waylog
   src/docs openspec

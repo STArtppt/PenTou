@@ -71,4 +71,4 @@ PENTOU_PASSWORD='your-password' DATA_DIR='./data' pnpm start
 
 ## 许可
 
-提交 PR 即同意你的贡献以 [MIT License](./LICENSE) 授权。
+提交 PR 即同意你的贡献以 [MIT License](../LICENSE) 授权。
