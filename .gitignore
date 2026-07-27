@@ -11,6 +11,10 @@ lerna-debug.log*
 dist/
 dist-server/
 extension/dist/
+# Extension Chrome Web Store upload package (rebuild via browser-extension guide §9.2)
+extension/*.zip
+# Local store listing screenshots (not source; upload only to CWS console)
+extension/screenshot*.png
 tests/
 vite-plugins/**/*.test.ts
 *.tsbuildinfo
