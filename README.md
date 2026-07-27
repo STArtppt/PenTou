@@ -1,21 +1,24 @@
-# PenTou 笔头 — 本地优先的 AI 对话知识库
+<div align="center">
 
-[English](./README.en.md) | 简体中文
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/images/logo_dark.png">
+  <img src="./assets/images/logo.png" alt="PenTou 笔头" width="112">
+</picture>
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+# PenTou 笔头
+
+**好记性不如烂笔头。**
+
+和 AI 聊出来的东西，关掉标签页就找不回了。<br>
+PenTou 把散落在十几个平台的对话收进本机，沉淀成**可检索、可加工、可迁移**的 Markdown 知识资产。
+
+简体中文 | [English](./README.en.md)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![npm](https://img.shields.io/npm/v/@startist/pentou?label=npm)](https://www.npmjs.com/package/@startist/pentou)
 ![Platform](https://img.shields.io/badge/platform-linux%2Famd64%20%7C%20linux%2Farm64-blue.svg)
-![npm](https://img.shields.io/npm/v/@startist/pentou?label=npm)
 
-> **好记性不如烂笔头。**  
-> 把散落在 ChatGPT、Claude、DeepSeek、Cursor、Codex、Copilot 等平台的 AI 对话，沉淀为**可检索、可加工、可迁移**的本地知识资产。
-
-**当前状态：已具备日常高可用价值。** 一条命令即可在本机跑起来；采集、检索、文档提炼、AI 二次问答、私有化部署形成完整闭环——不是 demo，是可以天天用的工作台。
-
-```bash
-npx -y @startist/pentou@latest
-```
-
-数据默认落在当前目录的 `pentou-data/`，只监听本机，无需密码。完整入门见 [`docs/user-guide.md`](./docs/user-guide.md)。
+</div>
 
 ![PenTou 主界面：左侧平台文件夹侧栏，中间对话正文，右侧常驻 AI 问答面板](./assets/demo/screenshot-Chats-main-interface.png)
 
@@ -23,7 +26,19 @@ npx -y @startist/pentou@latest
 
 ---
 
+## 适合谁
+
+- 每天跨多个 AI 产品工作、需要**统一留存与回查**的重度用户
+- 要把对话提炼成文章、方案、笔记的**知识工作者**
+- 用 Claude Code / Cursor / Codex 等 agent、希望会话**自动归档**的开发者
+- 坚持数据自持、拒绝云端锁定的隐私敏感用户
+- 已有 Obsidian / Markdown / Git 工作流的人
+
+---
+
 ## 为什么现在值得用
+
+**当前状态：已具备日常高可用价值。** 一条命令即可在本机跑起来；采集、检索、文档提炼、AI 二次问答、私有化部署形成完整闭环——不是 demo，是可以天天用的工作台。
 
 | 痛点 | PenTou 的答案 |
 | --- | --- |
@@ -95,6 +110,8 @@ npx -y @startist/pentou@latest
 # 3. 浏览器打开终端提示的地址（默认 http://127.0.0.1:7766）
 # 4. 点 Import 导入第一条对话，或配置 CLI 采集 / 浏览器插件
 ```
+
+数据默认落在当前目录的 `pentou-data/`，只监听本机、无需密码；备份就是把这个文件夹整夹复制走。完整入门见 [`docs/user-guide.md`](./docs/user-guide.md)。
 
 Docker（私有服务）：
 
@@ -171,29 +188,14 @@ npx -y @startist/pentou@latest
 
 ---
 
-## 适合谁
-
-- 每天跨多个 AI 产品工作、需要**统一留存与回查**的重度用户  
-- 要把对话提炼成文章、方案、笔记的**知识工作者**  
-- 用 Claude Code / Cursor / Codex 等 agent、希望会话**自动归档**的开发者  
-- 坚持数据自持、拒绝云端锁定的隐私敏感用户  
-- 已有 Obsidian / Markdown / Git 工作流的人  
-
----
-
-## 设计取舍
-
-| 选择 | 不选择 | 原因 |
-| --- | --- | --- |
-| 本地 Markdown | 专有云库 | 数据归属用户，工具链通用 |
-| 一对话一文件 | 巨型单一库文件 | 易备份、易 diff、易迁移 |
-| BYOK | 内置付费模型墙 | 成本与隐私由你掌控 |
-| 轻量自研后端 | 重型框架 | 单仓即可端到端运行 |
-
-> **PenTou — 停止碎片化对话，开始构建属于你的 AI 知识资产。**
-
----
-
 ## 协议
 
 [MIT](./LICENSE) © 2026 STArtppt
+
+---
+
+<div align="center">
+
+**PenTou — 停止碎片化对话，开始构建属于你的 AI 知识资产。**
+
+</div>

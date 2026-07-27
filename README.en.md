@@ -1,21 +1,24 @@
-# PenTou — A Local-First Knowledge Base for AI Conversations
+<div align="center">
 
-English | [简体中文](./README.md)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/images/logo_dark.png">
+  <img src="./assets/images/logo.png" alt="PenTou" width="112">
+</picture>
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+# PenTou
+
+**The palest ink beats the best memory.**
+
+Whatever you worked out with an AI is gone the moment you close the tab.<br>
+PenTou pulls those conversations off a dozen platforms onto your own machine, as Markdown that stays **searchable, editable, and portable**.
+
+[简体中文](./README.md) | English
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![npm](https://img.shields.io/npm/v/@startist/pentou?label=npm)](https://www.npmjs.com/package/@startist/pentou)
 ![Platform](https://img.shields.io/badge/platform-linux%2Famd64%20%7C%20linux%2Farm64-blue.svg)
-![npm](https://img.shields.io/npm/v/@startist/pentou?label=npm)
 
-> **The palest ink beats the best memory.**
-> Turn AI conversations scattered across ChatGPT, Claude, DeepSeek, Cursor, Codex and Copilot into local knowledge that is **searchable, editable, and portable**.
-
-**Status: ready for daily use.** One command gets it running on your machine. Capture, search, distillation into documents, follow-up Q&A, and self-hosted deployment form a complete loop — this is a workbench you can use every day, not a demo.
-
-```bash
-npx -y @startist/pentou@latest
-```
-
-Data lands in `pentou-data/` in the current directory. It listens on localhost only, so no password is required. Full walkthrough: [`docs/user-guide.md`](./docs/user-guide.md) (in Chinese).
+</div>
 
 ![PenTou main window: platform folder sidebar on the left, conversation body in the middle, docked AI chat panel on the right](./assets/demo/screenshot-Chats-main-interface.png)
 
@@ -23,7 +26,19 @@ Data lands in `pentou-data/` in the current directory. It listens on localhost o
 
 ---
 
+## Who it's for
+
+- Heavy users working across several AI products daily who need **one place to keep and re-find** everything
+- **Knowledge workers** turning conversations into articles, proposals and notes
+- Developers running Claude Code / Cursor / Codex who want sessions **archived automatically**
+- Privacy-minded people who insist on owning their data rather than renting it from a cloud
+- Anyone already living in an Obsidian / Markdown / Git workflow
+
+---
+
 ## Why it's worth using now
+
+**Status: ready for daily use.** One command gets it running on your machine. Capture, search, distillation into documents, follow-up Q&A, and self-hosted deployment form a complete loop — this is a workbench you can use every day, not a demo.
 
 | Pain point | What PenTou does |
 | --- | --- |
@@ -95,6 +110,8 @@ npx -y @startist/pentou@latest
 # 3. Open the address printed in the terminal (http://127.0.0.1:7766 by default)
 # 4. Click Import for your first conversation, or set up the CLI collector / browser extension
 ```
+
+Data lands in `pentou-data/` in the current directory. It listens on localhost only, so no password is required, and backing up means copying that one folder. Full walkthrough: [`docs/user-guide.md`](./docs/user-guide.md) (in Chinese).
 
 Docker (self-hosted service):
 
@@ -176,29 +193,14 @@ Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese)
 
 ---
 
-## Who it's for
-
-- Heavy users working across several AI products daily who need **one place to keep and re-find** everything
-- **Knowledge workers** turning conversations into articles, proposals and notes
-- Developers running Claude Code / Cursor / Codex who want sessions **archived automatically**
-- Privacy-minded people who insist on owning their data rather than renting it from a cloud
-- Anyone already living in an Obsidian / Markdown / Git workflow
-
----
-
-## Design tradeoffs
-
-| Chosen | Rejected | Why |
-| --- | --- | --- |
-| Local Markdown | Proprietary cloud store | The data belongs to you, and the tooling is universal |
-| One file per conversation | A single monolithic library file | Easy to back up, diff and migrate |
-| Bring your own key | A built-in paywalled model | You control both cost and privacy |
-| A small purpose-built backend | A heavyweight framework | One repo runs the whole thing end to end |
-
-> **PenTou — stop fragmenting your conversations, start building your own AI knowledge base.**
-
----
-
 ## License
 
 [MIT](./LICENSE) © 2026 STArtppt
+
+---
+
+<div align="center">
+
+**PenTou — stop fragmenting your conversations, start building your own AI knowledge base.**
+
+</div>
