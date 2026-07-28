@@ -60,6 +60,8 @@ PenTou pulls those conversations off a dozen platforms onto your own machine, as
 - **Ingest gateway**: idempotent upserts, secret redaction, and automatic slimming of oversized sessions — syncing repeatedly won't litter your library with duplicates.
 - **Auto-filing on import**: conversations land in the folder matching their platform, so there's less to tidy by hand.
 
+Setting up either automatic channel — and excluding the projects you'd rather not upload — is covered in [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) (Chinese).
+
 ![Import panel: drag in export files, paste a share link, and set up the CLI collector or browser extension](./assets/demo/screenshot-Import-interface.png)
 
 <sub>One panel for all four channels — platform exports, share links, CLI collector, browser extension — each listing the platforms it already supports</sub>
@@ -108,7 +110,7 @@ node -v
 npx -y @startist/pentou@latest
 
 # 3. Open the address printed in the terminal (http://127.0.0.1:7766 by default)
-# 4. Click Import for your first conversation, or set up the CLI collector / browser extension
+# 4. Click Import for your first conversation, or set up automatic capture (docs/auto-collect-guide.md)
 ```
 
 Data lands in `pentou-data/` in the current directory. It listens on localhost only, so no password is required, and backing up means copying that one folder. Full walkthrough: [`docs/user-guide.md`](./docs/user-guide.md) (in Chinese).
@@ -187,6 +189,7 @@ Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese)
 | [`docs/product-intro.md`](./docs/product-intro.md) | Short product introduction, for sharing (Chinese) |
 | [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | Full product introduction and capability reference (Chinese) |
 | [`docs/user-guide.md`](./docs/user-guide.md) | Local `npx` user guide (Chinese) |
+| [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) | Automatic capture guide — CLI collector + browser extension (Chinese) |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker deployment and reverse proxy (Chinese) |
 | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | Contribution guide |
 | [`docs/SECURITY.md`](./docs/SECURITY.md) | Security policy and vulnerability reporting |

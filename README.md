@@ -60,6 +60,8 @@ PenTou 把散落在十几个平台的对话收进本机，沉淀成**可检索�
 - **Ingest Gateway**：幂等 upsert、密钥脱敏、超长会话自动降级瘦身，反复同步不产生垃圾副本。
 - **导入自动归类**：按平台落入对应文件夹，减少手动整理。
 
+两条自动通道怎么开、怎么排除敏感项目，见 [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md)。
+
 ![导入面板：拖拽导出文件、粘贴分享链接，以及 CLI 采集器与浏览器插件的接入说明](./assets/demo/screenshot-Import-interface.png)
 
 <sub>导入面板一处收口四条通道：平台导出文件、分享链接、CLI 采集器、浏览器插件，并直接列出各通道已支持的平台</sub>
@@ -108,7 +110,7 @@ node -v
 npx -y @startist/pentou@latest
 
 # 3. 浏览器打开终端提示的地址（默认 http://127.0.0.1:7766）
-# 4. 点 Import 导入第一条对话，或配置 CLI 采集 / 浏览器插件
+# 4. 点 Import 导入第一条对话，或配置自动采集（docs/auto-collect-guide.md）
 ```
 
 数据默认落在当前目录的 `pentou-data/`，只监听本机、无需密码；备份就是把这个文件夹整夹复制走。完整入门见 [`docs/user-guide.md`](./docs/user-guide.md)。
@@ -182,6 +184,7 @@ npx -y @startist/pentou@latest
 | [`docs/product-intro.md`](./docs/product-intro.md) | 短版产品介绍（对外分享） |
 | [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | 完整产品介绍与能力说明 |
 | [`docs/user-guide.md`](./docs/user-guide.md) | 本机 `npx` 用户指南 |
+| [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) | 自动采集指南（CLI 采集器 + 浏览器插件） |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker 部署与反代 |
 | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | 贡献指南 |
 | [`docs/SECURITY.md`](./docs/SECURITY.md) | 安全策略与漏洞报告 |
