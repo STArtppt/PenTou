@@ -1053,6 +1053,8 @@ export async function handleApiRequest(
       json(res, 200, { ok: true, result: mergeMigrationFolders(ctx.dataDir, {
         folders: Array.isArray(body?.folders) ? body.folders : [],
         documentFolders: Array.isArray(body?.documentFolders) ? body.documentFolders : [],
+        // 旧版本对端不带这个字段，缺省空清单 → 目标端项目原样保留
+        documentProjects: Array.isArray(body?.documentProjects) ? body.documentProjects : [],
       }) });
     } catch (e) {
       json(res, 400, { error: String(e) });

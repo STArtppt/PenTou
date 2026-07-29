@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { compareMigrationManifests, createMigrationManifest, isMigrationPathAllowed } from "./manifest";
-import { mergeFolderArrays } from "./merge-folders";
+import { mergeFolderArrays, mergeFolderBundleIntoDataDir, readFolderBundle } from "./merge-folders";
 import { receiveMigrationFile } from "./receiver";
 
 let dir = "";
@@ -139,6 +139,66 @@ describe("migration receiver and folders", () => {
       { id: "b", name: "target B" },
       { id: "c", name: "source C" },
     ]);
+  });
+});
+
+// 项目清单不在文件清单里（它是顶层 json），只能随文件夹批一起搬。漏搬的后果不是
+// "少个分组"，而是文档 frontmatter 的 projectId 指向不存在的项目 → 文档在任何视图下都看不见。
+describe("migration folder bundle carries document projects", () => {
+  const project = (id: string, sourceKey: string) =>
+    ({ id, name: sourceKey, description: "", sourceKey, createdAt: "2026-07-01T00:00:00.000Z" });
+
+  it("reads the project list alongside the two folder lists", () => {
+    write("folders.json", JSON.stringify([{ id: "f_1", name: "chat" }]));
+    write("document-folders.json", JSON.stringify([{ id: "df_1", name: "guides", projectId: "dp_a" }]));
+    write("document-projects.json", JSON.stringify([project("dp_a", "pentou")]));
+
+    expect(readFolderBundle(dir)).toEqual({
+      folders: [{ id: "f_1", name: "chat" }],
+      documentFolders: [{ id: "df_1", name: "guides", projectId: "dp_a" }],
+      documentProjects: [project("dp_a", "pentou")],
+    });
+  });
+
+  it("merges projects by id so migrated documents keep a project that exists", () => {
+    write("document-projects.json", JSON.stringify([project("dp_target", "notes")]));
+
+    const result = mergeFolderBundleIntoDataDir(dir, {
+      folders: [],
+      documentFolders: [],
+      documentProjects: [project("dp_source", "pentou")],
+    });
+
+    const merged = JSON.parse(fs.readFileSync(path.join(dir, "document-projects.json"), "utf-8"));
+    expect(merged.map((p: any) => p.id).sort()).toEqual(["dp_source", "dp_target"]);
+    expect(result.documentProjects).toEqual({ source: 1, result: 2 });
+  });
+
+  it("leaves the target's projects untouched when an older peer sends no project list", () => {
+    write("document-projects.json", JSON.stringify([project("dp_target", "notes")]));
+
+    const result = mergeFolderBundleIntoDataDir(dir, { folders: [], documentFolders: [] });
+
+    const merged = JSON.parse(fs.readFileSync(path.join(dir, "document-projects.json"), "utf-8"));
+    expect(merged).toEqual([project("dp_target", "notes")]);
+    expect(result.documentProjects).toEqual({ source: 0, result: 1 });
+  });
+
+  it("creates the project list on a target that never had one", () => {
+    mergeFolderBundleIntoDataDir(dir, {
+      folders: [],
+      documentFolders: [],
+      documentProjects: [project("dp_source", "pentou")],
+    });
+    expect(JSON.parse(fs.readFileSync(path.join(dir, "document-projects.json"), "utf-8")))
+      .toEqual([project("dp_source", "pentou")]);
+  });
+
+  it("keeps the project list out of the file manifest", () => {
+    write("document-projects.json", "[]");
+    write("documents/doc_1.md", "doc");
+    expect(createMigrationManifest(dir, "test").entries.map((e) => e.path)).toEqual(["documents/doc_1.md"]);
+    expect(isMigrationPathAllowed("document-projects.json")).toBe(false);
   });
 });
 

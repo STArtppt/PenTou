@@ -71,5 +71,11 @@ export interface MigrationRunRequest extends MigrationPeerRequest {
 export interface FolderBundle {
   folders: unknown[];
   documentFolders: unknown[];
+  /**
+   * 文档项目清单（spec document-projects）。必须跟着文件夹一起搬：文档 frontmatter 里的
+   * `projectId` 指向它，目标端没有对应项目的话，那些文档在任何视图下都不可见。
+   * 可选是为了兼容**旧版本对端**——它不会返回这个字段，缺省按空清单处理。
+   */
+  documentProjects?: unknown[];
 }
 
