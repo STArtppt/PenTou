@@ -14,6 +14,8 @@ export interface GrokCliSessionMeta {
   created_at?: string;
   updated_at?: string;
   title?: string;
+  /** 工作目录：会话目录的父级名是 encodeURIComponent(cwd)，URL 编码可无歧义还原 */
+  cwd?: string;
 }
 
 async function readOptionalText(filePath: string): Promise<string | null> {
@@ -21,6 +23,21 @@ async function readOptionalText(filePath: string): Promise<string | null> {
     return await fs.readFile(filePath, "utf-8");
   } catch {
     return null;
+  }
+}
+
+/**
+ * 会话父目录名 → 工作目录。URL 编码是可逆的，所以这一步安全；
+ * 对比之下 `~/.claude/projects/` 的 `-` 编码不可逆，那边只用内容里的 cwd
+ * （spec conversation-project-attribution §来源项目的判定优先级）。
+ */
+function decodeGrokCwd(encoded: string): string | undefined {
+  if (!encoded.includes("%")) return undefined;
+  try {
+    const decoded = decodeURIComponent(encoded);
+    return decoded.trim() || undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -93,6 +110,8 @@ export function createGrokCliAdapter(root = defaultGrokRoot()): CollectorAdapter
       if (path.basename(file) !== CHAT_FILE) return null;
       const sessionDir = path.dirname(file);
       const history = await fs.readFile(file, "utf-8");
+      // ~/.grok/sessions/<encodeURIComponent(cwd)>/<uuid>/chat_history.jsonl
+      const encodedCwd = path.basename(path.dirname(sessionDir));
       const eventsText = await readOptionalText(path.join(sessionDir, EVENTS_FILE));
       const turns: GrokTurnWindow[] = eventsText ? parseGrokTurns(eventsText) : [];
       const session = await readGrokSessionMeta(sessionDir, eventsText);
@@ -102,7 +121,7 @@ export function createGrokCliAdapter(root = defaultGrokRoot()): CollectorAdapter
         format: "raw",
         data: JSON.stringify({
           schema: "grok-cli-v1",
-          session,
+          session: { ...session, ...(decodeGrokCwd(encodedCwd) ? { cwd: decodeGrokCwd(encodedCwd) } : {}) },
           turns,
           history,
         }),

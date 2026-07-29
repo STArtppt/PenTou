@@ -61,6 +61,7 @@ PenTou 把散落在十几个平台的对话收进本机，沉淀成**可检索�
 - **导入自动归类**：按平台落入对应文件夹，减少手动整理。
 
 两条自动通道怎么开、怎么排除敏感项目，见 [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md)。
+项目里的 Markdown 文档也能一条命令推进来（含常驻自动同步），见 [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md)。
 
 ![导入面板：拖拽导出文件、粘贴分享链接，以及 CLI 采集器与浏览器插件的接入说明](./assets/demo/screenshot-Import-interface.png)
 
@@ -185,6 +186,7 @@ npx -y @startist/pentou@latest
 | [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | 完整产品介绍与能力说明 |
 | [`docs/user-guide.md`](./docs/user-guide.md) | 本机 `npx` 用户指南 |
 | [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) | 自动采集指南（CLI 采集器 + 浏览器插件） |
+| [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md) | 使用 CLI 上传文档指南（项目 Markdown → 文档平面） |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker 部署与反代 |
 | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | 贡献指南 |
 | [`docs/SECURITY.md`](./docs/SECURITY.md) | 安全策略与漏洞报告 |

@@ -106,8 +106,26 @@ export function defaultConfig(overrides: Partial<CollectorConfig> = {}): Collect
       copilot: dbAdapter("copilot", defaultCopilotDb()),
       hermes: dbAdapter("hermes", defaultHermesDb()),
       cursor: dbAdapter("cursor", defaultCursorDb()),
+      // 文档推送默认关闭：不显式 --docs-dir 登记就不扫用户任何项目目录
+      docs: {
+        enabled: overrides.adapters?.docs?.enabled ?? false,
+        dirs: overrides.adapters?.docs?.dirs ?? [],
+      },
     },
   };
+}
+
+/** 老配置缺失 `adapters.docs` 时视为未登记（向后兼容）；路径统一展开为绝对路径。 */
+export function normalizeDocsDirs(raw: unknown): Array<{ path: string; project?: string }> {
+  if (!Array.isArray(raw)) return [];
+  const out: Array<{ path: string; project?: string }> = [];
+  for (const entry of raw) {
+    const value = typeof entry === "string" ? { path: entry } : entry;
+    if (!value || typeof value.path !== "string" || !value.path.trim()) continue;
+    const project = typeof value.project === "string" ? value.project.trim() : "";
+    out.push({ path: resolveUserPath(value.path), ...(project ? { project } : {}) });
+  }
+  return out;
 }
 
 export function normalizeServer(server: string): string {
@@ -146,6 +164,10 @@ export function normalizeConfig(raw: any): CollectorConfig {
       copilot: dbAdapter("copilot", defaultCopilotDb()),
       hermes: dbAdapter("hermes", defaultHermesDb()),
       cursor: dbAdapter("cursor", defaultCursorDb()),
+      docs: {
+        enabled: raw.adapters?.docs?.enabled === true,
+        dirs: normalizeDocsDirs(raw.adapters?.docs?.dirs),
+      },
     },
     exclude: Array.isArray(raw.exclude) ? raw.exclude.map(String) : [],
     debounceMs: Number.isFinite(raw.debounceMs) && raw.debounceMs > 0

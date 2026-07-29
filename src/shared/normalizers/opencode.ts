@@ -8,6 +8,7 @@
 import type { Conversation, Message } from "../../app/data.js";
 import { cleanUserMessageContent } from "../agent-noise.js";
 import { buildConversation, EmptyPayloadError, epochToIso, makeMessage, parseEnvelope } from "./util.js";
+import { sourceProjectFromCwd } from "../source-project.js";
 
 /** 只取非 synthetic 的 text part（真实对话正文） */
 function realTextParts(parts: unknown): string {
@@ -41,5 +42,7 @@ export function normalizeOpencode(data: string): Conversation[] {
     date: epochToIso(session?.time_created),
     messages,
     fallbackTitle: "OpenCode Conversation",
+    // 来源项目：opencode session 表存有 directory（spec conversation-project-attribution）
+    sourceProject: sourceProjectFromCwd(session?.directory),
   })];
 }

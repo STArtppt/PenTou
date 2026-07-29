@@ -13,7 +13,7 @@ import type {
   PullSummary,
   SessionFile,
 } from "./types.js";
-import { IngestClient, isAuthIngestError, isRateLimitedIngestError, isRetryableIngestError } from "./ingest-client.js";
+import { IngestClient, describeIngestError, isAuthIngestError, isRateLimitedIngestError, isRetryableIngestError } from "./ingest-client.js";
 import { writeConfig } from "./config.js";
 import { isVirtualKey, parseSessionKey } from "./sqlite.js";
 import { EmptyPayloadError, parseRawConversations } from "../../shared/raw-dispatch.js";
@@ -45,10 +45,10 @@ export function addResultCounts(counts: CollectorCounts, results: IngestItemResu
       continue;
     }
     if (result.skippedReason) counts.skipped += 1;
-    for (const conversation of result.conversations) {
-      if (conversation.action === "created") counts.created += 1;
-      else if (conversation.action === "merged") counts.merged += 1;
-      else if (conversation.action === "skipped") counts.skipped += 1;
+    for (const entry of [...result.conversations, ...(result.documents ?? [])]) {
+      if (entry.action === "created") counts.created += 1;
+      else if (entry.action === "merged") counts.merged += 1;
+      else if (entry.action === "skipped") counts.skipped += 1;
     }
   }
 }
@@ -192,6 +192,16 @@ function canAppendToBatch(batch: PreparedItem[], item: PreparedItem): boolean {
 // 单 item 预算：可单独成批发送；再留 1KB 给 item 信封（platform/externalId/format 等字段）
 const SHRINK_BUDGET_BYTES = INGEST_MAX_BODY_BYTES - INGEST_BODY_OVERHEAD_BYTES - 1024;
 
+/**
+ * 文档超限直接失败，不参与降级瘦身（design 决策 12）：降级的前提是"对话丢掉中间
+ * 消息仍有价值"，文档不成立——截断的文档是错误的文档，比没有更糟。
+ */
+const OVERSIZE_DOCUMENT_ERROR = "document exceeds the 10MB ingest limit; not truncated";
+
+function oversizeDocument(item: IngestItem): boolean {
+  return item.format === "document";
+}
+
 export interface DegradeResult {
   entries: PreparedItem[];
   /** 被瘦身（有信息损失）上报的会话数 */
@@ -317,7 +327,11 @@ export async function pullOnce(
 
   if (options.dryRun) {
     for (const item of prepared.items) {
-      logger.log(itemTooLarge(item.item) ? `${item.file} (oversize: local parse fallback)` : item.file);
+      if (!itemTooLarge(item.item)) {
+        logger.log(item.file);
+      } else {
+        logger.log(`${item.file} (oversize: ${oversizeDocument(item.item) ? "skipped" : "local parse fallback"})`);
+      }
     }
     return summary;
   }
@@ -327,6 +341,11 @@ export async function pullOnce(
   for (const entry of prepared.items) {
     if (!itemTooLarge(entry.item)) {
       sendItems.push(entry);
+      continue;
+    }
+    if (oversizeDocument(entry.item)) {
+      summary.errors.push({ file: entry.file, error: OVERSIZE_DOCUMENT_ERROR });
+      summary.counts.error += 1;
       continue;
     }
     try {
@@ -380,7 +399,7 @@ export async function pullOnce(
       }
       return true;
     } catch (error: any) {
-      const message = error?.message ?? String(error);
+      const message = describeIngestError(error);
       for (const entry of current) {
         summary.errors.push({ file: entry.file, error: message });
         failedFiles.add(entry.file);
@@ -564,6 +583,11 @@ export class CollectorWatchEngine {
     let entries: PreparedItem[] = [entry];
     let degradeError = false;
     if (itemTooLarge(entry.item)) {
+      if (oversizeDocument(entry.item)) {
+        // 不推进快照：文件缩小后下次变化会重试
+        this.logger.warn(`ingest error ${entry.file}: ${OVERSIZE_DOCUMENT_ERROR}`);
+        return true;
+      }
       try {
         const degraded = degradeOversizeItem(entry);
         for (const error of degraded.oversizeErrors) this.logger.warn(`ingest error ${entry.file}: ${error}`);
@@ -628,7 +652,7 @@ export class CollectorWatchEngine {
         this.scheduleRetry();
         return false;
       }
-      this.logger.error(`ingest failed ${entry.file}: ${error?.message ?? error}`);
+      this.logger.error(`ingest failed ${entry.file}: ${describeIngestError(error)}`);
       return true;
     }
   }

@@ -18,6 +18,11 @@ export interface CollectorConfig {
     copilot: { enabled: boolean; db?: string };
     hermes: { enabled: boolean; db?: string };
     cursor: { enabled: boolean; db?: string };
+    /**
+     * 文档推送（spec collector-docs-push）：默认关闭且 dirs 为空 ——
+     * 不显式登记就一个字节都不扫。
+     */
+    docs: { enabled: boolean; dirs: Array<{ path: string; project?: string }> };
   };
   exclude: string[];
   debounceMs: number;
@@ -32,8 +37,11 @@ export interface SessionFile {
 export interface IngestItem {
   platform: string;
   externalId?: string;
-  /** 默认 "raw"；"conversation" 仅超限降级本地解析产出（spec collector-oversize-ingest §4.4） */
-  format: "raw" | "conversation";
+  /**
+   * 默认 "raw"；"conversation" 仅超限降级本地解析产出（spec collector-oversize-ingest §4.4）；
+   * "document" 为文档推送（spec collector-docs-push），落文档平面而非对话平面。
+   */
+  format: "raw" | "conversation" | "document";
   data: string | Record<string, unknown>;
   filename?: string;
 }
@@ -60,9 +68,17 @@ export interface IngestConversationResult {
   title?: string;
 }
 
+export interface IngestDocumentResult {
+  action: IngestAction;
+  id: string;
+  title?: string;
+}
+
 export interface IngestItemResult {
   itemIndex: number;
   conversations: IngestConversationResult[];
+  /** 文档 item 的处理结果；对话 item 不带该字段（spec document-ingest §逐 item 容错与结果结构） */
+  documents?: IngestDocumentResult[];
   /** 空会话（载荷合法但 0 条消息）：非失败，计入 skipped 并正常推进快照 */
   skippedReason?: string;
   error?: string;

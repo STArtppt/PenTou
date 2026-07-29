@@ -50,6 +50,11 @@ const HELP = `Pentou — 本地优先的 AI 对话管理器
 用法:
   npx -y @startist/pentou@latest [options]
   npx -y @startist/pentou@latest collect <init|pull|watch> [options]
+  npx -y @startist/pentou@latest push docs <dir> [options]
+
+命令:
+  collect           常驻采集器：登记来源、拉取、监听自动同步
+  push docs <dir>   一次性把目录下的 Markdown 推送到文档平面（不写配置、不留快照）
 
 选项:
   --port <n>        起始端口，默认 7766（占用时向上探测至多 +10）
@@ -173,6 +178,17 @@ async function main() {
       return;
     } catch (e) {
       fail(`采集器命令失败 / collector command failed:\n    ${e?.message ?? e}`);
+    }
+  }
+
+  // 一次性文档推送（spec collector-docs-push）：与 collect 并列的顶层命令
+  if (process.argv[2] === "push") {
+    try {
+      const { runPushCommand } = await import(new URL("../dist-server/src/cli/collector/push.js", import.meta.url));
+      await runPushCommand(process.argv.slice(3));
+      return;
+    } catch (e) {
+      fail(`推送命令失败 / push command failed:\n    ${e?.message ?? e}`);
     }
   }
 

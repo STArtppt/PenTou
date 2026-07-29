@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createClaudeCodeAdapter } from "./adapters/claude-code";
+import { createDocsAdapter } from "./adapters/docs";
 import { CollectorWatchEngine, backoffDelay, createExcludeMatcher, degradeOversizeItem, pullOnce, snapshotChanged } from "./engine";
 import { defaultConfig } from "./config";
 import type { IngestItem, IngestResponse } from "./types";
@@ -384,5 +385,59 @@ describe("collector engine", () => {
     expect(client.calls[0].map((item) => item.externalId)).toEqual(["s2"]);
     expect(config.snapshots[key("s2")]).toEqual({ mtimeMs: 200, size: 3 });
     engine.stop();
+  });
+});
+
+// ── 文档源（spec collector-docs-push §pull 与 watch 复用现有引擎，design 决策 12）──
+
+describe("collector engine with the docs adapter", () => {
+  function docsConfig(root: string) {
+    return defaultConfig({
+      server: "http://localhost",
+      token: "tok",
+      adapters: {
+        ...defaultConfig().adapters,
+        "claude-code": { enabled: false, root: path.join(root, "__none__") },
+        docs: { enabled: true, dirs: [{ path: root, project: "pentou" }] },
+      },
+    });
+  }
+
+  it("counts document results and does not re-send unchanged files", async () => {
+    const root = tmpDir("pentou-engine-docs-");
+    fs.writeFileSync(path.join(root, "a.md"), "# A\n\nbody");
+    const config = docsConfig(root);
+    const adapters = [createDocsAdapter(config.adapters.docs.dirs)];
+    const client = new FakeClient();
+    client.responses.push({
+      ok: true,
+      results: [{ itemIndex: 0, conversations: [], documents: [{ action: "created", id: "doc_1" }] }],
+    });
+
+    const first = await pullOnce(config, adapters, { client: client as any });
+    expect(first.sent).toBe(1);
+    expect(first.counts.created).toBe(1);
+    expect(client.calls[0][0].format).toBe("document");
+
+    // 快照已推进：文件未变化 → 第二次不重复上报
+    const engine = new CollectorWatchEngine(config, adapters, { client: client as any });
+    const before = client.calls.length;
+    await engine.backfill();
+    expect(client.calls.length).toBe(before);
+  });
+
+  it("fails an oversize document instead of shrinking it", async () => {
+    const root = tmpDir("pentou-engine-docs-big-");
+    fs.writeFileSync(path.join(root, "big.md"), "x".repeat(11 * 1024 * 1024));
+    const config = docsConfig(root);
+    const adapters = [createDocsAdapter(config.adapters.docs.dirs)];
+    const client = new FakeClient();
+
+    const summary = await pullOnce(config, adapters, { client: client as any });
+    expect(client.calls).toHaveLength(0); // 绝不截断上报
+    expect(summary.counts.error).toBe(1);
+    expect(summary.truncated).toBe(0);
+    expect(summary.errors[0].error).toMatch(/not truncated/);
+    expect(config.snapshots[path.join(root, "big.md")]).toBeUndefined();
   });
 });

@@ -61,6 +61,7 @@ PenTou pulls those conversations off a dozen platforms onto your own machine, as
 - **Auto-filing on import**: conversations land in the folder matching their platform, so there's less to tidy by hand.
 
 Setting up either automatic channel — and excluding the projects you'd rather not upload — is covered in [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) (Chinese).
+Markdown docs from your project directories can be pushed in with a single command too, with an optional always-on watch: see [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md) (Chinese).
 
 ![Import panel: drag in export files, paste a share link, and set up the CLI collector or browser extension](./assets/demo/screenshot-Import-interface.png)
 
@@ -190,6 +191,7 @@ Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese)
 | [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | Full product introduction and capability reference (Chinese) |
 | [`docs/user-guide.md`](./docs/user-guide.md) | Local `npx` user guide (Chinese) |
 | [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) | Automatic capture guide — CLI collector + browser extension (Chinese) |
+| [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md) | Pushing project Markdown into the document plane from the CLI (Chinese) |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker deployment and reverse proxy (Chinese) |
 | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | Contribution guide |
 | [`docs/SECURITY.md`](./docs/SECURITY.md) | Security policy and vulnerability reporting |

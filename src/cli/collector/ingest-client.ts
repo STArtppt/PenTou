@@ -100,3 +100,16 @@ export function isAuthIngestError(error: unknown): boolean {
 export function isRateLimitedIngestError(error: unknown): boolean {
   return error instanceof IngestHttpError && error.status === 429;
 }
+
+/**
+ * 把 ingest 错误翻译成可行动的提示。
+ * 老服务端不认 `format: "document"`，只会回 400 `invalid format` —— 原样透传会让用户
+ * 以为是自己的文件有问题，实际要做的是升级 Pentou（spec collector-docs-push 迁移计划）。
+ */
+export function describeIngestError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (error instanceof IngestHttpError && error.status === 400 && /invalid format/i.test(message)) {
+    return `${message} — this Pentou server is too old to accept document pushes; upgrade Pentou and retry.`;
+  }
+  return message;
+}

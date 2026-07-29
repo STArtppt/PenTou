@@ -6,6 +6,7 @@
  */
 import type { Conversation, Message } from "../../app/data.js";
 import { buildConversation, EmptyPayloadError, makeMessage, parseEnvelope } from "./util.js";
+import { sourceProjectFromCwd } from "../source-project.js";
 
 function sqliteUtcToIso(value: unknown): string | undefined {
   if (typeof value !== "string" || !value) return undefined;
@@ -33,5 +34,7 @@ export function normalizeCopilot(data: string): Conversation[] {
     date: sqliteUtcToIso(session?.created_at),
     messages,
     fallbackTitle: "Copilot Conversation",
+    // 来源项目：copilot sessions 表存有 cwd（spec conversation-project-attribution）
+    sourceProject: sourceProjectFromCwd(session?.cwd),
   })];
 }

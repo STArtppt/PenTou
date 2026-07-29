@@ -6,6 +6,7 @@ import {
   loadLLMSettingsFromLocalStorage,
 } from "./llm-settings";
 import { generateDocId, generateAnnotationId } from "./doc-utils";
+import { resolveMoveProjectId } from "./document-projects";
 import {
   AiChatSession,
   createEmptyAiChatSession,
@@ -39,6 +40,9 @@ export interface Conversation {
   currentVersionId?: string;
   // 采集溯源（spec collector-source-expansion US-07）："cli:<form-slug>" 时顶栏渲染形态徽章
   ingestSource?: string;
+  // 来源项目（spec conversation-project-attribution）：采集时由会话的工作目录 basename 推导，
+  // 判定不了就留空。本次只落数据层，界面上不产生任何可见变化。
+  sourceProject?: string;
   // date 取自解析源自带的会话创建时间（而非导入时刻兜底）。仅在导入管线内传递、不落盘：
   // upsert 据此不再用"最早消息时间"回退修正 date（spec conversation-time-and-sort US-02
   // "解析源含会话创建时间时优先用之"）。
@@ -77,6 +81,12 @@ export interface Document {
   updatedAt: string;
   body: string;
   currentVersionId: string;
+  // 项目归属（spec document-projects）：为空表示默认目录；folderId 为空表示项目内未分类
+  projectId?: string | null;
+  // ingest 身份键（spec document-ingest）：upsert 的一级查找依据，`docs:<encodeURIComponent(...)>`
+  externalKey?: string;
+  // 采集溯源（CLI 文档推送为 "cli:docs"），仅溯源不参与匹配
+  ingestSource?: string;
   sourceConversationId?: string;
   sourcePlatform?: Platform;
   sourceAiChatId?: string;
@@ -90,7 +100,29 @@ export interface Document {
 export interface DocumentFolder {
   id: string;
   name: string;
+  /**
+   * 所属项目（spec document-projects）：为空 = 默认目录下的文件夹。
+   * 文件夹仍是**扁平一层**，projectId 是归属维度而非父级——不要往这里加 parentId。
+   * 对话文件夹的 platform 维度绝不进这里，两个平面显式隔离。
+   */
+  projectId?: string | null;
 }
+
+/**
+ * 文档项目（spec document-projects）：文件夹之上的分组维度。
+ * `sourceKey` 是 CLI 侧不可变的身份键，`name` / `description` 是纯展示字段，
+ * 用户随便改都不影响与本地目录的对应关系。
+ */
+export interface DocumentProject {
+  id: string;
+  name: string;
+  description: string;
+  sourceKey: string;
+  createdAt: string;
+}
+
+/** 内置默认目录：承载全部存量文档与文件夹，不可改名 / 不可删除。 */
+export const DEFAULT_DOCUMENT_PROJECT_ID = "dp_default";
 
 export type VersionType =
   | "import"
@@ -222,6 +254,21 @@ interface AppContextType {
   setActiveView: (view: ActiveView) => void;
   documents: Document[];
   documentFolders: DocumentFolder[];
+  // ── 文档项目（spec document-projects）──
+  documentProjects: DocumentProject[];
+  /** 当前选中的项目；null = 默认目录。会话内保持，切换视图再切回不重置。 */
+  activeProjectId: string | null;
+  setActiveProjectId: (id: string | null) => void;
+  refreshDocumentProjects: () => Promise<void>;
+  /**
+   * 手动新建项目：`sourceKey` 取项目名，日后同名 `--doc-project` 推送会落进这里。
+   * 重名由服务端拒绝（409），调用方需处理 reject。成功后自动切换到新项目。
+   */
+  createDocumentProject: (input: { name: string; description?: string }) => Promise<DocumentProject>;
+  /** 只改展示字段；sourceKey 不可改，因此不影响与本地目录的对应关系。 */
+  updateDocumentProject: (id: string, patch: { name?: string; description?: string }) => Promise<void>;
+  /** 删项目：其下文件夹一并删除，文档保留并落默认目录未分类。 */
+  deleteDocumentProject: (id: string) => Promise<void>;
   activeDocId: string | null;
   setActiveDocId: (id: string | null) => void;
   annotationsByDoc: Record<string, Annotation[]>;
@@ -251,7 +298,12 @@ interface AppContextType {
   uploadDocumentUpdate: (id: string, file: File) => Promise<"merged" | "skipped">;
   deleteDocument: (id: string) => Promise<void>;
   renameDocument: (id: string, title: string) => Promise<void>;
-  moveDocument: (docId: string, folderId: string | null) => Promise<void>;
+  /**
+   * 移动文档。`projectId` 缺省时按目标文件夹的归属推导（folderId 为空则保持原项目），
+   * 从而始终满足「folderId 非空时其文件夹的 projectId 与文档一致」的不变量。
+   */
+  moveDocument: (docId: string, folderId: string | null, projectId?: string | null) => Promise<void>;
+  /** 新建文件夹自动归属当前选中项目（默认目录下 projectId 为空）。 */
   addDocumentFolder: (name: string) => Promise<void>;
   renameDocumentFolder: (id: string, name: string) => Promise<void>;
   deleteDocumentFolder: (id: string) => Promise<void>;
@@ -321,6 +373,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
   const [documents, setDocuments] = useState<Document[]>([]);
   const [documentFolders, setDocumentFolders] = useState<DocumentFolder[]>([]);
+  const [documentProjects, setDocumentProjects] = useState<DocumentProject[]>([]);
+  // 选中项目只存内存：切换视图再切回保持，刷新页面回默认目录（spec §项目切换选择器）
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [annotationsByDoc, setAnnotationsByDoc] = useState<Record<string, Annotation[]>>({});
   const [versionsByDoc, setVersionsByDoc] = useState<Record<string, DocumentVersion[]>>({});
@@ -368,7 +423,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       apiFetch("/api/conversations?fields=meta").catch(() => []),
       apiFetch("/api/documents?fields=meta").catch(() => []),
       apiFetch("/api/document-folders").catch(() => []),
-    ]).then(([foldersData, convsData, docsData, docFoldersData]) => {
+      apiFetch("/api/document-projects").catch(() => []),
+    ]).then(([foldersData, convsData, docsData, docFoldersData, docProjectsData]) => {
       setFolders(foldersData as Folder[]);
       const convs = convsData as Conversation[];
       setConversations(convs);
@@ -377,6 +433,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
       setDocuments(docsData as Document[]);
       setDocumentFolders(docFoldersData as DocumentFolder[]);
+      setDocumentProjects(docProjectsData as DocumentProject[]);
     }).finally(() => setIsLoading(false));
     // 嵌入后端配置：独立拉取（含 enabled/phase），供搜索浮层决定是否走 hybrid（spec §4.7）。
     apiFetch("/api/search/config")
@@ -806,9 +863,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await updateDocument(id, { title });
   }, [updateDocument]);
 
-  const moveDocument = useCallback(async (docId: string, folderId: string | null) => {
-    await updateDocument(docId, { folderId });
-  }, [updateDocument]);
+  const moveDocument = useCallback(async (
+    docId: string,
+    folderId: string | null,
+    projectId?: string | null,
+  ) => {
+    // 归属不变量（design 决策 8）：folderId 非空时项目必须取该文件夹的项目，
+    // 否则会出现"属于项目 A 却在项目 B 的文件夹里"的幽灵状态。
+    const nextProjectId = resolveMoveProjectId({
+      folders: documentFolders,
+      folderId,
+      requestedProjectId: projectId,
+      currentProjectId: documents.find((d) => d.id === docId)?.projectId ?? null,
+    });
+    await updateDocument(docId, { folderId, projectId: nextProjectId });
+  }, [documentFolders, documents, updateDocument]);
 
   const saveDocumentFolders = useCallback(async (newFolders: DocumentFolder[]) => {
     setDocumentFolders(newFolders);
@@ -816,9 +885,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addDocumentFolder = useCallback(async (name: string) => {
-    const folder: DocumentFolder = { id: generateId("df"), name };
+    // 同名文件夹跨项目互不复用：id 独立、projectId 不同即两个文件夹
+    const folder: DocumentFolder = { id: generateId("df"), name, projectId: activeProjectId };
     await saveDocumentFolders([...documentFolders, folder]);
-  }, [documentFolders, saveDocumentFolders]);
+  }, [activeProjectId, documentFolders, saveDocumentFolders]);
+
+  // ── Document project operations（spec document-projects）─────────────────────
+
+  const refreshDocumentProjects = useCallback(async () => {
+    try {
+      setDocumentProjects((await apiFetch("/api/document-projects")) as DocumentProject[]);
+    } catch (e) {
+      console.error({ module: "data", op: "refreshDocumentProjects", err: e });
+    }
+  }, []);
+
+  const createDocumentProject = useCallback(async (
+    input: { name: string; description?: string },
+  ): Promise<DocumentProject> => {
+    const data = await apiFetch("/api/document-projects", {
+      method: "POST",
+      body: JSON.stringify({ name: input.name, description: input.description ?? "" }),
+    }) as { project: DocumentProject };
+    const project = data.project;
+    setDocumentProjects((prev) => [...prev, project]);
+    // 新建即切过去：用户刚起的项目是空的，留在原目录看不出发生了什么
+    setActiveProjectId(project.id);
+    return project;
+  }, []);
+
+  const updateDocumentProject = useCallback(async (
+    id: string,
+    patch: { name?: string; description?: string },
+  ) => {
+    setDocumentProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    await apiFetch(`/api/document-projects/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  }, []);
+
+  const deleteDocumentProject = useCallback(async (id: string) => {
+    await apiFetch(`/api/document-projects/${id}`, { method: "DELETE" });
+    // 服务端级联：删该项目下的文件夹，受影响文档落默认目录未分类（文档一律保留）
+    const removedFolderIds = new Set(
+      documentFolders.filter((folder) => folder.projectId === id).map((folder) => folder.id),
+    );
+    setDocumentProjects((prev) => prev.filter((p) => p.id !== id));
+    setDocumentFolders((prev) => prev.filter((folder) => folder.projectId !== id));
+    setDocuments((prev) => prev.map((doc) =>
+      doc.projectId === id || (doc.folderId && removedFolderIds.has(doc.folderId))
+        ? { ...doc, projectId: null, folderId: null }
+        : doc,
+    ));
+    setActiveProjectId((current) => (current === id ? null : current));
+  }, [documentFolders]);
 
   const renameDocumentFolder = useCallback(async (id: string, name: string) => {
     await saveDocumentFolders(documentFolders.map((f) => (f.id === id ? { ...f, name } : f)));
@@ -958,6 +1076,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setActiveView,
         documents,
         documentFolders,
+        documentProjects,
+        activeProjectId,
+        setActiveProjectId,
+        refreshDocumentProjects,
+        createDocumentProject,
+        updateDocumentProject,
+        deleteDocumentProject,
         activeDocId,
         setActiveDocId,
         annotationsByDoc,

@@ -27,6 +27,8 @@ export function buildConversation(params: {
   date?: string;
   messages: Message[];
   fallbackTitle: string;
+  /** 来源项目（工作目录 basename）；判定不了就不传，字段不写入（spec conversation-project-attribution） */
+  sourceProject?: string;
 }): Conversation {
   const date = params.date || params.messages[0]?.timestamp || new Date().toISOString();
   return {
@@ -36,6 +38,7 @@ export function buildConversation(params: {
     date,
     folderId: null,
     messages: params.messages,
+    ...(params.sourceProject ? { sourceProject: params.sourceProject } : {}),
   };
 }
 

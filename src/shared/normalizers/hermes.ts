@@ -10,6 +10,7 @@ import type { Conversation, Message } from "../../app/data.js";
 import { cleanUserMessageContent } from "../agent-noise.js";
 import { parseHermesExport } from "../parsers.js";
 import { buildConversation, EmptyPayloadError, epochToIso, makeMessage, parseEnvelope } from "./util.js";
+import { sourceProjectFromCwd } from "../source-project.js";
 
 function isEnvelope(data: string): boolean {
   try {
@@ -53,5 +54,7 @@ export function normalizeHermes(data: string): Conversation[] {
     date: epochToIso(session?.started_at),
     messages,
     fallbackTitle: "Hermes Conversation",
+    // 来源项目：hermes sessions 表存有 cwd（spec conversation-project-attribution）
+    sourceProject: sourceProjectFromCwd(session?.cwd),
   })];
 }

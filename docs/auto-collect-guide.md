@@ -12,6 +12,9 @@
 
 两条通道都只往**你自己那台 Pentou** 发数据，解析、去重、归类全在 Pentou 里完成。
 
+> 想推的是**项目里的 Markdown 文档**（README、设计文档、笔记）而不是对话？那是另一条通道，见
+> [《使用 CLI 上传文档指南》](./cli-doc-push-guide.md)——共用同一个采集令牌，落文档平面而不是对话平面。
+
 ---
 
 ## 1. 共同前置：拿到采集令牌
@@ -373,6 +376,7 @@ pnpm --dir extension exec vite build
 
 | 文档 | 用途 |
 | --- | --- |
+| [`cli-doc-push-guide.md`](./cli-doc-push-guide.md) | 用 CLI 把项目里的 Markdown 推进文档平面 |
 | [`user-guide.md`](./user-guide.md) | 本机 `npx` 启动、数据目录、桌面一键脚本、FAQ |
 | [`deployment.md`](./deployment.md) | Docker 部署与反向代理 |
 | [`pentou-introduction.md`](./pentou-introduction.md) | 完整产品介绍与能力说明 |

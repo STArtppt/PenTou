@@ -8,6 +8,7 @@
  */
 import type { Conversation, Message, Platform } from "../app/data.js";
 import { cleanUserMessageContent } from "./agent-noise.js";
+import { sourceProjectFromCwd } from "./source-project.js";
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
 
@@ -354,6 +355,7 @@ function parseCodexRollout(lines: string[]): Conversation | null {
   const fallback: Message[] = [];
   let title = "";
   let date = "";
+  let sourceProject: string | undefined;
 
   for (const line of lines) {
     let obj: any;
@@ -365,6 +367,10 @@ function parseCodexRollout(lines: string[]): Conversation | null {
 
     if (obj.type === "session_meta" && obj.payload?.timestamp && !date) {
       date = obj.payload.timestamp;
+    }
+    // 来源项目：codex rollout 的 session_meta 带 cwd（spec conversation-project-attribution）
+    if (!sourceProject && obj.type === "session_meta") {
+      sourceProject = sourceProjectFromCwd(obj.payload?.cwd);
     }
 
     const payload = obj.payload;
@@ -412,6 +418,7 @@ function parseCodexRollout(lines: string[]): Conversation | null {
     date: date || finalMessages[0].timestamp,
     folderId: null,
     messages: finalMessages,
+    ...(sourceProject ? { sourceProject } : {}),
   };
 }
 
@@ -428,10 +435,16 @@ export function parseJsonl(jsonlText: string): Conversation | null {
   let title = "";
   let date = new Date().toISOString();
   let platform: Platform = "CLI";
+  let sourceProject: string | undefined;
 
   for (const line of lines) {
     try {
       const obj = JSON.parse(line);
+
+      // 来源项目取自会话内容里的 cwd（claude-code transcript 每行都带），
+      // 而**不是** ~/.claude/projects/ 的编码目录名——那种 `-` 编码不可逆
+      // （spec conversation-project-attribution §来源项目的判定优先级）。
+      if (!sourceProject) sourceProject = sourceProjectFromCwd(obj.cwd);
 
       // Claude Code session format: { type: "user"|"assistant", message: { role, content } }
       // （旧导出格式用户侧为 type:"human"，保留兼容）
@@ -490,6 +503,7 @@ export function parseJsonl(jsonlText: string): Conversation | null {
     date,
     folderId: null,
     messages,
+    ...(sourceProject ? { sourceProject } : {}),
   };
 }
 

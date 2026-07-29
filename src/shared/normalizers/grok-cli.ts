@@ -15,6 +15,7 @@
 import type { Conversation, Message } from "../../app/data.js";
 import { cleanUserMessageContent } from "../agent-noise.js";
 import { buildConversation, EmptyPayloadError, makeMessage } from "./util.js";
+import { sourceProjectFromCwd } from "../source-project.js";
 
 const USER_QUERY_RE = /<user_query>\s*([\s\S]*?)\s*<\/user_query>/;
 
@@ -84,6 +85,8 @@ export interface UnpackedGrokPayload {
   sessionDate?: string;
   title?: string;
   turns: GrokTurnWindow[];
+  /** 来源项目（工作目录 basename）；旧版纯 jsonl 载荷取不到，留空 */
+  sourceProject?: string;
 }
 
 function normalizeTurnWindows(raw: unknown): GrokTurnWindow[] {
@@ -130,6 +133,7 @@ export function unpackGrokCliPayload(data: string): UnpackedGrokPayload {
         sessionDate,
         title,
         turns: normalizeTurnWindows(json.turns),
+        sourceProject: sourceProjectFromCwd(session.cwd),
       };
     }
   } catch {
@@ -240,7 +244,7 @@ export function assignGrokMessageTimestamps(
 }
 
 export function normalizeGrokCli(data: string): Conversation[] {
-  const { history, sessionDate, title, turns } = unpackGrokCliPayload(data);
+  const { history, sessionDate, title, turns, sourceProject } = unpackGrokCliPayload(data);
   const drafts = extractDraftMessages(history);
   if (drafts.length === 0) throw new EmptyPayloadError("grok-cli raw payload contains no messages");
 
@@ -258,6 +262,7 @@ export function normalizeGrokCli(data: string): Conversation[] {
     date,
     messages,
     fallbackTitle: "Grok Conversation",
+    sourceProject,
   });
   if (sessionDate || turns.length > 0) conv.dateFromSource = true;
   return [conv];

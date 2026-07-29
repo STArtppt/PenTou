@@ -14,6 +14,21 @@ import { cn } from "@/lib/utils";
  * Composition:
  *   Select > SelectTrigger (SelectValue + chevron)
  *          > SelectContent > SelectItem / SelectGroup+SelectGroupLabel / SelectSeparator
+ *
+ * SelectItem has one variant: pass `description` to get the two-line option
+ * (title + supporting line). Omitting `description` (or passing an empty string)
+ * falls back to the single-line option with no reserved space and no placeholder
+ * text. To mirror the variant in the closed trigger, render SelectValueLines from
+ * SelectValue's render function:
+ *
+ *   <SelectValue>
+ *     {(value) => <SelectValueLines title={byId[value].name} description={byId[value].note} />}
+ *   </SelectValue>
+ *
+ * The trigger is min-height (not fixed height), so it grows to two lines and
+ * collapses back on its own. The popup is pinned to the anchor width: long
+ * titles and descriptions ellipsize instead of widening the popup past the
+ * control that opened it.
  */
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
@@ -25,9 +40,39 @@ function SelectValue({
   return (
     <SelectPrimitive.Value
       data-slot="select-value"
-      className={cn("data-[placeholder]:text-muted-foreground", className)}
+      className={cn("min-w-0 flex-1 truncate text-left data-[placeholder]:text-muted-foreground", className)}
       {...props}
     />
+  );
+}
+
+/**
+ * Two-line rendering for the *selected* value, mirroring SelectItem's
+ * `description` variant inside the closed trigger. Use it from SelectValue's
+ * render function; without a description it collapses to a single line.
+ */
+function SelectValueLines({
+  title,
+  description,
+  className,
+  ...props
+}: React.ComponentProps<"span"> & {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+}) {
+  const hasDescription = description !== undefined && description !== null && description !== "";
+  return (
+    <span
+      data-slot="select-value-lines"
+      data-variant={hasDescription ? "described" : undefined}
+      className={cn("flex min-w-0 flex-col items-start gap-0.5 text-left", className)}
+      {...props}
+    >
+      <span className="w-full truncate">{title}</span>
+      {hasDescription ? (
+        <span className="w-full truncate text-xs font-normal text-muted-foreground">{description}</span>
+      ) : null}
+    </span>
   );
 }
 
@@ -40,7 +85,7 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        "flex min-h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}
@@ -72,7 +117,7 @@ function SelectContent({
         <SelectPrimitive.Popup
           data-slot="select-content"
           className={cn(
-            "max-h-72 min-w-[var(--anchor-width)] origin-[var(--transform-origin)] overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md outline-none transition-[opacity,transform] duration-150 ease-out data-ending-style:opacity-0 data-ending-style:scale-[0.98] data-starting-style:opacity-0 data-starting-style:scale-[0.98]",
+            "max-h-72 w-[var(--anchor-width)] origin-[var(--transform-origin)] overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md outline-none transition-[opacity,transform] duration-150 ease-out data-ending-style:opacity-0 data-ending-style:scale-[0.98] data-starting-style:opacity-0 data-starting-style:scale-[0.98]",
             className,
           )}
         >
@@ -99,21 +144,42 @@ function SelectGroupLabel({
 function SelectItem({
   className,
   children,
+  description,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Item>) {
+}: React.ComponentProps<typeof SelectPrimitive.Item> & {
+  /** Supporting second line. Omit or pass "" for the plain single-line option. */
+  description?: React.ReactNode;
+}) {
+  const hasDescription = description !== undefined && description !== null && description !== "";
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
+      data-variant={hasDescription ? "described" : undefined}
       className={cn(
-        "relative flex w-full cursor-default items-center rounded-md py-1.5 pr-8 pl-2 text-sm text-foreground outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-accent data-highlighted:text-accent-foreground",
+        "relative flex w-full cursor-default rounded-md pr-8 pl-2 text-sm text-foreground outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-accent data-highlighted:text-accent-foreground",
+        hasDescription ? "flex-col items-start gap-0.5 py-2" : "items-center py-1.5",
         className,
       )}
       {...props}
     >
-      <SelectPrimitive.ItemIndicator className="absolute right-2 flex size-3.5 items-center justify-center">
+      <SelectPrimitive.ItemIndicator
+        className={cn(
+          "absolute right-2 flex size-3.5 items-center justify-center",
+          // 双行时对齐首行而非整块居中，否则勾选态在长描述下会飘到中间
+          hasDescription && "top-2.5",
+        )}
+      >
         <Check className="size-4" />
       </SelectPrimitive.ItemIndicator>
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      <SelectPrimitive.ItemText className="w-full truncate">{children}</SelectPrimitive.ItemText>
+      {hasDescription ? (
+        <span
+          data-slot="select-item-description"
+          className="w-full truncate text-xs text-muted-foreground"
+        >
+          {description}
+        </span>
+      ) : null}
     </SelectPrimitive.Item>
   );
 }
@@ -135,6 +201,7 @@ export {
   Select,
   SelectGroup,
   SelectValue,
+  SelectValueLines,
   SelectTrigger,
   SelectContent,
   SelectGroupLabel,

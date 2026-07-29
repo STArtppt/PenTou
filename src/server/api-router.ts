@@ -14,6 +14,10 @@ import {
   documentsApiHandler,
   setDocsDataDir,
   ensureDocDirs,
+  upsertDocument,
+  buildDocumentUpsertIndex,
+  findOrCreateProjectByKey,
+  type DocumentUpsertIndex,
 } from "../../vite-plugins/documentsPlugin.js";
 import {
   localizeMedia,
@@ -201,6 +205,8 @@ export function conversationToMd(conv: any): string {
   // ingestSource 仅溯源不参与匹配。
   if (conv.externalKey) fmLines.push(`externalKey: ${escapeFrontmatterValue(conv.externalKey)}`);
   if (conv.ingestSource) fmLines.push(`ingestSource: ${escapeFrontmatterValue(conv.ingestSource)}`);
+  // 来源项目（spec conversation-project-attribution）：仅数据层，判定不了就不写
+  if (conv.sourceProject) fmLines.push(`sourceProject: ${escapeFrontmatterValue(conv.sourceProject)}`);
 
   return `---
 ${fmLines.join("\n")}
@@ -312,6 +318,7 @@ export function parseMdFile(id: string, content: string): any {
     currentVersionId: meta.currentVersionId || undefined,
     externalKey: meta.externalKey || undefined,
     ingestSource: meta.ingestSource || undefined,
+    sourceProject: meta.sourceProject || undefined,
     messages: mergeConsecutiveMessages(messages),
   };
 }
@@ -532,6 +539,7 @@ function mergeConversation(convDir: string, existing: any, incoming: any): Upser
     folderId: existing.folderId,
     externalKey: incoming.externalKey ?? existing.externalKey,
     ingestSource: incoming.ingestSource ?? existing.ingestSource,
+    sourceProject: incoming.sourceProject ?? existing.sourceProject,
     updatedAt: now,
   });
   const v = appendConvVersion(convDir, existing.id, { body: conversationToMd(merged), type: "import" });
@@ -659,6 +667,22 @@ function validateConversationPayload(data: unknown): any {
     ? conv.id
     : `conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   return { ...conv, id, folderId: conv.folderId ?? null };
+}
+
+/**
+ * `format: "document"` 的结构校验（spec document-ingest §ingest 网关接受文档载荷）。
+ * 文档没有指纹以外的天然身份，externalId 必填——缺它就无法做幂等 upsert。
+ */
+function validateDocumentPayload(data: unknown): { title: string; body: string; project?: any } {
+  const doc: any = data;
+  const invalid = () => new Error("invalid document payload");
+  if (!doc || typeof doc !== "object" || Array.isArray(doc)) throw invalid();
+  if (typeof doc.title !== "string" || typeof doc.body !== "string") throw invalid();
+  if (doc.project !== undefined) {
+    if (!doc.project || typeof doc.project !== "object" || Array.isArray(doc.project)) throw invalid();
+    if (typeof doc.project.key !== "string" || !doc.project.key.trim()) throw invalid();
+  }
+  return { title: doc.title, body: doc.body, project: doc.project };
 }
 
 /** 校验 item.externalId：trim 后非空才生效；超长 / 控制字符 → 该 item error（§4.3）。 */
@@ -792,15 +816,38 @@ async function handleIngestRequest(
       json(res, 400, { error: `items[${i}]: invalid platform slug` }, INGEST_CORS);
       return true;
     }
-    if (item.format !== "conversation" && item.format !== "raw") {
+    if (item.format !== "conversation" && item.format !== "raw" && item.format !== "document") {
       json(res, 400, { error: `items[${i}]: invalid format` }, INGEST_CORS);
       return true;
+    }
+    // 文档载荷的结构与 externalId 是整批前置校验（非法则该批全部不落库）
+    if (item.format === "document") {
+      try {
+        validateDocumentPayload(item.data);
+      } catch (e: any) {
+        json(res, 400, { error: `items[${i}]: ${e?.message ?? e}` }, INGEST_CORS);
+        return true;
+      }
+      let externalId: string | undefined;
+      try {
+        externalId = normalizeExternalId(item.externalId);
+      } catch {
+        json(res, 400, { error: `items[${i}]: invalid externalId` }, INGEST_CORS);
+        return true;
+      }
+      if (!externalId) {
+        json(res, 400, { error: `items[${i}]: document items require a non-empty externalId` }, INGEST_CORS);
+        return true;
+      }
     }
   }
 
   // ── 逐 item 串行处理：单条失败不影响其余（US-02 AC1）─────────────────────
   const config = readIngestConfig(ctx.dataDir);
   const urlCache = new Map<string, string | null>(); // 同批共享媒体下载缓存
+  // 文档 upsert 的查找索引：批内构建一次共用，避免逐条全量读盘（design 决策 14）。
+  // 只在真的出现文档 item 时才构建，纯对话批次零额外开销。
+  let docIndex: DocumentUpsertIndex | null = null;
   const results: any[] = [];
   let changed = false;
 
@@ -809,6 +856,59 @@ async function handleIngestRequest(
     const result: any = { itemIndex: i, conversations: [] };
     try {
       const externalId = normalizeExternalId(item.externalId);
+      // cli 源细化到形态粒度（"cli:<form-slug>"），供顶栏形态徽章消费
+      // （spec collector-source-expansion §4.4 / US-07）；文档为 "cli:docs"。
+      const ingestSource = source === "cli" ? `cli:${item.platform}` : source;
+
+      if (item.format === "document") {
+        // ── 文档分支（spec document-ingest）：脱敏 → 媒体本地化 → 项目解析 → upsert ──
+        result.documents = [];
+        const payload = validateDocumentPayload(item.data);
+        let title = payload.title;
+        let body = payload.body;
+        let redactions = 0;
+        if (config.redact) {
+          const redactedTitle = redactText(title);
+          title = redactedTitle.text;
+          redactions += redactedTitle.count;
+          const redactedBody = redactText(body);
+          body = redactedBody.text;
+          redactions += redactedBody.count;
+        }
+        if (!body.trim()) {
+          // 空正文不是失败：客户端据此推进快照，不重复重试（与空会话同构）
+          result.skippedReason = "empty document body";
+        } else {
+          body = await localizeMedia(body, { downloadRemote: true, urlCache });
+          // 项目按不可变 sourceKey 复用；命中时不回写用户改过的 name / description
+          const project = payload.project
+            ? findOrCreateProjectByKey(payload.project.key, {
+                name: payload.project.name,
+                rootPath: payload.project.rootPath,
+              })
+            : null;
+          if (!docIndex) docIndex = buildDocumentUpsertIndex();
+          const now = new Date().toISOString();
+          const upserted = upsertDocument({
+            id: `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            title: title.trim() || "Untitled",
+            // 推送一律落所属项目的未分类，服务端不从载荷创建任何文件夹
+            folderId: null,
+            projectId: project?.id,
+            createdAt: now,
+            updatedAt: now,
+            body,
+            externalKey: `docs:${encodeURIComponent(externalId!)}`,
+            ingestSource,
+            versionType: "import",
+          }, { index: docIndex });
+          if (upserted.action !== "skipped") changed = true;
+          result.documents.push({ action: upserted.action, id: upserted.id, title: upserted.title });
+        }
+        if (redactions > 0) result.redactions = redactions;
+        results.push(result);
+        continue;
+      }
 
       // 1. 解析（raw 两级派发 / conversation 结构校验）
       let conversations: any[];
@@ -843,9 +943,6 @@ async function handleIngestRequest(
       const externalKey = externalId && conversations.length === 1
         ? `${item.platform}:${encodeURIComponent(externalId)}`
         : undefined;
-      // cli 源细化到形态粒度（"cli:<form-slug>"），供顶栏形态徽章消费
-      // （spec collector-source-expansion §4.4 / US-07）
-      const ingestSource = source === "cli" ? `cli:${item.platform}` : source;
       for (const conv of conversations) {
         await localizeMessages(conv.messages, { downloadRemote: true, urlCache });
         const upserted = upsertConversation(convDir, conv, { externalKey, ingestSource });
@@ -855,6 +952,7 @@ async function handleIngestRequest(
       if (redactions > 0) result.redactions = redactions;
     } catch (e: any) {
       result.conversations = []; // error / 空会话时 conversations 为空数组（§4.3）
+      if (item.format === "document") result.documents = [];
       // 空会话（如只跑了 /exit 的 CLI 会话）不是失败：归 skipped，客户端可推进快照（边界 3）
       if (e instanceof EmptyPayloadError) result.skippedReason = String(e.message);
       else result.error = String(e?.message ?? e);

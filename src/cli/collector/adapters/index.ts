@@ -7,6 +7,7 @@ import { createOpencodeAdapter } from "./opencode.js";
 import { createCopilotAdapter } from "./copilot.js";
 import { createHermesAdapter } from "./hermes.js";
 import { createCursorAdapter } from "./cursor.js";
+import { createDocsAdapter } from "./docs.js";
 import { sqliteAvailable, SQLITE_UNAVAILABLE_HINT } from "../sqlite.js";
 import type { CollectorAdapter, CollectorConfig } from "../types.js";
 
@@ -21,6 +22,8 @@ export function createAdapters(
   if (cfg.codex.enabled) adapters.push(createCodexAdapter(cfg.codex.root));
   if (cfg["grok-cli"].enabled) adapters.push(createGrokCliAdapter(cfg["grok-cli"].root));
   if (cfg["copilot-vscode"].enabled) adapters.push(createCopilotVscodeAdapter(cfg["copilot-vscode"].root));
+  // 文档推送：仅显式登记（enabled）时创建，未登记时完全静默（spec collector-docs-push）
+  if (cfg.docs?.enabled) adapters.push(createDocsAdapter(cfg.docs.dirs));
 
   // SQLite 查询型：node:sqlite 缺失时整组禁用并明确提示，文件型不受影响（US-03 AC3）
   const queryEnabled = cfg.opencode.enabled || cfg.copilot.enabled || cfg.hermes.enabled || cfg.cursor.enabled;

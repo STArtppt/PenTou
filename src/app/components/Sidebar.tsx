@@ -4,6 +4,14 @@ import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/IconTooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectValueLines,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogBackdrop,
   DialogBody,
@@ -49,7 +57,16 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
 import { toast } from "sonner";
-import { useAppContext, Conversation, Folder, Platform, Document, DocumentFolder } from "../data";
+import { useAppContext, Conversation, Folder, Platform, Document, DocumentFolder, DEFAULT_DOCUMENT_PROJECT_ID } from "../data";
+import {
+  buildMoveTargetGroups,
+  filterDocumentsByProject,
+  filterFoldersByProject,
+  moveGroupRowCount,
+  sortDocumentsByTime,
+  uncategorizedInProject,
+  type MoveTargetGroup,
+} from "../document-projects";
 import logoUrl from "../../../assets/images/logo.png";
 import logoDarkUrl from "../../../assets/images/logo_dark.png";
 import { useScrollActivity } from "../hooks/useScrollActivity";
@@ -65,8 +82,59 @@ const ITEM_MENU_WIDTH = 176;
 const FOLDER_SUBMENU_WIDTH = 188;
 
 type MenuPosition = { top: number; left: number; maxHeight: number };
-type MoveTarget = { id: string | null; name: string };
 type StoredItemType = "conversation" | "document";
+
+/**
+ * 文档的「项目 → 未分类/文件夹」两层目标树。单项移动与批量移动共用这一个 hook
+ * （spec §批量移动共用目标树），杜绝两处各建一棵树而行为分叉。
+ */
+function useDocumentMoveGroups(): MoveTargetGroup[] {
+  const { t } = useTranslation();
+  const { documentFolders, documentProjects } = useAppContext();
+  return useMemo(
+    () => buildMoveTargetGroups({
+      folders: documentFolders,
+      projects: documentProjects,
+      defaultProjectLabel: t("sidebar.defaultProject"),
+      uncategorizedLabel: t("sidebar.uncategorized"),
+    }),
+    [documentFolders, documentProjects, t],
+  );
+}
+
+function MoveTargetList({
+  groups,
+  onPick,
+}: {
+  groups: MoveTargetGroup[];
+  onPick: (event: React.MouseEvent, folderId: string | null, projectId: string | null) => void;
+}) {
+  return (
+    <>
+      {groups.map((group) => (
+        <div key={group.key}>
+          {group.label && (
+            <div className="px-3 pt-1.5 pb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
+              {group.label}
+            </div>
+          )}
+          {group.targets.map((target) => (
+            <button
+              key={`${group.key}:${target.id ?? "uncategorized"}`}
+              onClick={(event) => onPick(event, target.id, group.projectId)}
+              className={clsx(
+                "w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 flex items-center gap-2",
+                group.label && "pl-5",
+              )}
+            >
+              <FolderIcon size={12} /> <span className="truncate">{target.name}</span>
+            </button>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
 
 type SelectionContextValue = {
   mode: boolean;
@@ -138,6 +206,8 @@ function conversationToMarkdown(conversation: Conversation): string {
   ];
   if (conversation.updatedAt) lines.push(`updatedAt: ${escapeFrontmatterValue(conversation.updatedAt)}`);
   if (conversation.currentVersionId) lines.push(`currentVersionId: ${escapeFrontmatterValue(conversation.currentVersionId)}`);
+  // 与 api-router.ts 的 conversationToMd 保持一致（spec conversation-project-attribution）
+  if (conversation.sourceProject) lines.push(`sourceProject: ${escapeFrontmatterValue(conversation.sourceProject)}`);
 
   return `---\n${lines.join("\n")}\n---\n\n${msgBlock}`;
 }
@@ -152,6 +222,10 @@ function documentToMarkdown(doc: Document): string {
     `updatedAt: ${escapeFrontmatterValue(doc.updatedAt ?? new Date().toISOString())}`,
     `currentVersionId: ${escapeFrontmatterValue(doc.currentVersionId ?? "")}`,
   ];
+  // 与 documentsPlugin.ts 的 documentToMd 保持一致（spec document-projects / document-ingest）
+  if (doc.projectId) lines.push(`projectId: ${escapeFrontmatterValue(doc.projectId)}`);
+  if (doc.externalKey) lines.push(`externalKey: ${escapeFrontmatterValue(doc.externalKey)}`);
+  if (doc.ingestSource) lines.push(`ingestSource: ${escapeFrontmatterValue(doc.ingestSource)}`);
   if (doc.sourceConversationId) lines.push(`sourceConversationId: ${escapeFrontmatterValue(doc.sourceConversationId)}`);
   if (doc.sourcePlatform) lines.push(`sourcePlatform: ${escapeFrontmatterValue(doc.sourcePlatform)}`);
   if (doc.sourceAiChatId) lines.push(`sourceAiChatId: ${escapeFrontmatterValue(doc.sourceAiChatId)}`);
@@ -184,7 +258,7 @@ async function fetchStoragePath(type: StoredItemType, id: string): Promise<strin
 
 function ItemActionMenu({
   menuPosition,
-  moveTargets,
+  moveGroups,
   onRename,
   onMove,
   onCopyPath,
@@ -193,9 +267,9 @@ function ItemActionMenu({
   onDelete,
 }: {
   menuPosition: MenuPosition;
-  moveTargets: MoveTarget[];
+  moveGroups: MoveTargetGroup[];
   onRename: (event: React.MouseEvent) => void;
-  onMove: (folderId: string | null) => void;
+  onMove: (folderId: string | null, projectId: string | null) => void;
   onCopyPath: (event: React.MouseEvent) => void;
   onDownloadMarkdown: (event: React.MouseEvent) => void;
   onUploadUpdate?: (event: React.MouseEvent) => void;
@@ -207,13 +281,13 @@ function ItemActionMenu({
 
   const showSubmenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    setSubmenuPosition(getSubmenuPosition(event.currentTarget, moveTargets.length));
+    setSubmenuPosition(getSubmenuPosition(event.currentTarget, moveGroupRowCount(moveGroups)));
     setSubmenuOpen(true);
   };
 
-  const handleMove = (event: React.MouseEvent, folderId: string | null) => {
+  const handleMove = (event: React.MouseEvent, folderId: string | null, projectId: string | null) => {
     event.stopPropagation();
-    onMove(folderId);
+    onMove(folderId, projectId);
   };
 
   return (
@@ -289,15 +363,7 @@ function ItemActionMenu({
             style={{ top: submenuPosition.top, left: submenuPosition.left, width: FOLDER_SUBMENU_WIDTH, maxHeight: submenuPosition.maxHeight }}
             className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-30 overflow-y-auto custom-scrollbar"
           >
-            {moveTargets.map((target) => (
-              <button
-                key={target.id ?? "uncategorized"}
-                onClick={(event) => handleMove(event, target.id)}
-                className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 flex items-center gap-2"
-              >
-                <FolderIcon size={12} /> <span className="truncate">{target.name}</span>
-              </button>
-            ))}
+            <MoveTargetList groups={moveGroups} onPick={handleMove} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -415,6 +481,121 @@ function RenameModal({
   );
 }
 
+/**
+ * 项目编辑弹窗（spec document-projects §项目重命名与身份稳定性 / §项目描述可编辑）：
+ * 名称与描述在同一处改完 —— 两者都是纯展示字段，拆成两个入口只是给用户添麻烦。
+ * `sourceKey` 不在这里、也不该在任何界面出现：它一变，全部文档就失去身份。
+ */
+function ProjectEditModal({
+  isOpen,
+  mode = "edit",
+  initialName,
+  initialDescription,
+  onClose,
+  onSubmit,
+}: {
+  isOpen: boolean;
+  /** create：名称必填，提交被服务端拒绝（重名）时留在弹窗里报错，不静默关闭。 */
+  mode?: "edit" | "create";
+  initialName: string;
+  initialDescription: string;
+  onClose: () => void;
+  onSubmit: (patch: { name: string; description: string }) => void | Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const isCreate = mode === "create";
+  const [name, setName] = useState(initialName);
+  const [description, setDescription] = useState(initialDescription);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(initialName);
+      setDescription(initialDescription);
+      setError(null);
+    }
+  }, [initialDescription, initialName, isOpen]);
+
+  const submit = async () => {
+    const nextName = name.trim();
+    // 新建时名称必填；改名时留空视为不改（项目总得有个名字）。描述两种模式都可清空。
+    if (isCreate && !nextName) return;
+    try {
+      setError(null);
+      await onSubmit({ name: nextName || initialName, description: description.trim() });
+      onClose();
+    } catch {
+      setError(t("sidebar.newProjectFailed"));
+    }
+  };
+
+  const stopPortalBubble = (e: React.MouseEvent) => e.stopPropagation();
+  const inputClass =
+    "w-full rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogPortal>
+        <DialogBackdrop onClick={stopPortalBubble} />
+        <DialogPopup className="max-w-sm" onClick={stopPortalBubble}>
+          <DialogHeader>
+            <DialogTitle>{isCreate ? t("sidebar.newProject") : t("sidebar.editProject")}</DialogTitle>
+            <DialogDescription>{isCreate ? t("sidebar.newProjectHint") : t("sidebar.editProjectHint")}</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="project-name">
+                  {t("sidebar.projectName")}
+                </label>
+                <input
+                  id="project-name"
+                  autoFocus
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+                  placeholder={t("sidebar.projectName")}
+                  className={inputClass}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="project-description">
+                  {t("sidebar.projectDescription")}
+                </label>
+                <input
+                  id="project-description"
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+                  placeholder={t("sidebar.projectDescription")}
+                  className={inputClass}
+                />
+              </div>
+              {error && <p className="text-xs text-destructive">{error}</p>}
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose render={<Button variant="ghost" size="sm" />}>
+              {t("sidebar.cancel")}
+            </DialogClose>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={isCreate && !name.trim()}
+              onClick={() => void submit()}
+            >
+              {isCreate ? t("sidebar.create") : t("sidebar.save")}
+            </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
+  );
+}
+
 function ConfirmDeleteModal({
   isOpen,
   title,
@@ -477,6 +658,8 @@ export function Sidebar() {
     setActiveView,
     documents,
     documentFolders,
+    documentProjects,
+    activeProjectId,
     addDocumentFolder,
     setSettingsOpen,
     activeConversationId,
@@ -528,6 +711,17 @@ export function Sidebar() {
     });
   };
 
+  // 文档按时间排序，与会话列表同一套交互；口径是文档的更新时间（对话没有"更新"，文档有）
+  const [docSortAsc, setDocSortAsc] = useState<boolean>(
+    () => localStorage.getItem("pentou-doc-sort") !== "desc",
+  );
+  const toggleDocSort = () => {
+    setDocSortAsc((prev) => {
+      localStorage.setItem("pentou-doc-sort", prev ? "desc" : "asc");
+      return !prev;
+    });
+  };
+
   // 搜索已统一收敛到命令面板浮层（spec hybrid-search US-01 AC4）；
   // 侧栏列表不再按 searchQuery 实时过滤，直接展示全量。
   const filteredConversations = useMemo(() => {
@@ -542,7 +736,17 @@ export function Sidebar() {
       return (va - vb) * dir;
     });
   }, [conversations, convSortAsc]);
-  const filteredDocuments = documents;
+  // 文档按当前项目过滤（spec document-projects §切换项目过滤列表）：
+  // projectId 为空 = 默认目录，其余按项目 id 精确匹配。排序与会话列表同口径：
+  // 时间相同以标题稳定兜底，避免同一秒批量入库的文档在列表里抖动。
+  const filteredDocuments = useMemo(
+    () => sortDocumentsByTime(filterDocumentsByProject(documents, activeProjectId), docSortAsc),
+    [documents, activeProjectId, docSortAsc],
+  );
+  const projectFolders = useMemo(
+    () => filterFoldersByProject(documentFolders, activeProjectId),
+    [documentFolders, activeProjectId],
+  );
 
   const exitSelection = () => {
     setSelectionMode(false);
@@ -585,7 +789,7 @@ export function Sidebar() {
       }
       return ids;
     } else {
-      const folderIds = new Set(documentFolders.map((f) => f.id));
+      const folderIds = new Set(projectFolders.map((f) => f.id));
       const ids: string[] = [];
       for (const d of filteredDocuments) {
         if (!d.folderId || !folderIds.has(d.folderId)) {
@@ -596,7 +800,7 @@ export function Sidebar() {
       }
       return ids;
     }
-  }, [activeView, folders, documentFolders, filteredConversations, filteredDocuments, chatFolderOpen, docFolderOpen]);
+  }, [activeView, folders, projectFolders, filteredConversations, filteredDocuments, chatFolderOpen, docFolderOpen]);
 
   const selectAllState: "none" | "partial" | "all" = (() => {
     if (visibleLeafIds.length === 0 || selectedIds.size === 0) return "none";
@@ -666,7 +870,7 @@ export function Sidebar() {
     exitSelection();
   };
 
-  const runBatchMove = async (folderId: string | null) => {
+  const runBatchMove = async (folderId: string | null, projectId: string | null) => {
     const ids = Array.from(selectedIds);
     if (activeView === "chat") {
       for (const id of ids) {
@@ -675,8 +879,8 @@ export function Sidebar() {
       }
     } else {
       for (const id of ids) {
-        try { await moveDocument(id, folderId); }
-        catch (e) { console.error({ module: "Sidebar", op: "batchMoveDoc", id, folderId, err: e }); }
+        try { await moveDocument(id, folderId, projectId); }
+        catch (e) { console.error({ module: "Sidebar", op: "batchMoveDoc", id, folderId, projectId, err: e }); }
       }
     }
     exitSelection();
@@ -709,10 +913,16 @@ export function Sidebar() {
     exitSelection();
   };
 
-  const moveTargets: MoveTarget[] =
+  // 对话视图仍是扁平的对话文件夹列表（无 label → 无分组标题），两条路径显式分开
+  const docMoveGroups = useDocumentMoveGroups();
+  const moveGroups: MoveTargetGroup[] =
     activeView === "chat"
-      ? [{ id: null, name: t("sidebar.uncategorized") }, ...folders.map((f) => ({ id: f.id, name: f.name }))]
-      : [{ id: null, name: t("sidebar.uncategorized") }, ...documentFolders.map((f) => ({ id: f.id, name: f.name }))];
+      ? [{
+          key: "chat",
+          projectId: null,
+          targets: [{ id: null, name: t("sidebar.uncategorized") }, ...folders.map((f) => ({ id: f.id, name: f.name }))],
+        }]
+      : docMoveGroups;
 
   const selectedCount = selectedIds.size;
   const hasSelection = selectedCount > 0;
@@ -836,6 +1046,9 @@ export function Sidebar() {
         )}
       </div>
 
+      {/* 项目选择器固定在列表**之外**：列表滚动时它不跟着走（spec §项目切换选择器） */}
+      {activeView === "doc" && <ProjectSwitcher />}
+
       {/* Lists */}
       <div
         className={clsx(
@@ -925,10 +1138,12 @@ export function Sidebar() {
             onNewFolder={handleNewFolder}
             newFolderDisabled={selectionMode}
             hideNewFolder={isMobile}
+            sortAsc={docSortAsc}
+            onToggleSort={toggleDocSort}
             onToggleAllFolders={() => {
-              const areAllOpen = documentFolders.length > 0 && documentFolders.every((folder) => docFolderOpen[folder.id] ?? false);
+              const areAllOpen = projectFolders.length > 0 && projectFolders.every((folder) => docFolderOpen[folder.id] ?? false);
               const nextOpen = !areAllOpen;
-              setDocFolderOpen(Object.fromEntries(documentFolders.map((folder) => [folder.id, nextOpen])));
+              setDocFolderOpen(Object.fromEntries(projectFolders.map((folder) => [folder.id, nextOpen])));
             }}
             onToggleFolderOpen={(id) =>
               setDocFolderOpen((prev) => ({ ...prev, [id]: !(prev[id] ?? false) }))
@@ -989,18 +1204,13 @@ export function Sidebar() {
               style={{ top: batchMoveMenu.top, left: batchMoveMenu.left, width: FOLDER_SUBMENU_WIDTH, maxHeight: batchMoveMenu.maxHeight }}
               className="fixed bg-white dark:bg-[#1A1A1A] border border-zinc-200 dark:border-white/10 shadow-lg rounded-md py-1 z-30 overflow-y-auto custom-scrollbar"
             >
-              {moveTargets.map((target) => (
-                <button
-                  key={target.id ?? "uncategorized"}
-                  onClick={() => {
-                    setBatchMoveMenu(null);
-                    runBatchMove(target.id);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 flex items-center gap-2"
-                >
-                  <FolderIcon size={12} /> <span className="truncate">{target.name}</span>
-                </button>
-              ))}
+              <MoveTargetList
+                groups={moveGroups}
+                onPick={(_event, folderId, projectId) => {
+                  setBatchMoveMenu(null);
+                  runBatchMove(folderId, projectId);
+                }}
+              />
             </motion.div>
           </>
         )}
@@ -1436,10 +1646,15 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
     downloadMarkdownFile(`${conversation.id}.md`, conversationToMarkdown(conversation));
   };
 
-  const moveTargets: MoveTarget[] = [
-    { id: null, name: t("sidebar.uncategorized") },
-    ...folders.map((folder) => ({ id: folder.id, name: folder.name })),
-  ];
+  // 对话视图只有对话文件夹，且不带分组标题 —— 与文档的项目维度显式隔离
+  const moveGroups: MoveTargetGroup[] = [{
+    key: "chat",
+    projectId: null,
+    targets: [
+      { id: null, name: t("sidebar.uncategorized") },
+      ...folders.map((folder) => ({ id: folder.id, name: folder.name })),
+    ],
+  }];
 
   const toggleMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -1506,7 +1721,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
         {menuOpen && menuPosition && !selectionMode && (
           <ItemActionMenu
             menuPosition={menuPosition}
-            moveTargets={moveTargets}
+            moveGroups={moveGroups}
             onRename={handleRename}
             onMove={handleMove}
             onCopyPath={handleCopyPath}
@@ -1546,6 +1761,8 @@ function DocumentList({
   onNewFolder,
   newFolderDisabled,
   hideNewFolder,
+  sortAsc,
+  onToggleSort,
   onToggleAllFolders,
   onToggleFolderOpen,
 }: {
@@ -1554,14 +1771,17 @@ function DocumentList({
   onNewFolder: () => void;
   newFolderDisabled?: boolean;
   hideNewFolder?: boolean;
+  sortAsc: boolean;
+  onToggleSort: () => void;
   onToggleAllFolders: () => void;
   onToggleFolderOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const { documentFolders } = useAppContext();
-  const documentFolderIds = new Set(documentFolders.map((folder) => folder.id));
-  const uncategorized = documents.filter((d) => !d.folderId || !documentFolderIds.has(d.folderId));
-  const areAllFoldersOpen = documentFolders.length > 0 && documentFolders.every((folder) => folderOpen[folder.id] ?? false);
+  const { documentFolders, activeProjectId } = useAppContext();
+  // 只看当前项目的文件夹：同名文件夹跨项目互不复用（spec §用户手动维护文件夹）
+  const projectFolders = filterFoldersByProject(documentFolders, activeProjectId);
+  const uncategorized = uncategorizedInProject(documents, documentFolders, activeProjectId);
+  const areAllFoldersOpen = projectFolders.length > 0 && projectFolders.every((folder) => folderOpen[folder.id] ?? false);
 
   return (
     <>
@@ -1584,7 +1804,19 @@ function DocumentList({
                 </Button>
               </IconTooltip>
             )}
-            {documentFolders.length > 0 && (
+            {/* 按时间排序：与会话列表同一套控件与同一套文案（只是时间取文档的更新时间） */}
+            <IconTooltip label={sortAsc ? t("sidebar.sortNewestFirst") : t("sidebar.sortOldestFirst")}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onToggleSort}
+                className="size-6 rounded-md text-zinc-400 dark:text-zinc-500"
+              >
+                {sortAsc ? <ArrowUpNarrowWide size={14} /> : <ArrowDownNarrowWide size={14} />}
+              </Button>
+            </IconTooltip>
+            {projectFolders.length > 0 && (
               <IconTooltip label={areAllFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}>
                 <Button
                   type="button"
@@ -1600,10 +1832,10 @@ function DocumentList({
           </div>
         </div>
         <div className="space-y-0.5">
-          {documentFolders.length === 0 ? (
+          {projectFolders.length === 0 ? (
             <div className="px-4 py-2 text-xs text-zinc-400 italic">{t("sidebar.empty")}</div>
           ) : (
-            documentFolders.map((folder) => {
+            projectFolders.map((folder) => {
               const folderDocs = documents.filter(d => d.folderId === folder.id);
               return (
                 <DocumentFolderItem
@@ -1626,6 +1858,199 @@ function DocumentList({
         <DocumentUncategorizedList documents={uncategorized} />
       </div>
     </>
+  );
+}
+
+/** 项目「更多」菜单里的一项：禁用态只降透明度并吃掉指针事件，不再假装可点。 */
+function ProjectMenuItem({
+  icon,
+  label,
+  disabled,
+  danger,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  disabled?: boolean;
+  danger?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={clsx(
+        "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs disabled:pointer-events-none disabled:opacity-40",
+        danger ? "text-destructive hover:bg-destructive/10" : "hover:bg-accent hover:text-accent-foreground",
+      )}
+    >
+      {icon} {label}
+    </button>
+  );
+}
+
+/**
+ * 项目选择器（spec document-projects §项目切换选择器）：文档视图文件夹列表**上方**的下拉，
+ * 不是文件夹树的一层——文件夹仍是扁平一层，项目只是分组维度。
+ * 由 Sidebar 渲染在滚动容器**之外**，因此列表滚动时它固定在顶部不动。
+ *
+ * 选项用 registry `@startist/select` 的「带描述双行选项」变体（次行为项目描述），
+ * 描述为空时自动降级单行。
+ *
+ * 「更多」按钮常驻：它同时是**新建项目**的入口，只在选中项目时才出现的话，
+ * 默认目录下就没有任何建项目的地方。默认目录仍不可改名 / 不可删除，
+ * 对应菜单项以禁用态呈现——比整块消失更能说明"为什么这里没有"。
+ */
+export function ProjectSwitcher() {
+  const { t } = useTranslation();
+  const {
+    documentProjects,
+    activeProjectId,
+    setActiveProjectId,
+    createDocumentProject,
+    updateDocumentProject,
+    deleteDocumentProject,
+  } = useAppContext();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const activeProject = documentProjects.find((project) => project.id === activeProjectId) ?? null;
+
+  // 选项数据展开态与收起态共用一份：Base UI 的 SelectValue 默认渲染的是**原始 value**，
+  // 不给它标签就会在界面上露出 dp_xxx 这类内部 id。
+  const options = useMemo(
+    () => [
+      {
+        value: DEFAULT_DOCUMENT_PROJECT_ID,
+        name: t("sidebar.defaultProject"),
+        description: t("sidebar.defaultProjectDescription"),
+      },
+      ...documentProjects.map((project) => ({
+        value: project.id,
+        name: project.name,
+        description: project.description,
+      })),
+    ],
+    [documentProjects, t],
+  );
+
+  return (
+    <div className="flex shrink-0 items-center gap-2 px-2 pt-3 pb-1">
+      <Select
+        value={activeProjectId ?? DEFAULT_DOCUMENT_PROJECT_ID}
+        onValueChange={(value: string) =>
+          setActiveProjectId(value === DEFAULT_DOCUMENT_PROJECT_ID ? null : value)
+        }
+      >
+        {/* 尺寸/内边距一律用 registry 默认（text-sm 主行 + text-xs 描述），不在产品仓私调 */}
+        <SelectTrigger className="min-w-0 flex-1" aria-label={t("sidebar.projectSwitcher")}>
+          <SelectValue>
+            {(value: string | null) => {
+              const option = options.find((item) => item.value === value) ?? options[0];
+              return <SelectValueLines title={option.name} description={option.description} />;
+            }}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value} description={option.description}>
+              {option.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {/* 常驻入口：新建项目在默认目录下也要够得着 */}
+      <IconTooltip label={t("sidebar.projectActions")}>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0 text-muted-foreground"
+          aria-label={t("sidebar.projectActions")}
+          onClick={(event) => {
+            setMenuPosition(getMenuPosition(event.currentTarget));
+            setMenuOpen(true);
+          }}
+        >
+          <MoreHorizontal size={16} />
+        </Button>
+      </IconTooltip>
+
+      <AnimatePresence>
+        {menuOpen && menuPosition && (
+          <>
+            <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.1 }}
+              style={{ top: menuPosition.top, left: menuPosition.left, width: ITEM_MENU_WIDTH, maxHeight: menuPosition.maxHeight }}
+              className="fixed bg-popover text-popover-foreground border border-border shadow-lg rounded-md py-1 z-30 overflow-y-auto custom-scrollbar"
+            >
+              <ProjectMenuItem
+                icon={<Plus size={12} />}
+                label={t("sidebar.newProject")}
+                onClick={() => { setMenuOpen(false); setCreateOpen(true); }}
+              />
+              <div className="my-1 h-px bg-border" />
+              {/* 默认目录是内置条目：改名 / 改描述 / 删除三个入口一律禁用 */}
+              <ProjectMenuItem
+                icon={<Edit2 size={12} />}
+                label={t("sidebar.editProject")}
+                disabled={!activeProject}
+                onClick={() => { setMenuOpen(false); setEditOpen(true); }}
+              />
+              <ProjectMenuItem
+                icon={<Trash2 size={12} />}
+                label={t("sidebar.deleteProject")}
+                disabled={!activeProject}
+                danger
+                onClick={() => { setMenuOpen(false); setDeleteOpen(true); }}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <ProjectEditModal
+        isOpen={createOpen}
+        mode="create"
+        initialName=""
+        initialDescription=""
+        onClose={() => setCreateOpen(false)}
+        // 失败（重名）时抛给弹窗自己显示错误，不吞掉
+        onSubmit={(input) => createDocumentProject(input).then(() => undefined)}
+      />
+
+      <ProjectEditModal
+        isOpen={editOpen && Boolean(activeProject)}
+        initialName={activeProject?.name ?? ""}
+        initialDescription={activeProject?.description ?? ""}
+        onClose={() => setEditOpen(false)}
+        onSubmit={(patch) => {
+          // 只动展示字段，sourceKey 不变 → 下次推送仍归入本项目
+          if (activeProject) updateDocumentProject(activeProject.id, patch);
+          setEditOpen(false);
+        }}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={deleteOpen && Boolean(activeProject)}
+        title={t("sidebar.deleteProject")}
+        message={t("sidebar.deleteProjectPrompt", { name: activeProject?.name ?? "" })}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => {
+          if (activeProject) deleteDocumentProject(activeProject.id);
+          setDeleteOpen(false);
+        }}
+      />
+    </div>
   );
 }
 
@@ -1787,7 +2212,7 @@ function DocumentFolderItem({
 
 function DocumentUncategorizedList({ documents }: { documents: Document[] }) {
   const { t } = useTranslation();
-  const { moveDocument } = useAppContext();
+  const { moveDocument, activeProjectId } = useAppContext();
   const { mode: selectionMode, isMobile } = useSelection();
   const dndDisabled = selectionMode || isMobile;
 
@@ -1797,13 +2222,14 @@ function DocumentUncategorizedList({ documents }: { documents: Document[] }) {
       canDrop: () => !dndDisabled,
       drop: (item: { id: string }) => {
         if (dndDisabled) return;
-        moveDocument(item.id, null);
+        // 落在当前项目的未分类（而非默认目录的未分类）
+        moveDocument(item.id, null, activeProjectId);
       },
       collect: (monitor) => ({
         isOver: !!monitor.isOver() && !dndDisabled,
       }),
     }),
-    [dndDisabled, moveDocument]
+    [dndDisabled, moveDocument, activeProjectId]
   );
 
   return (
@@ -1827,7 +2253,7 @@ function DocumentUncategorizedList({ documents }: { documents: Document[] }) {
 
 function DocumentItem({ document: doc }: { document: Document }) {
   const { t } = useTranslation();
-  const { activeDocId, setActiveDocId, deleteDocument, renameDocument, moveDocument, uploadDocumentUpdate, documentFolders } = useAppContext();
+  const { activeDocId, setActiveDocId, deleteDocument, renameDocument, moveDocument, uploadDocumentUpdate } = useAppContext();
   const { mode: selectionMode, isSelected, toggle, isMobile } = useSelection();
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1862,8 +2288,8 @@ function DocumentItem({ document: doc }: { document: Document }) {
     setRenameOpen(true);
   };
 
-  const handleMove = (folderId: string | null) => {
-    moveDocument(doc.id, folderId);
+  const handleMove = (folderId: string | null, projectId: string | null) => {
+    moveDocument(doc.id, folderId, projectId);
     setMenuOpen(false);
   };
 
@@ -1910,10 +2336,8 @@ function DocumentItem({ document: doc }: { document: Document }) {
     }
   };
 
-  const moveTargets: MoveTarget[] = [
-    { id: null, name: t("sidebar.uncategorized") },
-    ...documentFolders.map((folder) => ({ id: folder.id, name: folder.name })),
-  ];
+  // 单项移动与批量移动共用同一棵目标树（spec §批量移动共用目标树）
+  const moveGroups = useDocumentMoveGroups();
 
   const toggleMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -1970,7 +2394,7 @@ function DocumentItem({ document: doc }: { document: Document }) {
         {menuOpen && menuPosition && !selectionMode && (
           <ItemActionMenu
             menuPosition={menuPosition}
-            moveTargets={moveTargets}
+            moveGroups={moveGroups}
             onRename={handleRename}
             onMove={handleMove}
             onCopyPath={handleCopyPath}

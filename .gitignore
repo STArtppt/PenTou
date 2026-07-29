@@ -51,6 +51,8 @@ data/.session-secret
 # Per-machine local UI state (folder tree); tracked historically on main, aligned with public branch
 data/folders.json
 data/document-folders.json
+# 同类：文档项目清单（spec document-projects），随本机采集/手建产生，不入库
+data/document-projects.json
 # npx-launcher default runtime data dir (<cwd>/pentou-data): real conversations + .session-secret.
 # Accidentally committed in abf7e4f while smoke-testing from repo root — never track.
 pentou-data/
