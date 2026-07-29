@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import type {
   CollectorAdapter,
@@ -104,7 +105,9 @@ function globToRegExp(pattern: string, homeDir: string): RegExp {
   return new RegExp(out);
 }
 
-export function createExcludeMatcher(patterns: string[], homeDir = process.env.HOME || ""): (file: string) => string | null {
+// homeDir 走 os.homedir() 而非 process.env.HOME：Windows 上通常没有 HOME（只有 USERPROFILE），
+// 空 home 会让 `~/xxx/**` 规则静默失配——用户以为排除了敏感目录，实际照传。与 config.ts expandHome 对齐。
+export function createExcludeMatcher(patterns: string[], homeDir = os.homedir()): (file: string) => string | null {
   const normalizedHome = homeDir.split(path.sep).join("/");
   const compiled = patterns
     .map((pattern) => pattern.trim())

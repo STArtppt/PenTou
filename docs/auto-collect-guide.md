@@ -48,10 +48,14 @@
 | Grok CLI | `~/.grok/sessions/` | |
 | GitHub Copilot（VS Code 插件） | VS Code 的 workspaceStorage | |
 | GitHub Copilot（CLI 与桌面版共用） | `~/.copilot/session-store.db` | 需 Node ≥ 22.5 |
-| OpenCode | `~/.local/share/opencode/opencode.db` | 需 Node ≥ 22.5 |
+| OpenCode | `~/.local/share/opencode/opencode.db` | 需 Node ≥ 22.5；设了 `XDG_DATA_HOME` 则跟随该目录 |
 | Hermes | `~/.hermes/state.db` | 需 Node ≥ 22.5 |
 | Cursor | Cursor 的 `state.vscdb` | 需 Node ≥ 22.5 |
 | waylog | 你显式登记的目录 | 要加 `--waylog-dir`，见 §2.6 |
+
+**三个平台都支持。** 上表用的是 Unix 写法，`~` 指你的用户主目录 —— Windows 上就是 `C:\Users\你的用户名`，例如 Claude Code 的会话在 `C:\Users\你\.claude\projects`。这些 agent 在 Windows 上同样把会话存在用户主目录下，路径结构一致。两个例外是 **VS Code 的 Copilot 插件**和 **Cursor**：它们的用户数据目录本来就按平台不同（macOS 在 `~/Library/Application Support`，Windows 在 `%APPDATA%`，Linux 在 `~/.config`），采集器会自动按你的系统定位，不用手填。
+
+装在非默认位置（比如 VS Code Insiders、多 profile、自定义安装路径）时，改配置文件里对应来源的 `root` / `db` 即可，见 §2.7。
 
 **关于 Node 版本**：跑 Pentou 本身只要 Node ≥ 20；但上表标注的四个来源把会话存在 SQLite 数据库里，读取它们需要 **Node ≥ 22.5**。版本不够时这四个来源会整组跳过并给出提示，其余来源照常工作。用 `node -v` 查看，升级去 [nodejs.org](https://nodejs.org/) 装 LTS。
 
@@ -83,7 +87,7 @@ npx -y @startist/pentou@latest collect init \
   --token 你的令牌
 ```
 
-成功后会打印配置文件路径和本机来源检测结果：
+成功后会打印配置文件路径和本机来源检测结果（下面是 macOS 上的样子，Windows / Linux 打印的是各自的路径）：
 
 ```text
 collector config written: /Users/你/.pentou/collector.json
@@ -204,7 +208,7 @@ npx -y @startist/pentou@latest collect init \
 ~/.pentou/collector.json
 ```
 
-可以直接用文本编辑器改，常用字段：
+Windows 上即 `C:\Users\你的用户名\.pentou\collector.json`。可以直接用文本编辑器改，常用字段：
 
 | 字段 | 说明 |
 | --- | --- |

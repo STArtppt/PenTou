@@ -54,6 +54,20 @@ describe("collector engine", () => {
     expect(match("/tmp/public/chat.jsonl")).toBeNull();
   });
 
+  it("expands ~ from os.homedir(), not process.env.HOME (Windows has no HOME)", () => {
+    const home = os.homedir();
+    const original = process.env.HOME;
+    delete process.env.HOME;
+    try {
+      const match = createExcludeMatcher(["~/private/**"]);
+      expect(match(path.join(home, "private", "chat.jsonl"))).toBe("~/private/**");
+      expect(match(path.join(home, "public", "chat.jsonl"))).toBeNull();
+    } finally {
+      if (original === undefined) delete process.env.HOME;
+      else process.env.HOME = original;
+    }
+  });
+
   it("does not treat plain exclude text as unsafe substring matching", () => {
     const match = createExcludeMatcher(["test"]);
     expect(match("/tmp/my-latest-app/chat.jsonl")).toBeNull();

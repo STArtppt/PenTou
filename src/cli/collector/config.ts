@@ -30,8 +30,16 @@ export function defaultGrokRoot(): string {
   return path.join(os.homedir(), ".grok", "sessions");
 }
 
+/**
+ * 与 opencode 自身的 `Global.Path.data` 保持一致：`path.join(xdgData, "opencode")`，
+ * 其中 xdgData 来自 xdg-basedir —— `XDG_DATA_HOME || ~/.local/share`，**没有 Windows 分支**，
+ * 因此 Windows 上同样落在 `%USERPROFILE%\.local\share`，不需要按平台分派。
+ * 空串按 xdg-basedir 的 `||` 语义视为未设置。
+ */
 export function defaultOpencodeDb(): string {
-  return path.join(os.homedir(), ".local", "share", "opencode", "opencode.db");
+  const xdgData = process.env.XDG_DATA_HOME;
+  const base = xdgData ? xdgData : path.join(os.homedir(), ".local", "share");
+  return path.join(base, "opencode", "opencode.db");
 }
 
 export function defaultCopilotDb(): string {
