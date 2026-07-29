@@ -12,9 +12,11 @@ import {
   Import,
   Paperclip,
   MessageCircle,
+  Terminal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogBackdrop,
@@ -32,6 +34,8 @@ import { useTranslation } from "../i18n";
 import { convertConversationToDocument, LLMError } from "../llm";
 import { exportToObsidian } from "../obsidian";
 import { generateDocId, mergeRewriteWithExistingBody } from "../doc-utils";
+import { resolveDocumentOrigin } from "./topBarAttribution";
+import { formatDisplayDateTime } from "../utils/dateFormat";
 
 const RewriteConfirmDialog = lazy(() =>
   import("./RewriteConfirmDialog").then(m => ({ default: m.RewriteConfirmDialog }))
@@ -62,7 +66,7 @@ export function TopToolbar() {
     aiSidebarOpen,
     toggleAiSidebar,
   } = useAppContext();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const [converting, setConverting] = useState(false);
   const [showRewrite, setShowRewrite] = useState(false);
@@ -199,35 +203,44 @@ export function TopToolbar() {
     ? t("rewrite.noAnnotations")
     : undefined;
 
+  const docOrigin = activeDoc ? resolveDocumentOrigin(activeDoc) : null;
+  const originBadge =
+    docOrigin === "conversation" ? (
+      <Badge variant="secondary" size="sm" icon={<MessageCircle strokeWidth={2.5} />}>
+        {t("doc.fromConversation", { defaultValue: "来自对话" })}
+      </Badge>
+    ) : docOrigin === "terminal" ? (
+      <Badge variant="secondary" size="sm" icon={<Terminal strokeWidth={2.5} />}>
+        {t("doc.fromTerminal", { defaultValue: "来自终端" })}
+      </Badge>
+    ) : docOrigin === "import" ? (
+      <Badge
+        variant="secondary"
+        size="sm"
+        icon={<Paperclip strokeWidth={2.5} />}
+        title={activeDoc?.importedFrom || undefined}
+      >
+        {t("doc.fromImport", { defaultValue: "来自导入" })}
+      </Badge>
+    ) : null;
+
   return (
     <>
-      <div className="shrink-0 h-12 border-b border-zinc-200 dark:border-white/10 px-4 hidden md:flex items-center gap-2 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-md z-10">
-        {/* Document Title and Tags */}
-        <div className="flex items-center gap-2 max-w-xl">
-          <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-100 truncate">
+      <div className="z-10 hidden min-h-14 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white/80 px-4 backdrop-blur-md dark:border-white/10 dark:bg-[#1A1A1A]/80 md:flex">
+        {/* 双行：标题 / 更新于+来源徽章（spec content-topbar-attribution） */}
+        <div className="flex min-w-0 max-w-xl flex-col gap-1 py-2">
+          <span className="truncate text-base font-semibold text-zinc-800 dark:text-zinc-100">
             {activeDoc ? activeDoc.title : ""}
           </span>
-          {activeDoc?.sourceConversationId && (
-            <button
-              onClick={() => {
-                setActiveConversationId(activeDoc.sourceConversationId!);
-                setActiveView("chat");
-              }}
-              title={t("doc.goToConversation", { defaultValue: "查看源对话" })}
-              className="shrink-0 px-2 py-[3px] rounded-md bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 text-xs text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors cursor-pointer font-medium"
-            >
-              <MessageCircle size={12} strokeWidth={2.5} />
-              {t("doc.fromConversation", { defaultValue: "来自对话" })}
-            </button>
-          )}
-          {activeDoc?.importedFrom && (
-            <span
-              title={activeDoc.importedFrom}
-              className="shrink-0 max-w-[150px] px-2 py-[3px] rounded-md bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 text-xs text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5 cursor-default font-medium"
-            >
-              <Paperclip size={12} className="shrink-0" strokeWidth={2.5} />
-              <span className="truncate">{t("doc.fromImport", { defaultValue: "来自导入" })}</span>
-            </span>
+          {activeDoc && (
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {activeDoc.updatedAt && (
+                <span className="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">
+                  {t("version.updatedAt", { time: formatDisplayDateTime(activeDoc.updatedAt, language) })}
+                </span>
+              )}
+              {originBadge}
+            </div>
           )}
         </div>
 

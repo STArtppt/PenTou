@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-29T01:03:10.356Z",
+  "generatedAt": "2026-07-29T03:06:42.266Z",
   "count": 82,
   "violations": [
     {
@@ -95,37 +95,37 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 202,
+      "line": 204,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 211,
+      "line": 213,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 233,
+      "line": 235,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 236,
+      "line": 239,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 439,
+      "line": 464,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 485,
+      "line": 510,
       "match": "text-[15px]"
     },
     {
@@ -473,7 +473,7 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/TopToolbar.tsx",
-      "line": 204,
+      "line": 229,
       "match": "dark:bg-[#1A1A1A]"
     },
     {

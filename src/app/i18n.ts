@@ -197,7 +197,13 @@ export const translations = {
     "doc.editMode": "Edit",
     "doc.fromConversation": "From Chat",
     "doc.fromImport": "Imported",
+    "doc.fromTerminal": "From Terminal",
     "doc.goToConversation": "Go to source conversation",
+
+    // Top-bar attribution (capture method + project)
+    "capture.web": "Web",
+    "capture.terminal": "Terminal",
+    "capture.manual": "Manual",
 
     // Annotation
     "anno.addHighlight": "Highlight",
@@ -624,7 +630,12 @@ export const translations = {
     "doc.editMode": "编辑",
     "doc.fromConversation": "来自对话",
     "doc.fromImport": "来自导入",
+    "doc.fromTerminal": "来自终端",
     "doc.goToConversation": "查看源对话",
+
+    "capture.web": "网页",
+    "capture.terminal": "终端",
+    "capture.manual": "手工",
 
     // Annotation
     "anno.addHighlight": "高亮",

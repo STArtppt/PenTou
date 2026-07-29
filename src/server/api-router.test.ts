@@ -291,6 +291,54 @@ describe("conversation import dedup + versioning", () => {
     expect(versions.body.versions[0].type).toBe("import");
   });
 
+  it("includes sourceProject on ?fields=meta without message bodies", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    // 两条会话正文必须不同，否则会被指纹合并成一条
+    const withProject = base({
+      id: "conv_with_project",
+      title: "With project",
+      sourceProject: "pentou",
+      ingestSource: "cli:claude-code",
+      messages: [
+        { id: "m1", role: "user", content: "unique-project-cwd-session", timestamp: "2026-06-01T00:00:00.000Z" },
+        { id: "m2", role: "ai", content: "ack project", timestamp: "2026-06-01T00:00:01.000Z" },
+      ],
+    });
+    const withoutProject = base({
+      id: "conv_no_project",
+      title: "No project",
+      messages: [
+        { id: "m1", role: "user", content: "unique-manual-import-session", timestamp: "2026-06-01T00:00:00.000Z" },
+        { id: "m2", role: "ai", content: "ack manual", timestamp: "2026-06-01T00:00:01.000Z" },
+      ],
+    });
+    const createdWith = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: withProject });
+    const createdWithout = await callApi({
+      dataDir: rel,
+      method: "POST",
+      url: "/api/conversations",
+      body: withoutProject,
+    });
+    expect(createdWith.status).toBe(201);
+    expect(createdWithout.status).toBe(201);
+    const idWith = createdWith.body.id ?? withProject.id;
+    const idWithout = createdWithout.body.id ?? withoutProject.id;
+
+    const list = await callApi({ dataDir: rel, url: "/api/conversations?fields=meta" });
+    expect(list.status).toBe(200);
+    const byId = Object.fromEntries((list.body as any[]).map((c) => [c.id, c]));
+
+    expect(byId[idWith]).toBeTruthy();
+    expect(byId[idWith].sourceProject).toBe("pentou");
+    expect(byId[idWith].ingestSource).toBe("cli:claude-code");
+    expect(byId[idWith].messages).toEqual([]);
+    expect(byId[idWith].messageCount).toBe(2);
+
+    expect(byId[idWithout]).toBeTruthy();
+    expect(byId[idWithout].sourceProject).toBeUndefined();
+    expect(byId[idWithout].messages).toEqual([]);
+  });
+
   it("returns the normalized created conversation so imported state matches reload", async () => {
     const { rel } = makeRelativeTempDataDir();
     const conv = base({

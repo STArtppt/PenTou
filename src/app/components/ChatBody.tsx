@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Bot, User, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff, MessageSquare } from "lucide-react";
+import { Bot, User, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff, MessageSquare, Globe, Terminal, PenLine, FolderKanban } from "lucide-react";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/IconTooltip";
 import { toast } from "sonner";
 import { useAppContext, Message, Platform } from "../data";
@@ -16,6 +17,7 @@ import { copyText } from "../utils/clipboard";
 import { locateAndFlash } from "../utils/searchJump";
 import { BrandIcon } from "./BrandIcon";
 import { topBarSourceLabel } from "./topBarSourceLabel";
+import { resolveCaptureMethod } from "./topBarAttribution";
 import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
 import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
@@ -232,28 +234,51 @@ export function ChatBody() {
   return (
     <div className="flex-1 flex bg-white dark:bg-[#1A1A1A] relative overflow-hidden min-w-0 min-h-0">
       <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0 min-h-0">
-        {/* Top Metadata Bar — 移动端隐藏，标题/时间/Ask AI 由 MobileTopBar+FAB 承接（spec US-03 AC4/US-05 AC5） */}
-        <header className="shrink-0 h-14 border-b border-zinc-200 dark:border-white/10 px-6 hidden md:flex items-center justify-between bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-md z-10 sticky top-0">
-          <div className="flex items-center gap-4 min-w-0">
-            <h1 className="text-lg font-semibold text-zinc-800 dark:text-zinc-100 truncate max-w-lg">
+        {/* Top Metadata Bar — 双行布局（spec content-topbar-attribution）：标题 / 时间+徽章。
+            移动端隐藏，由 MobileTopBar+FAB 承接（spec mobile-responsive US-03）。 */}
+        <header className="shrink-0 min-h-14 border-b border-zinc-200 dark:border-white/10 px-6 hidden md:flex items-center justify-between gap-4 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-md z-10 sticky top-0">
+          <div className="flex min-w-0 flex-col gap-1 py-2">
+            <h1 className="max-w-lg truncate text-base font-semibold text-zinc-800 dark:text-zinc-100">
               {conversation.title}
             </h1>
-            <div className="flex items-center gap-2 text-xs font-medium shrink-0">
-              {/* 单一来源徽章：cli 采集显示形态段（grok-cli），否则回退品牌名。
-                  合并原「品牌名 + 形态标签」双徽章（debug 2026-07-21，见
-                  src/docs/debugging；spec collector-source-expansion US-07） */}
-              <span className="px-2 py-1 rounded-md bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-white/10 flex items-center gap-1.5">
-                <BrandIcon platform={conversation.platform} size={12} />
-                {topBarSourceLabel(conversation.platform, conversation.ingestSource)}
-              </span>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               {conversation.updatedAt && (
-                <span className="text-zinc-400 dark:text-zinc-500 hidden sm:inline">
+                <span className="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">
                   {t("version.updatedAt", { time: formatDisplayDateTime(conversation.updatedAt, language) })}
                 </span>
               )}
+              {/* 品牌/形态 + 采集方式 + 项目（有 sourceProject 才显示） */}
+              <Badge
+                variant="secondary"
+                size="sm"
+                icon={<BrandIcon platform={conversation.platform} size={12} />}
+              >
+                {topBarSourceLabel(conversation.platform, conversation.ingestSource)}
+              </Badge>
+              {(() => {
+                const method = resolveCaptureMethod(conversation.ingestSource);
+                const captureIcon =
+                  method === "web" ? <Globe /> : method === "terminal" ? <Terminal /> : <PenLine />;
+                const captureLabel =
+                  method === "web"
+                    ? t("capture.web")
+                    : method === "terminal"
+                    ? t("capture.terminal")
+                    : t("capture.manual");
+                return (
+                  <Badge variant="secondary" size="sm" icon={captureIcon}>
+                    {captureLabel}
+                  </Badge>
+                );
+              })()}
+              {conversation.sourceProject ? (
+                <Badge variant="secondary" size="sm" icon={<FolderKanban />}>
+                  {conversation.sourceProject}
+                </Badge>
+              ) : null}
             </div>
           </div>
-          <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400 shrink-0">
+          <div className="flex shrink-0 items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
             <Button
               variant="ghost"
               size="sm"

@@ -158,6 +158,8 @@ function toConversationMeta(conv: any) {
     updatedAt: conv.updatedAt,
     currentVersionId: conv.currentVersionId,
     ingestSource: conv.ingestSource,
+    // 顶栏项目徽章消费（spec content-topbar-attribution）：与完整会话一致，无需水合消息体
+    sourceProject: conv.sourceProject,
     messageCount: conv.messages?.length ?? 0,
     messages: [],
   };

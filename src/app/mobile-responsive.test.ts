@@ -20,7 +20,12 @@ describe("mobile responsive layout contract", () => {
 
   it("TopToolbar bar is hidden below md (decision 7)", () => {
     const topToolbar = read("src/app/components/TopToolbar.tsx");
-    expect(topToolbar).toContain("h-12 border-b border-zinc-200 dark:border-white/10 px-4 hidden md:flex");
+    // content-topbar-attribution：高度与对话顶栏对齐 min-h-14；< md 仍隐藏
+    expect(topToolbar).toContain("min-h-14");
+    expect(topToolbar).toContain("border-b border-zinc-200");
+    expect(topToolbar).toMatch(/hidden[\s\S]*md:flex|md:flex[\s\S]*hidden/);
+    expect(topToolbar).toMatch(/\bhidden\b/);
+    expect(topToolbar).toContain("md:flex");
   });
 
   it("MobileTopBar is md:hidden and reads both conversation and document sources", () => {
