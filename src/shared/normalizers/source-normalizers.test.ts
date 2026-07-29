@@ -4,7 +4,7 @@
  * parseJsonl 的 Codex rollout 输出 platform "ChatGPT"（决策 2）。
  */
 import { describe, expect, it } from "vitest";
-import { normalizeGrokCli } from "./grok-cli";
+import { normalizeGrokCli, parseGrokTurns } from "./grok-cli";
 import { normalizeOpencode } from "./opencode";
 import { normalizeCopilot } from "./copilot";
 import { normalizeCopilotVscode } from "./copilot-vscode";
@@ -72,6 +72,149 @@ describe("grok-cli normalizer (US-02)", () => {
     expect(conv.title).toBe("请根据 guide.md 写 waylog 登记示例");
     expect(conv.messages[0].content).not.toContain("user_info");
     expect(conv.messages[0].content).not.toContain("git_status");
+  });
+
+  it("uses grok-cli-v1 envelope session.created_at when no turns (session-level fallback)", () => {
+    const history = [
+      JSON.stringify({ type: "user", content: [{ type: "text", text: "<user_query>\n旧会话\n</user_query>" }] }),
+      JSON.stringify({ type: "assistant", content: "答" }),
+    ].join("\n");
+    const envelope = JSON.stringify({
+      schema: "grok-cli-v1",
+      session: {
+        created_at: "2026-07-13T03:50:41.719462Z",
+        updated_at: "2026-07-13T03:53:14.410275Z",
+        title: "summary title",
+      },
+      history,
+    });
+    const [conv] = normalizeGrokCli(envelope);
+    expect(conv.date).toBe("2026-07-13T03:50:41.719Z");
+    expect(conv.dateFromSource).toBe(true);
+    expect(conv.title).toBe("summary title");
+    // 无 turns 时消息全部回退会话时间
+    expect(conv.messages.every((m) => m.timestamp === "2026-07-13T03:50:41.719Z")).toBe(true);
+  });
+
+  it("envelope without session times still parses history (legacy fallback path for date)", () => {
+    const history = [
+      JSON.stringify({ type: "user", content: [{ type: "text", text: "<user_query>\nx\n</user_query>" }] }),
+      JSON.stringify({ type: "assistant", content: "y" }),
+    ].join("\n");
+    const [conv] = normalizeGrokCli(JSON.stringify({ schema: "grok-cli-v1", session: {}, history }));
+    expect(conv.messages).toHaveLength(2);
+    expect(conv.dateFromSource).toBeUndefined();
+    // 无源时间时用入库时刻，不应远在过去
+    expect(Date.now() - Date.parse(conv.date)).toBeLessThan(5_000);
+  });
+
+  it("aligns multi-turn messages to turn_started / first_token / turn_ended", () => {
+    const history = [
+      JSON.stringify({ type: "user", prompt_index: 0, content: [{ type: "text", text: "<user_query>\n你是什么模型\n</user_query>" }] }),
+      JSON.stringify({ type: "assistant", content: "我是 Grok" }),
+      JSON.stringify({ type: "user", prompt_index: 1, content: [{ type: "text", text: "<user_query>\n第二问\n</user_query>" }] }),
+      JSON.stringify({ type: "assistant", content: "第二答" }),
+      JSON.stringify({ type: "user", prompt_index: 2, content: [{ type: "text", text: "<user_query>\n第三问\n</user_query>" }] }),
+      JSON.stringify({ type: "assistant", content: "第三答" }),
+    ].join("\n");
+    const turns = [
+      { turnNumber: 0, startedAt: "2026-07-13T03:50:46.108Z", firstTokens: ["2026-07-13T03:50:53.509Z"], endedAt: "2026-07-13T03:50:53.515Z" },
+      { turnNumber: 1, startedAt: "2026-07-13T03:51:10.583Z", firstTokens: ["2026-07-13T03:51:20.889Z"], endedAt: "2026-07-13T03:51:28.446Z" },
+      { turnNumber: 2, startedAt: "2026-07-13T03:52:48.862Z", firstTokens: ["2026-07-13T03:53:05.324Z"], endedAt: "2026-07-13T03:53:14.404Z" },
+    ];
+    const [conv] = normalizeGrokCli(JSON.stringify({
+      schema: "grok-cli-v1",
+      session: { created_at: "2026-07-13T03:50:41.719Z" },
+      turns,
+      history,
+    }));
+    expect(conv.date).toBe("2026-07-13T03:50:41.719Z");
+    expect(conv.messages.map((m) => [m.role, m.timestamp])).toEqual([
+      ["user", "2026-07-13T03:50:46.108Z"],
+      ["ai", "2026-07-13T03:50:53.509Z"],
+      ["user", "2026-07-13T03:51:10.583Z"],
+      ["ai", "2026-07-13T03:51:20.889Z"],
+      ["user", "2026-07-13T03:52:48.862Z"],
+      ["ai", "2026-07-13T03:53:05.324Z"],
+    ]);
+    // 多轮 user 时间严格递增
+    const userTs = conv.messages.filter((m) => m.role === "user").map((m) => Date.parse(m.timestamp));
+    expect(userTs[0]).toBeLessThan(userTs[1]);
+    expect(userTs[1]).toBeLessThan(userTs[2]);
+  });
+
+  it("interpolates multiple AI messages within a single turn window", () => {
+    const history = [
+      JSON.stringify({ type: "user", content: [{ type: "text", text: "<user_query>\n评审\n</user_query>" }] }),
+      JSON.stringify({ type: "assistant", content: "", tool_calls: [{}] }),
+      JSON.stringify({ type: "assistant", content: "先对齐实现" }),
+      JSON.stringify({ type: "assistant", content: "", tool_calls: [{}] }),
+      JSON.stringify({ type: "assistant", content: "完整评审意见" }),
+    ].join("\n");
+    const turns = [{
+      turnNumber: 0,
+      startedAt: "2026-07-13T06:19:09.617Z",
+      firstTokens: [
+        "2026-07-13T06:19:36.019Z",
+        "2026-07-13T06:19:38.436Z",
+        "2026-07-13T06:19:42.869Z",
+        "2026-07-13T06:19:47.075Z",
+      ],
+      endedAt: "2026-07-13T06:20:15.156Z",
+    }];
+    const [conv] = normalizeGrokCli(JSON.stringify({
+      schema: "grok-cli-v1",
+      session: { created_at: "2026-07-13T06:19:00.000Z" },
+      turns,
+      history,
+    }));
+    expect(conv.messages).toHaveLength(3); // 1 user + 2 non-empty AI
+    expect(conv.messages[0].timestamp).toBe("2026-07-13T06:19:09.617Z");
+    // firstTokens 条数 ≠ AI 条数 → 在 [firstToken0, endedAt] 插值，两条时间不同且落在窗内
+    const a0 = Date.parse(conv.messages[1].timestamp);
+    const a1 = Date.parse(conv.messages[2].timestamp);
+    const lo = Date.parse("2026-07-13T06:19:36.019Z");
+    const hi = Date.parse("2026-07-13T06:20:15.156Z");
+    expect(a0).toBe(lo);
+    expect(a1).toBe(hi);
+    expect(a0).toBeLessThan(a1);
+  });
+
+  it("falls back to session date when turn count mismatches message groups", () => {
+    const history = [
+      JSON.stringify({ type: "user", content: [{ type: "text", text: "<user_query>\na\n</user_query>" }] }),
+      JSON.stringify({ type: "assistant", content: "A" }),
+      JSON.stringify({ type: "user", content: [{ type: "text", text: "<user_query>\nb\n</user_query>" }] }),
+      JSON.stringify({ type: "assistant", content: "B" }),
+    ].join("\n");
+    // 只有 1 个 turn，但 2 个逻辑轮 → 全部 session 时间
+    const [conv] = normalizeGrokCli(JSON.stringify({
+      schema: "grok-cli-v1",
+      session: { created_at: "2026-07-13T03:50:41.719Z" },
+      turns: [{ startedAt: "2026-07-13T03:50:46.108Z", firstTokens: ["2026-07-13T03:50:53.509Z"], endedAt: "2026-07-13T03:50:53.515Z" }],
+      history,
+    }));
+    expect(conv.messages.every((m) => m.timestamp === "2026-07-13T03:50:41.719Z")).toBe(true);
+  });
+});
+
+describe("parseGrokTurns", () => {
+  it("extracts turn windows ignoring phase_changed noise", () => {
+    const events = [
+      JSON.stringify({ type: "mcp_config_resolved", ts: "2026-07-13T03:50:42.000Z" }),
+      JSON.stringify({ type: "phase_changed", ts: "2026-07-13T03:50:45.000Z", phase: "x" }),
+      JSON.stringify({ type: "turn_started", ts: "2026-07-13T03:50:46.108Z", turn_number: 0 }),
+      JSON.stringify({ type: "phase_changed", ts: "2026-07-13T03:50:50.000Z", phase: "y" }),
+      JSON.stringify({ type: "first_token", ts: "2026-07-13T03:50:53.509Z" }),
+      JSON.stringify({ type: "turn_ended", ts: "2026-07-13T03:50:53.515Z", outcome: "completed" }),
+      JSON.stringify({ type: "turn_started", ts: "2026-07-13T03:51:10.583Z", turn_number: 1 }),
+      JSON.stringify({ type: "first_token", ts: "2026-07-13T03:51:20.889Z" }),
+      JSON.stringify({ type: "turn_ended", ts: "2026-07-13T03:51:28.446Z", outcome: "completed" }),
+    ].join("\n");
+    expect(parseGrokTurns(events)).toEqual([
+      { turnNumber: 0, startedAt: "2026-07-13T03:50:46.108Z", firstTokens: ["2026-07-13T03:50:53.509Z"], endedAt: "2026-07-13T03:50:53.515Z" },
+      { turnNumber: 1, startedAt: "2026-07-13T03:51:10.583Z", firstTokens: ["2026-07-13T03:51:20.889Z"], endedAt: "2026-07-13T03:51:28.446Z" },
+    ]);
   });
 });
 

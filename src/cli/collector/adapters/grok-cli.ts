@@ -1,14 +1,79 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { parseGrokTurns, type GrokTurnWindow } from "../../../shared/normalizers/grok-cli.js";
 import { defaultGrokRoot, resolveUserPath } from "../config.js";
 import type { CollectorAdapter, IngestItem, SessionFile } from "../types.js";
 import { walkFiles } from "./walk.js";
 
 const CHAT_FILE = "chat_history.jsonl";
+const SUMMARY_FILE = "summary.json";
+const EVENTS_FILE = "events.jsonl";
+
+/** 会话级元信息，塞进 grok-cli-v1 信封供 normalizer 取真实时间 */
+export interface GrokCliSessionMeta {
+  created_at?: string;
+  updated_at?: string;
+  title?: string;
+}
+
+async function readOptionalText(filePath: string): Promise<string | null> {
+  try {
+    return await fs.readFile(filePath, "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+/** events 文本中第一条带 ts 的行（会话 created_at 兜底） */
+function firstTsInEvents(eventsText: string): string | undefined {
+  for (const line of eventsText.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const obj = JSON.parse(line);
+      if (typeof obj?.ts === "string" && obj.ts.trim()) return obj.ts.trim();
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
+}
 
 /**
- * ~/.grok/sessions/<url编码cwd>/<uuid>/chat_history.jsonl；仅此文件参与采集，
- * 会话目录内其余文件（events.jsonl / summary.json / terminal 等）忽略（US-02 AC2）。
+ * 从同目录 summary.json（优先）或 events 首条 ts 取会话时间。
+ * discover 仍只扫 chat_history；meta / events 仅在 toItem 时旁路读取。
+ */
+export async function readGrokSessionMeta(
+  sessionDir: string,
+  eventsText?: string | null,
+): Promise<GrokCliSessionMeta> {
+  const meta: GrokCliSessionMeta = {};
+  try {
+    const raw = await fs.readFile(path.join(sessionDir, SUMMARY_FILE), "utf-8");
+    const summary = JSON.parse(raw);
+    if (typeof summary?.created_at === "string" && summary.created_at.trim()) {
+      meta.created_at = summary.created_at.trim();
+    }
+    if (typeof summary?.updated_at === "string" && summary.updated_at.trim()) {
+      meta.updated_at = summary.updated_at.trim();
+    }
+    const title =
+      (typeof summary?.generated_title === "string" && summary.generated_title.trim()) ||
+      (typeof summary?.session_summary === "string" && summary.session_summary.trim()) ||
+      "";
+    if (title) meta.title = title;
+  } catch {
+    // summary 缺失/损坏时走 events 兜底
+  }
+  if (!meta.created_at && eventsText) {
+    const firstTs = firstTsInEvents(eventsText);
+    if (firstTs) meta.created_at = firstTs;
+  }
+  return meta;
+}
+
+/**
+ * ~/.grok/sessions/<url编码cwd>/<uuid>/chat_history.jsonl；discover 仅此文件，
+ * toItem 旁路读 summary.json / events.jsonl → 信封（会话时间 + turn 窗口）。
  * externalId = 会话目录 UUID，与 cwd 目录无关（spec §5 边界 5）。
  */
 export function createGrokCliAdapter(root = defaultGrokRoot()): CollectorAdapter {
@@ -26,12 +91,21 @@ export function createGrokCliAdapter(root = defaultGrokRoot()): CollectorAdapter
     },
     async toItem(file: string): Promise<IngestItem | null> {
       if (path.basename(file) !== CHAT_FILE) return null;
-      const data = await fs.readFile(file, "utf-8");
+      const sessionDir = path.dirname(file);
+      const history = await fs.readFile(file, "utf-8");
+      const eventsText = await readOptionalText(path.join(sessionDir, EVENTS_FILE));
+      const turns: GrokTurnWindow[] = eventsText ? parseGrokTurns(eventsText) : [];
+      const session = await readGrokSessionMeta(sessionDir, eventsText);
       return {
         platform: "grok-cli",
-        externalId: path.basename(path.dirname(file)) || undefined,
+        externalId: path.basename(sessionDir) || undefined,
         format: "raw",
-        data,
+        data: JSON.stringify({
+          schema: "grok-cli-v1",
+          session,
+          turns,
+          history,
+        }),
         filename: CHAT_FILE,
       };
     },

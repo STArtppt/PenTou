@@ -99,9 +99,17 @@ describe("collector adapters", () => {
     const root = tmpDir("pentou-grok-");
     const session = path.join(root, "%2Fproj", "019f5e18-174f-71c1-9b24-3d8626bca882");
     fs.mkdirSync(session, { recursive: true });
-    fs.writeFileSync(path.join(session, "chat_history.jsonl"), '{"type":"user","content":"hi"}\n');
+    const history = '{"type":"user","content":"hi"}\n';
+    fs.writeFileSync(path.join(session, "chat_history.jsonl"), history);
     fs.writeFileSync(path.join(session, "events.jsonl"), "{}\n");
-    fs.writeFileSync(path.join(session, "summary.json"), "{}\n");
+    fs.writeFileSync(
+      path.join(session, "summary.json"),
+      JSON.stringify({
+        created_at: "2026-07-13T03:50:41.719462Z",
+        updated_at: "2026-07-13T03:53:14.410275Z",
+        generated_title: "Help with bug",
+      }),
+    );
 
     const adapter = createGrokCliAdapter(root);
     const files = await adapter.discover();
@@ -114,6 +122,44 @@ describe("collector adapters", () => {
       externalId: "019f5e18-174f-71c1-9b24-3d8626bca882",
       format: "raw",
     });
+    // 信封携带 summary 时间 + turns，避免 normalizer 用入库时刻兜底
+    const envelope = JSON.parse(item!.data as string);
+    expect(envelope).toMatchObject({
+      schema: "grok-cli-v1",
+      history,
+      session: {
+        created_at: "2026-07-13T03:50:41.719462Z",
+        updated_at: "2026-07-13T03:53:14.410275Z",
+        title: "Help with bug",
+      },
+      turns: [],
+    });
+  });
+
+  it("grok-cli: falls back to first events.jsonl ts when summary has no created_at", async () => {
+    const root = tmpDir("pentou-grok-ev-");
+    const session = path.join(root, "%2Fproj", "019f5e18-174f-71c1-9b24-3d8626bca883");
+    fs.mkdirSync(session, { recursive: true });
+    fs.writeFileSync(path.join(session, "chat_history.jsonl"), '{"type":"user","content":"hi"}\n');
+    fs.writeFileSync(
+      path.join(session, "events.jsonl"),
+      [
+        JSON.stringify({ type: "mcp_config_resolved", ts: "2026-07-20T00:19:30.100Z" }),
+        JSON.stringify({ type: "turn_started", ts: "2026-07-20T00:19:40.692Z", turn_number: 0 }),
+        JSON.stringify({ type: "first_token", ts: "2026-07-20T00:19:50.000Z" }),
+        JSON.stringify({ type: "turn_ended", ts: "2026-07-20T00:19:55.000Z", outcome: "completed" }),
+      ].join("\n"),
+    );
+
+    const item = await createGrokCliAdapter(root).toItem(path.join(session, "chat_history.jsonl"));
+    const envelope = JSON.parse(item!.data as string);
+    expect(envelope.session.created_at).toBe("2026-07-20T00:19:30.100Z");
+    expect(envelope.turns).toEqual([{
+      turnNumber: 0,
+      startedAt: "2026-07-20T00:19:40.692Z",
+      firstTokens: ["2026-07-20T00:19:50.000Z"],
+      endedAt: "2026-07-20T00:19:55.000Z",
+    }]);
   });
 
   it("copilot-vscode: skips empty-requests sessions and non-chatSessions json (US-04 AC3)", async () => {
