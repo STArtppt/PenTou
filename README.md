@@ -43,7 +43,9 @@ PenTou 把散落在十几个平台的对话收进本机，沉淀成**可检索�
 | 痛点 | PenTou 的答案 |
 | --- | --- |
 | 对话散落在十几个平台 | **统一入库**：导出文件 / 分享链接 / CLI 自动采集 / 浏览器插件 |
+| 项目里的 Markdown 也想归档 | **CLI 文档推送**：按仓库落「项目」维度，可 `watch` 常驻同步 |
 | 想回查却搜不到 | **本地全文 + 可选语义检索**，跨对话与文档一键跳转高亮 |
+| 入库后分不清哪来的 | **顶栏来源徽章**：采集方式（网页/终端/手工）、项目、文档来源三态 |
 | 长对话难以沉淀成知识 | **对话 → 文档 → 批注 → AI 重写 → 推送 Obsidian** |
 | 数据在云上、导不出 | **原生 Markdown 落盘**，可用 VSCode / Git / Obsidian 直接消费 |
 | 部署门槛高 | **`npx` 本机一键** 或 **Docker 私有化**，数据可在实例间迁移 |
@@ -59,9 +61,10 @@ PenTou 把散落在十几个平台的对话收进本机，沉淀成**可检索�
 - **浏览器插件**：网页端哑采集，解析与去重在服务端统一完成。
 - **Ingest Gateway**：幂等 upsert、密钥脱敏、超长会话自动降级瘦身，反复同步不产生垃圾副本。
 - **导入自动归类**：按平台落入对应文件夹，减少手动整理。
+- **CLI 文档推送**：项目里的 Markdown（README、设计文档、笔记）一条命令进**文档平面**；按 git 仓库自动落「项目」维度，支持 `watch` 常驻同步。
 
 两条自动通道怎么开、怎么排除敏感项目，见 [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md)。
-项目里的 Markdown 文档也能一条命令推进来（含常驻自动同步），见 [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md)。
+文档推送与项目分组，见 [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md)。
 
 ![导入面板：拖拽导出文件、粘贴分享链接，以及 CLI 采集器与浏览器插件的接入说明](./assets/demo/screenshot-Import-interface.png)
 
@@ -85,6 +88,7 @@ PenTou 把散落在十几个平台的对话收进本机，沉淀成**可检索�
 ### 4. 可用的产品体验
 
 - 三栏布局：文件夹侧栏 · 对话/文档正文 · 问题大纲导航；明暗主题、中英文。
+- **顶栏来源一目了然**：对话顶栏展示品牌/形态、采集方式（网页 / 终端 / 手工）与所属项目；文档顶栏展示「更新于」与来源三态（来自对话 / 来自终端 / 来自导入）——同一会话是插件采的还是 CLI 采的、文档是仓库推上来的还是对话转的，不用点开设置就能看清。
 - 代码高亮、Mermaid 图示、图片资产本地化与灯箱预览。
 - 设置、导入、搜索在桌面与**手机端**均有适配布局。
 - UI 基于统一设计系统，批量选择、拖拽归类、时间排序等日常操作已齐。
@@ -182,11 +186,11 @@ npx -y @startist/pentou@latest
 
 | 文档 | 用途 |
 | --- | --- |
-| [`docs/product-intro.md`](./docs/product-intro.md) | 短版产品介绍（对外分享） |
-| [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | 完整产品介绍与能力说明 |
+| [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | 产品介绍与能力说明 |
 | [`docs/user-guide.md`](./docs/user-guide.md) | 本机 `npx` 用户指南 |
 | [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) | 自动采集指南（CLI 采集器 + 浏览器插件） |
 | [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md) | 使用 CLI 上传文档指南（项目 Markdown → 文档平面） |
+| [`docs/releases.md`](./docs/releases.md) | 版本发布说明 |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker 部署与反代 |
 | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | 贡献指南 |
 | [`docs/SECURITY.md`](./docs/SECURITY.md) | 安全策略与漏洞报告 |

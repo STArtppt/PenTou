@@ -324,7 +324,10 @@ pnpm --dir extension exec vite build
 
 ## 4. 采集之后
 
-- **去哪看**：对话按平台自动落进左侧对应文件夹，顶栏标题后的徽章标明来自哪种采集形态；
+- **去哪看**：对话按平台自动落进左侧对应文件夹；桌面顶栏第二行用徽章标明来源——
+  - **品牌 / 形态**（如 Claude、Grok CLI）：同一产品的网页壳与 CLI 共库，靠形态徽章区分；
+  - **采集方式**：终端（CLI 采集）/ 网页（浏览器插件）/ 手工（导出或分享链接导入）；
+  - **项目**（可选）：agent 会话带工作目录时显示所属项目名，方便和仓库对齐。
 - **重复采集不会产生副本**：同一平台的同一会话由 `平台 + 会话 id` 唯一标识，再采只会更新或跳过；
 - **接着聊了再采**：新内容合并进原对话（`merged` / `UPD`），不新建一条；
 - **超长会话**：CLI 采集器遇到超大会话（单个超过 10MB）会自动降级处理并做确定性瘦身，不会因为体积直接失败。
@@ -379,5 +382,6 @@ pnpm --dir extension exec vite build
 | [`cli-doc-push-guide.md`](./cli-doc-push-guide.md) | 用 CLI 把项目里的 Markdown 推进文档平面 |
 | [`user-guide.md`](./user-guide.md) | 本机 `npx` 启动、数据目录、桌面一键脚本、FAQ |
 | [`deployment.md`](./deployment.md) | Docker 部署与反向代理 |
-| [`pentou-introduction.md`](./pentou-introduction.md) | 完整产品介绍与能力说明 |
+| [`pentou-introduction.md`](./pentou-introduction.md) | 产品介绍与能力说明 |
+| [`releases.md`](./releases.md) | 版本发布说明 |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | 从源码运行、想加新采集来源 |

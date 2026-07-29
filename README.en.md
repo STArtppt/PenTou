@@ -43,7 +43,9 @@ PenTou pulls those conversations off a dozen platforms onto your own machine, as
 | Pain point | What PenTou does |
 | --- | --- |
 | Conversations scattered across a dozen platforms | **One inbox**: export files, share links, automatic CLI capture, browser extension |
+| Project Markdown also needs a home | **CLI document push**: lands under a git-repo **project**, with optional always-on `watch` |
 | You know you discussed it, but can't find it | **Local full-text plus optional semantic search**, jump-and-highlight across conversations and documents |
+| After import, you can't tell where it came from | **Top-bar attribution badges**: capture method (Web / Terminal / Manual), project, document origin |
 | Long threads never become knowledge | **Conversation → document → annotation → AI rewrite → push to Obsidian** |
 | Data sits in the cloud and won't come out | **Plain Markdown on disk**, consumable directly by VS Code, Git or Obsidian |
 | Deployment is a project in itself | **One `npx` command** locally, or **Docker** for self-hosting, with data portable between instances |
@@ -59,9 +61,10 @@ PenTou pulls those conversations off a dozen platforms onto your own machine, as
 - **Browser extension**: dumb capture in the page; parsing and deduplication happen server-side.
 - **Ingest gateway**: idempotent upserts, secret redaction, and automatic slimming of oversized sessions — syncing repeatedly won't litter your library with duplicates.
 - **Auto-filing on import**: conversations land in the folder matching their platform, so there's less to tidy by hand.
+- **CLI document push**: project Markdown (READMEs, design notes, research) lands in the **document plane** with one command; grouped by a git-repo **project** dimension, with optional `watch` for always-on sync.
 
 Setting up either automatic channel — and excluding the projects you'd rather not upload — is covered in [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) (Chinese).
-Markdown docs from your project directories can be pushed in with a single command too, with an optional always-on watch: see [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md) (Chinese).
+Document push and project grouping: [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md) (Chinese).
 
 ![Import panel: drag in export files, paste a share link, and set up the CLI collector or browser extension](./assets/demo/screenshot-Import-interface.png)
 
@@ -85,6 +88,7 @@ Each conversation is a Markdown file (frontmatter plus message body) under your 
 ### 4. A product you can actually live in
 
 - Three-pane layout — folder sidebar, conversation/document body, question outline — with light and dark themes in English and Chinese.
+- **Source at a glance in the top bar**: conversation headers show brand/form, capture method (Web / Terminal / Manual) and project; document headers show “Updated” plus origin (From Chat / From Terminal / Imported) — so you can tell extension vs CLI, or “pushed from a repo” vs “converted from a chat”, without opening settings.
 - Syntax highlighting, Mermaid diagrams, localized image assets, and a lightbox viewer.
 - Settings, import and search all have adapted layouts on desktop **and mobile**.
 - The UI runs on a unified design system; batch selection, drag-to-file, and time sorting are all in place.
@@ -187,11 +191,11 @@ Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese)
 
 | Document | Purpose |
 | --- | --- |
-| [`docs/product-intro.md`](./docs/product-intro.md) | Short product introduction, for sharing (Chinese) |
-| [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | Full product introduction and capability reference (Chinese) |
+| [`docs/pentou-introduction.md`](./docs/pentou-introduction.md) | Product introduction and capabilities (Chinese) |
 | [`docs/user-guide.md`](./docs/user-guide.md) | Local `npx` user guide (Chinese) |
 | [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) | Automatic capture guide — CLI collector + browser extension (Chinese) |
 | [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md) | Pushing project Markdown into the document plane from the CLI (Chinese) |
+| [`docs/releases.md`](./docs/releases.md) | Release notes (Chinese) |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker deployment and reverse proxy (Chinese) |
 | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | Contribution guide |
 | [`docs/SECURITY.md`](./docs/SECURITY.md) | Security policy and vulnerability reporting |

@@ -2,7 +2,7 @@
 
 > 本文档面向**部署 PenTou 的最终用户**（管理员）。每一节都给出可复制的命令与可自查的验收点。
 >
-> PenTou 是本地优先的 AI 对话知识库（多源采集、检索、文档提炼）。Docker 形态适合 NAS / 云主机上的**长期私有服务**；本机单人试用请优先 `npx`（见 [user-guide.md](./user-guide.md)）。产品能力见 [product-intro.md](./product-intro.md)。
+> PenTou 是本地优先的 AI 对话知识库（多源采集、检索、文档提炼）。Docker 形态适合 NAS / 云主机上的**长期私有服务**；本机单人试用请优先 `npx`（见 [user-guide.md](./user-guide.md)）。产品能力见 [pentou-introduction.md](./pentou-introduction.md)。
 >
 > 官方镜像：`ghcr.io/startppt/pentou`（注意：ghcr.io 路径全小写，与 GitHub 用户名大小写无关）。
 > 支持架构：`linux/amd64` + `linux/arm64`（PC 与群晖 / 极空间 NAS 通用）。

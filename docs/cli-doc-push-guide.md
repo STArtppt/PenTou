@@ -6,6 +6,8 @@
 
 > **先看一眼边界**：推送是**单向**的——本地文件 → Pentou。在 Pentou 里编辑文档不会写回你的磁盘，删掉本地文件也不会删掉 Pentou 里的文档。
 
+**推送之后怎么认出来**：打开任意一份文档，桌面顶栏第二行会显示「更新于」和来源徽章 **「来自终端」**（与「来自对话」「来自导入」互斥）。侧栏顶部的项目下拉里能按仓库切换；对话若是 CLI 采的，顶栏还会带采集方式「终端」和可选的项目徽章。
+
 ---
 
 ## 1. 前置：拿到采集令牌
@@ -233,4 +235,6 @@ npx -y @startist/pentou@latest collect init \
 
 - [auto-collect-guide.md](./auto-collect-guide.md) —— 对话的自动采集（CLI 采集器 + 浏览器插件）
 - [user-guide.md](./user-guide.md) —— 从零把 Pentou 跑起来
+- [pentou-introduction.md](./pentou-introduction.md) —— 产品介绍与能力说明
+- [releases.md](./releases.md) —— 版本发布说明
 - [deployment.md](./deployment.md) —— 部署到服务器 / NAS
