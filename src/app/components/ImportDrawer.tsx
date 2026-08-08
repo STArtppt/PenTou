@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAppContext, ImportSummary } from "../data";
 import { parseFileContent, parseChatGPTExport } from "../parsers";
-import { useTranslation } from "../i18n";
+import { useTranslation, type TFunction } from "../i18n";
 import { useScrollActivity } from "../hooks/useScrollActivity";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { BottomSheet } from "./BottomSheet";
@@ -97,7 +97,7 @@ const ZIP_ASSET_TOKEN_RE = /!\[[^\]]*\]\(pentou-zip-asset:\/\/([^)\s]+)\)/g;
  * 2. 仅上传被引用的图片（POST /api/assets 内容寻址去重），token 替换为 /api/assets/ URL
  * 3. 找不到文件 / 上传失败 → [图片缺失] 占位，对话其余内容正常入库（AC2）
  */
-async function parseChatGPTZip(file: File, t: (key: string) => string): Promise<any[]> {
+async function parseChatGPTZip(file: File, t: TFunction): Promise<any[]> {
   const { unzipSync } = await import("fflate");
   let entries: Record<string, Uint8Array>;
   try {

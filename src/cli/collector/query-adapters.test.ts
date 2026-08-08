@@ -70,7 +70,8 @@ runIf("opencode adapter (US-03)", () => {
 
     const item = await adapter.toItem(files[0].path);
     expect(item).toMatchObject({ platform: "opencode", externalId: "s1", format: "raw" });
-    const envelope = JSON.parse(item!.data);
+    const raw = item!.data;
+    const envelope = typeof raw === "string" ? JSON.parse(raw) : raw;
     expect(envelope.schema).toBe("opencode-v1");
     expect(envelope.session.title).toBe("Fix bug");
     expect(envelope.messages).toHaveLength(2);
@@ -103,7 +104,8 @@ runIf("copilot adapter (US-04)", () => {
     expect(snapshot!.size).toBe(1);
     expect(snapshot!.mtimeMs).toBe(Date.parse("2026-07-14T02:00:00Z"));
 
-    const envelope = JSON.parse((await adapter.toItem(files[0].path))!.data);
+    const copilotRaw = (await adapter.toItem(files[0].path))!.data;
+    const envelope = typeof copilotRaw === "string" ? JSON.parse(copilotRaw) : copilotRaw;
     expect(envelope.schema).toBe("copilot-v1");
     expect(envelope.messages[0]).toMatchObject({ turn_index: 0, user_message: "你好，我能做什么" });
   });
@@ -132,7 +134,8 @@ runIf("hermes adapter (US-05)", () => {
     expect(files).toHaveLength(1);
     expect(await adapter.snapshot!(files[0].path)).toEqual({ mtimeMs: 1783931422200, size: 3 });
 
-    const envelope = JSON.parse((await adapter.toItem(files[0].path))!.data);
+    const hermesRaw = (await adapter.toItem(files[0].path))!.data;
+    const envelope = typeof hermesRaw === "string" ? JSON.parse(hermesRaw) : hermesRaw;
     expect(envelope.schema).toBe("hermes-v1");
     expect(envelope.messages).toHaveLength(2); // 空 content 的 assistant 行不入信封
   });
@@ -168,7 +171,8 @@ runIf("cursor adapter (US-06)", () => {
 
     const item = await adapter.toItem(files[0].path);
     expect(item).toMatchObject({ platform: "cursor", externalId: "comp-1" });
-    const envelope = JSON.parse(item!.data);
+    const cursorRaw = item!.data;
+    const envelope = typeof cursorRaw === "string" ? JSON.parse(cursorRaw) : cursorRaw;
     expect(envelope.schema).toBe("cursor-v1");
     expect(envelope.session).toMatchObject({ composerId: "comp-1", name: "调研会话" });
     expect(envelope.messages).toEqual([

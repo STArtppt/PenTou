@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { LucideIcon } from "lucide-react";
 
 export type SettingsTabId =
   | "general"
@@ -13,5 +13,5 @@ export type SettingsTabDef = {
   id: SettingsTabId;
   /** i18n key，如 settings.tab.general */
   labelKey: string;
-  icon: ComponentType<{ className?: string; size?: number }>;
+  icon: LucideIcon;
 };

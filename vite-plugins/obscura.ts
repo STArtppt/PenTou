@@ -739,10 +739,11 @@ function parseMetasoApiPayload(data: any): any[] {
     throw new Error("Metaso API payload did not contain any messages.");
   }
 
+  type Msg = ReturnType<typeof makeMsg>;
   const messages = sourceMessages
     .slice()
     .sort((a: any, b: any) => (a.depth ?? 0) - (b.depth ?? 0))
-    .map((message: any) => {
+    .map((message: any): Msg | null => {
       const content = extractMetasoMessageText(message);
       if (!content) return null;
       const role = message.role === "USER" ? "user" : "ai";
@@ -751,7 +752,7 @@ function parseMetasoApiPayload(data: any): any[] {
         : date;
       return makeMsg(role, content, timestamp);
     })
-    .filter(Boolean);
+    .filter((m): m is Msg => m !== null);
 
   if (messages.length === 0) {
     throw new Error("Metaso API payload did not contain any message text.");

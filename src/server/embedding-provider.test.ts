@@ -14,7 +14,7 @@ afterEach(() => {
 
 describe("embeddingProvider.embed", () => {
   it("returns vectors aligned to input order (sorts by index)", async () => {
-    const fetchMock = vi.fn(async () => ({
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
       ok: true,
       status: 200,
       json: async () => ({
@@ -30,7 +30,8 @@ describe("embeddingProvider.embed", () => {
     expect(out).toEqual([[1, 0], [0, 1]]);
     // 端点拼出 /embeddings，Authorization 带 key（不在此断言明文，仅确认有调用）。
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect((fetchMock.mock.calls[0][0] as string)).toBe("https://api.example.com/v1/embeddings");
+    const calledUrl = fetchMock.mock.calls[0][0];
+    expect(String(calledUrl)).toBe("https://api.example.com/v1/embeddings");
   });
 
   it("short-circuits empty input without calling fetch", async () => {

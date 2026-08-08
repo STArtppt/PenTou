@@ -1050,10 +1050,19 @@ export const translations = {
   }
 };
 
+/** i18n key 联合类型——chip / 设置等字面量 key 站点用此收紧，避免 t(string) 静默拼错。 */
+export type TranslationKey = keyof typeof translations["en"];
+
+/** `useTranslation().t` 的完整签名，供辅助函数形参复用。 */
+export type TFunction = (
+  key: TranslationKey,
+  placeholders?: Record<string, string | number>,
+) => string;
+
 export function useTranslation() {
   const { language } = useAppContext();
 
-  const t = (key: keyof typeof translations["en"], placeholders?: Record<string, string | number>) => {
+  const t: TFunction = (key, placeholders) => {
     let str = (translations[language] as any)[key] || (translations["en"] as any)[key] || key;
     if (placeholders) {
       Object.keys(placeholders).forEach((p) => {

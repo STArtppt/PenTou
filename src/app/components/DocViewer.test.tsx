@@ -7,7 +7,7 @@ import { DocViewer } from "./DocViewer";
 import type { Annotation } from "../data";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-Element.prototype.scrollTo = vi.fn();
+Element.prototype.scrollTo = vi.fn((..._args: unknown[]) => {}) as typeof Element.prototype.scrollTo;
 
 const mocks = vi.hoisted(() => ({
   appContext: {

@@ -47,9 +47,9 @@ async function renderBlock(source = "flowchart TD\nA-->B") {
 }
 
 async function renderInto(container: HTMLElement, source = "flowchart TD\nA-->B") {
-  let root: Root;
+  // createRoot 在 act 外调用，TS 能证明 root 已赋值；render 仍包在 act 内
+  const root: Root = createRoot(container);
   await act(async () => {
-    root = createRoot(container);
     root.render(<MermaidBlock source={source} />);
   });
   await waitFor(() => expect(container.querySelector("svg")).not.toBeNull());

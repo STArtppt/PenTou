@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { Check, ChevronDown, ChevronRight, Loader2, X, Wrench } from "lucide-react";
 import clsx from "clsx";
-import { useTranslation } from "../i18n";
+import { useTranslation, type TFunction } from "../i18n";
 import type { CompactRunTrace, CompactTraceCall, CompactTraceStep } from "../run-trace";
 import { parseTraceFence } from "../run-trace";
 
@@ -33,7 +33,7 @@ function CallIcon({ status }: { status: CompactTraceCall["status"] }) {
   return <X size={11} className="text-red-600 dark:text-red-400" />;
 }
 
-function kindLabel(kind: string, t: (k: string) => string): string {
+function kindLabel(kind: string, t: TFunction): string {
   switch (kind) {
     case "api":
       return t("runTrace.kindApi");

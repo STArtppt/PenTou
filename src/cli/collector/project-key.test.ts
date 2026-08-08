@@ -49,7 +49,7 @@ describe("resolveProjectKey", () => {
   });
 
   it("asks when the directory is not in a git repo", async () => {
-    const ask = vi.fn(async () => "手动项目名");
+    const ask = vi.fn(async (_prompt: string) => "手动项目名");
     expect(await resolveProjectKey(dir, { detectGit: () => undefined, ask, interactive: true }))
       .toBe("手动项目名");
     expect(ask).toHaveBeenCalledOnce();

@@ -5,7 +5,7 @@ import path from "node:path";
 import { createClaudeCodeAdapter } from "./adapters/claude-code";
 import { createDocsAdapter } from "./adapters/docs";
 import { CollectorWatchEngine, backoffDelay, createExcludeMatcher, degradeOversizeItem, pullOnce, snapshotChanged } from "./engine";
-import { defaultConfig } from "./config";
+import { makeCollectorConfig } from "./test-fixtures";
 import type { IngestItem, IngestResponse } from "./types";
 import { IngestHttpError } from "./ingest-client";
 
@@ -79,7 +79,7 @@ describe("collector engine", () => {
     const root = tmpDir("pentou-pull-");
     writeJsonl(path.join(root, "a.jsonl"));
     writeJsonl(path.join(root, "b.jsonl"));
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "t",
       adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
@@ -104,7 +104,7 @@ describe("collector engine", () => {
     const root = tmpDir("pentou-pull-error-");
     writeJsonl(path.join(root, "a.jsonl"));
     writeJsonl(path.join(root, "b.jsonl"));
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "t",
       adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
@@ -126,7 +126,7 @@ describe("collector engine", () => {
   it("pull counts server-reported empty sessions as skipped, not error", async () => {
     const root = tmpDir("pentou-pull-empty-");
     writeJsonl(path.join(root, "a.jsonl"));
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "t",
       adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
@@ -156,7 +156,7 @@ describe("collector engine", () => {
         bulk + "\n",
     );
     writeJsonl(path.join(root, "c.jsonl"), "small-c");
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "t",
       adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
@@ -183,7 +183,7 @@ describe("collector engine", () => {
     writeJsonl(path.join(root, "a.jsonl"), "small-a");
     writeJsonl(path.join(root, "big.jsonl"), "x".repeat(11 * 1024 * 1024)); // 解析不出任何对话的超限内容
     writeJsonl(path.join(root, "c.jsonl"), "small-c");
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "t",
       adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
@@ -219,7 +219,7 @@ describe("collector engine", () => {
       }));
     }
     writeJsonl(path.join(root, "long.jsonl"), lines.join("\n") + "\n");
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "t",
       adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
@@ -243,7 +243,7 @@ describe("collector engine", () => {
     const root = tmpDir("pentou-pull-dryrun-");
     writeJsonl(path.join(root, "a.jsonl"), "small-a");
     writeJsonl(path.join(root, "big.jsonl"), "x".repeat(11 * 1024 * 1024)); // 不可解析，若被解析将产生错误
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "t",
       adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
@@ -281,7 +281,7 @@ describe("collector engine", () => {
   it("pull reports unsent files after a 401 instead of silently dropping them", async () => {
     const root = tmpDir("pentou-pull-401-");
     for (let i = 0; i < 51; i++) writeJsonl(path.join(root, `${String(i).padStart(2, "0")}.jsonl`));
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "t",
       adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
@@ -301,7 +301,7 @@ describe("collector engine", () => {
     const root = tmpDir("pentou-watch-");
     const file = path.join(root, "a.jsonl");
     writeJsonl(file);
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "t",
       debounceMs: 25,
@@ -323,7 +323,7 @@ describe("collector engine", () => {
     const root = tmpDir("pentou-watch-401-");
     const file = path.join(root, "a.jsonl");
     writeJsonl(file);
-    const config = defaultConfig({
+    const config = makeCollectorConfig({
       server: "http://x",
       token: "bad",
       debounceMs: 5,
@@ -372,7 +372,7 @@ describe("collector engine", () => {
         return { platform: "fakeq", externalId: id, format: "raw" as const, data: `{"id":"${id}"}` };
       },
     };
-    const config = defaultConfig({ server: "http://x", token: "t", debounceMs: 10 });
+    const config = makeCollectorConfig({ server: "http://x", token: "t", debounceMs: 10 });
     config.snapshots[key("s1")] = { mtimeMs: 100, size: 2 }; // s1 未变化
     const client = new FakeClient();
     const engine = new CollectorWatchEngine(config, [fakeQuery], { client: client as any });
@@ -392,11 +392,11 @@ describe("collector engine", () => {
 
 describe("collector engine with the docs adapter", () => {
   function docsConfig(root: string) {
-    return defaultConfig({
+    return makeCollectorConfig({
       server: "http://localhost",
       token: "tok",
       adapters: {
-        ...defaultConfig().adapters,
+        ...makeCollectorConfig().adapters,
         "claude-code": { enabled: false, root: path.join(root, "__none__") },
         docs: { enabled: true, dirs: [{ path: root, project: "pentou" }] },
       },

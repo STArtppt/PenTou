@@ -8,7 +8,7 @@ import { AiSidebar } from "./AiSidebar";
 import { createEmptyAiChatSession, type AiChatSession } from "../ai-chats";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-Element.prototype.scrollTo = vi.fn();
+Element.prototype.scrollTo = vi.fn((..._args: unknown[]) => {}) as typeof Element.prototype.scrollTo;
 
 const mocks = vi.hoisted(() => ({
   appContext: {} as any,

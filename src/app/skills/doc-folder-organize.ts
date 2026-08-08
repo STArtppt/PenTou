@@ -208,7 +208,7 @@ export const docFolderOrganize: SkillDef = {
             folderName: String(p?.folderName ?? "").trim(),
             reason: p?.reason ? String(p.reason) : undefined,
           }))
-          .filter((p): p is { doc: DocMeta; folderName: string; reason?: string } => {
+          .filter((p): p is { doc: DocMeta; folderName: string; reason: string | undefined } => {
             if (!p.doc || !p.folderName) return false;
             // 已经在同名目录里的不必再动
             return !(

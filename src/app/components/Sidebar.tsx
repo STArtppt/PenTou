@@ -1950,8 +1950,8 @@ export function ProjectSwitcher() {
     <div className="flex shrink-0 items-center gap-2 px-2 pt-3 pb-1">
       <Select
         value={activeProjectId ?? DEFAULT_DOCUMENT_PROJECT_ID}
-        onValueChange={(value: string) =>
-          setActiveProjectId(value === DEFAULT_DOCUMENT_PROJECT_ID ? null : value)
+        onValueChange={(value) =>
+          value == null ? undefined : setActiveProjectId(value === DEFAULT_DOCUMENT_PROJECT_ID ? null : value)
         }
       >
         {/* 尺寸/内边距一律用 registry 默认（text-sm 主行 + text-xs 描述），不在产品仓私调 */}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { buildInitConfigForTest, parseCollectArgsForTest } from "./command";
-import { defaultConfig } from "./config";
+import { makeCollectorConfig } from "./test-fixtures";
 
 describe("collector command parsing and init config", () => {
   it("rejects unknown flags instead of treating typos as values", () => {
@@ -15,7 +15,7 @@ describe("collector command parsing and init config", () => {
   });
 
   it("merges init updates into existing privacy config and snapshots", () => {
-    const existing = defaultConfig({
+    const existing = makeCollectorConfig({
       server: "http://old",
       token: "old-token",
       adapters: {
@@ -73,7 +73,7 @@ describe("docs dir registration", () => {
   });
 
   it("leaves docs untouched when no --docs-dir is passed", () => {
-    const existing = defaultConfig({ server: "http://old", token: "old" });
+    const existing = makeCollectorConfig({ server: "http://old", token: "old" });
     const next = buildInitConfigForTest(existing, {
       server: "http://new",
       token: "tok",
@@ -83,11 +83,11 @@ describe("docs dir registration", () => {
   });
 
   it("re-registering the same dir replaces its project instead of duplicating it", () => {
-    const existing = defaultConfig({
+    const existing = makeCollectorConfig({
       server: "http://old",
       token: "old",
       adapters: {
-        ...defaultConfig().adapters,
+        ...makeCollectorConfig().adapters,
         docs: { enabled: true, dirs: [{ path: path.resolve("/a/docs"), project: "old-name" }] },
       },
     });

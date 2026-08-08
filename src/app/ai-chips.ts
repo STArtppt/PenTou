@@ -8,6 +8,8 @@
  * chip 统一的是**入口与触发方式**，不是**流程**：每个 chip 走与其风险相称的确认形态（见 `confirmation`）。
  */
 
+import type { TranslationKey } from "./i18n";
+
 export type ChipId =
   | "conversation-to-doc"
   | "topic-digest"
@@ -25,17 +27,17 @@ export type ChipConfirmation = "plan-doc" | "artifact-preview" | "rewrite-dialog
 export interface IntentChip {
   id: ChipId;
   /** 可见文案 i18n key（中文四字 / 英文短标签）。 */
-  labelKey: string;
+  labelKey: TranslationKey;
   /** 完整语义，用于 title / aria-label。 */
-  a11yLabelKey: string;
+  a11yLabelKey: TranslationKey;
   confirmation: ChipConfirmation;
   /** 选中态输入框 placeholder 引导语。 */
-  armedPromptKey: string;
+  armedPromptKey: TranslationKey;
   /** true 时回车必须有非空输入（主题等）。 */
   requiresInput: boolean;
   disabled: boolean;
   /** 不可用的原因 i18n key —— 呈现为不可用并说明原因，而不是点了才失败。 */
-  disabledReasonKey?: string;
+  disabledReasonKey?: TranslationKey;
 }
 
 export interface ChipState {
@@ -54,12 +56,12 @@ export interface ChipState {
 export function chipsForView(state: ChipState): IntentChip[] {
   const chip = (
     id: ChipId,
-    labelKey: string,
-    a11yLabelKey: string,
+    labelKey: TranslationKey,
+    a11yLabelKey: TranslationKey,
     confirmation: ChipConfirmation,
-    armedPromptKey: string,
+    armedPromptKey: TranslationKey,
     requiresInput: boolean,
-    blocked: string | null,
+    blocked: TranslationKey | null,
   ): IntentChip => {
     const noLLM = !state.hasLLM;
     return {

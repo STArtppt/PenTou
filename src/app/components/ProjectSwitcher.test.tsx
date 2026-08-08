@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DocumentProject } from "../data";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-Element.prototype.scrollTo = vi.fn();
+Element.prototype.scrollTo = vi.fn((..._args: unknown[]) => {}) as typeof Element.prototype.scrollTo;
 if (!Element.prototype.hasPointerCapture) {
   Element.prototype.hasPointerCapture = () => false;
   Element.prototype.setPointerCapture = () => {};

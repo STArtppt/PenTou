@@ -26,7 +26,14 @@ function sseStream(events: unknown[]): ReadableStream<Uint8Array> {
   });
 }
 
-function stubFetch(response: Partial<Response> & { json?: () => Promise<unknown> }) {
+/** 测试 mock 的 fetch 响应体：body 用独立字段，避开 Response.body 的 ArrayBuffer 泛型收窄。 */
+function stubFetch(response: {
+  ok?: boolean;
+  status?: number;
+  statusText?: string;
+  json?: () => Promise<unknown>;
+  body?: ReadableStream<Uint8Array>;
+}) {
   const spy = vi.fn(async () => ({ ok: true, status: 200, statusText: "OK", ...response }));
   vi.stubGlobal("fetch", spy as unknown as typeof fetch);
   return spy;
@@ -36,7 +43,9 @@ function bodyOf(spy: ReturnType<typeof stubFetch>): Record<string, unknown> {
   return JSON.parse((spy.mock.calls[0] as any)[1].body);
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("requestChatCompletions — 声明工具", () => {
   it("非流式下解析出工具调用与文本", async () => {
@@ -70,7 +79,7 @@ describe("requestChatCompletions — 声明工具", () => {
         { choices: [{ delta: { content: "让我看一下" } }] },
         { choices: [{ delta: { tool_calls: [{ index: 0, id: "call_9", function: { name: "read_", arguments: '{"sec' } }] } }] },
         { choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "current_view", arguments: 'tion":"A"}' } }] } }] },
-      ]) as unknown as ReadableStream<Uint8Array>,
+      ]),
     });
 
     const chunks: string[] = [];
@@ -134,7 +143,7 @@ describe("requestChatCompletions — 不声明工具时行为不变", () => {
       body: sseStream([
         { choices: [{ delta: { content: "a" } }] },
         { choices: [{ delta: { content: "b" } }] },
-      ]) as unknown as ReadableStream<Uint8Array>,
+      ]),
     });
 
     const chunks: string[] = [];

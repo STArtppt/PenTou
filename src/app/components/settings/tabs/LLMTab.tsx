@@ -156,7 +156,8 @@ export function LLMTab({
   if (!selected) return null;
 
   const isBuiltin = selected.provider !== "custom";
-  const preset = isBuiltin ? getPreset(selected.provider) : null;
+  // isBuiltin 布尔不收窄 ProviderKind；直接判断后 getPreset 才吃 BuiltinProviderId
+  const preset = selected.provider !== "custom" ? getPreset(selected.provider) : null;
   const useModelSelect =
     isBuiltin && !selected.useCustomModel && (preset?.models.length ?? 0) > 0;
 
