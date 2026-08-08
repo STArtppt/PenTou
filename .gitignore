@@ -77,9 +77,9 @@ pentou-data/
 *.sublime-project
 *.sublime-workspace
 .pnpm-store/
-# 同 .claude/：.grok/skills/ 是手写的 Grok 入口薄壳（真源在 skills/），跟；其余会话/缓存不跟。
+# 同 .claude/：.grok/skills/design-system-loop 是手写的 Grok 入口薄壳（真源在 skills/），跟；其余会话/缓存不跟。
 .grok/*
-!.grok/skills/
+!.grok/skills/design-system-loop
 
 # OS files
 .DS_Store

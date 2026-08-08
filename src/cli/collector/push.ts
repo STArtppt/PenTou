@@ -22,7 +22,7 @@ const HELP = `Pentou Push
 
 Usage:
   pentou push docs <dir> [--project <name>] [--server <url>] [--token <token>]
-                         [--dry-run] [--verbose] [--config <path>]
+                         [--exclude <glob>] [--dry-run] [--verbose] [--config <path>]
 
 Pushes every .md under <dir> to Pentou's document plane in one shot.
 Writes no collector config and keeps no snapshot — re-running is safe
@@ -33,7 +33,9 @@ Options:
                      is not in a git repo you are asked, and Enter takes the directory name
   --server <url>     Pentou URL, default: from the collector config
   --token <token>    Ingest token, default: from the collector config
-  --dry-run          List the files and their target project without uploading
+  --exclude <glob>   Exclude path pattern for this run only (repeatable; merged with
+                     collector config exclude; does not write config)
+  --dry-run          List the files, display titles, and target project without uploading
   --verbose          Print excluded paths
   --config <path>    Collector config path, default ~/.pentou/collector.json
   --help, -h         Show this help
@@ -41,13 +43,14 @@ Options:
 
 const BOOLEAN_FLAGS = new Set(["--dry-run", "--verbose", "--help", "-h"]);
 const VALUE_FLAGS = new Set(["--project", "--server", "--token", "--config"]);
+const REPEATABLE_FLAGS = new Set(["--exclude"]);
 
 const INGEST_MAX_BODY_BYTES = 10 * 1024 * 1024;
 const INGEST_BODY_OVERHEAD_BYTES = 4096;
 const INGEST_MAX_ITEMS = 50;
 
 export interface PushArgs {
-  flags: Record<string, string | boolean>;
+  flags: Record<string, string | boolean | string[]>;
   rest: string[];
 }
 
@@ -64,10 +67,16 @@ export function parsePushArgs(argv: string[]): PushArgs {
       flags[arg] = true;
       continue;
     }
-    if (!VALUE_FLAGS.has(arg)) throw new Error(`unknown option: ${arg}`);
+    if (!VALUE_FLAGS.has(arg) && !REPEATABLE_FLAGS.has(arg)) throw new Error(`unknown option: ${arg}`);
     const value = argv[++i];
     if (!value || value.startsWith("-")) throw new Error(`missing value for ${arg}`);
-    flags[arg] = value;
+    if (REPEATABLE_FLAGS.has(arg)) {
+      const arr = Array.isArray(flags[arg]) ? (flags[arg] as string[]) : [];
+      arr.push(value);
+      flags[arg] = arr;
+    } else {
+      flags[arg] = value;
+    }
   }
   return { flags, rest };
 }
@@ -75,6 +84,15 @@ export function parsePushArgs(argv: string[]): PushArgs {
 function flagString(flags: PushArgs["flags"], name: string): string | undefined {
   const value = flags[name];
   return typeof value === "string" ? value : undefined;
+}
+
+function flagList(flags: PushArgs["flags"], name: string): string[] {
+  const value = flags[name];
+  return Array.isArray(value) ? (value as string[]) : [];
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
 }
 
 export interface PushCredentials {
@@ -169,8 +187,30 @@ export async function pushDocs(options: PushDocsOptions): Promise<PushSummary> {
   }
 
   if (options.dryRun) {
-    for (const item of prepared) {
-      logger.log(`${path.relative(root, item.file) || path.basename(item.file)} -> project "${projectKey}"`);
+    // 展示标题与入库一致；同批拼串撞名的文件组额外标注（design 决策 8）
+    const titleToFiles = new Map<string, string[]>();
+    for (const one of prepared) {
+      const title = String((one.item.data as { title?: string }).title ?? "");
+      const rel = path.relative(root, one.file) || path.basename(one.file);
+      const list = titleToFiles.get(title) ?? [];
+      list.push(rel);
+      titleToFiles.set(title, list);
+    }
+    const duplicateTitles = new Set(
+      [...titleToFiles.entries()].filter(([, files]) => files.length > 1).map(([title]) => title),
+    );
+    for (const one of prepared) {
+      const title = String((one.item.data as { title?: string }).title ?? "");
+      const rel = path.relative(root, one.file) || path.basename(one.file);
+      const dupMark = duplicateTitles.has(title) ? " [duplicate title]" : "";
+      logger.log(`${rel} -> project "${projectKey}" title "${title}"${dupMark}`);
+    }
+    if (duplicateTitles.size > 0) {
+      logger.warn(
+        `note: ${duplicateTitles.size} display title(s) collide within this batch ` +
+          `(e.g. same parent folder name in different subtrees). ` +
+          `Narrow the push root or rename titles in Pentou afterwards; identity is still by path.`,
+      );
     }
     return summary;
   }
@@ -248,13 +288,14 @@ export async function runPushCommand(argv: string[]): Promise<void> {
     log: (message) => console.log(message),
   });
 
-  // 沿用配置里的 exclude；配置不可用时不影响 --dry-run 与显式凭据的推送
-  let exclude: string[] = [];
+  // 配置 exclude 为底、本次 --exclude flag 叠加；仅本次生效，不写配置（design 决策 6）
+  let configExclude: string[] = [];
   try {
-    exclude = readConfig(flagString(parsed.flags, "--config") || CONFIG_PATH).exclude;
+    configExclude = readConfig(flagString(parsed.flags, "--config") || CONFIG_PATH).exclude;
   } catch {
-    exclude = [];
+    configExclude = [];
   }
+  const exclude = unique([...configExclude, ...flagList(parsed.flags, "--exclude")]);
 
   let client: IngestClient | undefined;
   if (!dryRun) {

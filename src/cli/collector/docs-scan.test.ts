@@ -1,14 +1,17 @@
 /**
  * docs-scan.test.ts —— 文档扫描/推导的唯一实现（spec collector-docs-push
- * §扫描范围与排除规则 / §标题与 externalKey 推导 / §项目映射）。
+ * §扫描范围与排除规则 / §标题与 externalKey 推导 / §项目映射；
+ * 以及 docs-path-title 路径拼串标题）。
  */
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  composeDocsPathTitle,
   deriveDocExternalId,
-  deriveDocTitle,
+  deriveDocsPathTitle,
+  deriveDocsPathTitleFromExternalId,
   discoverDocs,
   isSkippedDocsPath,
   resolveDocsEntry,
@@ -63,21 +66,62 @@ describe("docs scan discovery", () => {
   });
 });
 
-describe("docs title derivation", () => {
-  it("prefers the frontmatter title over a level-1 heading", () => {
-    expect(deriveDocTitle("---\ntitle: 部署指南\n---\n\n# Deployment\n", "/x/deploy.md")).toBe("部署指南");
+describe("docs path-composed title", () => {
+  it("uses parent dir + stem for nested skill files (preserves stem case)", () => {
+    const root = path.join(path.sep, "Users", "x", "pentou");
+    expect(deriveDocsPathTitle(
+      path.join(root, "skills", "design-system-loop", "SKILL.md"),
+      root,
+      "pentou",
+    )).toBe("design-system-loop-SKILL");
   });
 
-  it("falls back to the first level-1 heading", () => {
-    expect(deriveDocTitle("intro\n\n# Deployment\n\nbody", "/x/deploy.md")).toBe("Deployment");
+  it("uses parent dir + stem for nested openspec tasks", () => {
+    const root = path.join(path.sep, "tmp", "repo");
+    expect(deriveDocsPathTitle(
+      path.join(root, "openspec", "changes", "plan-run-status", "tasks.md"),
+      root,
+      "any",
+    )).toBe("plan-run-status-tasks");
   });
 
-  it("falls back to the filename stem when neither exists", () => {
-    expect(deriveDocTitle("just some prose", "/x/deploy-guide.md")).toBe("deploy-guide");
+  it("uses project key + stem for root-level files", () => {
+    const root = path.join(path.sep, "tmp", "repo");
+    expect(deriveDocsPathTitle(path.join(root, "README.md"), root, "pentou")).toBe("pentou-README");
   });
 
-  it("ignores an empty frontmatter title and keeps looking", () => {
-    expect(deriveDocTitle('---\ntitle: ""\n---\n\n# Real\n', "/x/a.md")).toBe("Real");
+  it("ignores frontmatter title and level-1 headings", async () => {
+    const root = tmpDir();
+    write(root, "docs/guide.md", "---\ntitle: 部署手册\n---\n\n# Deploy\n\nbody");
+    const item = await toDocumentItem(path.join(root, "docs", "guide.md"), { path: root, project: "pentou" });
+    expect((item!.data as any).title).toBe("docs-guide");
+  });
+
+  it("depends on the registered root (narrow root lowers distinction)", async () => {
+    const root = tmpDir();
+    write(root, "docs/guide.md", "# G");
+    const docsRoot = path.join(root, "docs");
+    const asRepoRoot = await toDocumentItem(path.join(docsRoot, "guide.md"), { path: root, project: "proj" });
+    const asDocsRoot = await toDocumentItem(path.join(docsRoot, "guide.md"), { path: docsRoot, project: "proj" });
+    expect((asRepoRoot!.data as any).title).toBe("docs-guide");
+    expect((asDocsRoot!.data as any).title).toBe("proj-guide");
+  });
+
+  it("normalizes Windows-style separators via path.relative", () => {
+    // composeDocsPathTitle is the pure core; relative paths always arrive as /
+    expect(composeDocsPathTitle("pentou", "skills/foo/SKILL.md")).toBe("foo-SKILL");
+    expect(composeDocsPathTitle("pentou", "README.md")).toBe("pentou-README");
+  });
+
+  it("recomputes the same title from externalId (server-side pure function)", () => {
+    expect(deriveDocsPathTitleFromExternalId("pentou/skills/foo/SKILL.md")).toBe("foo-SKILL");
+    expect(deriveDocsPathTitleFromExternalId("pentou/README.md")).toBe("pentou-README");
+    expect(deriveDocsPathTitleFromExternalId("pentou/openspec/changes/plan-run-status/tasks.md"))
+      .toBe("plan-run-status-tasks");
+    // non-path / non-md → null (caller keeps original title)
+    expect(deriveDocsPathTitleFromExternalId("no-slash")).toBeNull();
+    expect(deriveDocsPathTitleFromExternalId("workspace/page-id")).toBeNull();
+    expect(deriveDocsPathTitleFromExternalId("")).toBeNull();
   });
 });
 
@@ -162,7 +206,8 @@ describe("docs adapter", () => {
 
     const item = await adapter.toItem(files[0].path);
     expect(item).toMatchObject({ platform: "docs", format: "document", externalId: "pentou/guides/a.md" });
-    expect((item!.data as any).title).toBe("A");
+    // frontmatter title "A" is ignored; path-composed title wins
+    expect((item!.data as any).title).toBe("guides-a");
   });
 
   it("picks the most specific registered entry for nested registrations", async () => {

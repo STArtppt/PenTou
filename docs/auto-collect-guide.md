@@ -179,6 +179,8 @@ npx -y @startist/pentou@latest collect init \
   --exclude "~/private/**"
 ```
 
+**全局且累积**：`collect init --exclude` 写入 `~/.pentou/collector.json`，对**所有项目、所有 adapter**（含对话采集）生效；多次 init 的 exclude 是**并集累积**，不会自动清理。只想单次推文档时请用 `push docs --exclude`（不写配置），见 [cli-doc-push-guide.md §6](./cli-doc-push-guide.md)。
+
 常用写法：
 
 | 模式 | 含义 |
@@ -188,7 +190,7 @@ npx -y @startist/pentou@latest collect init \
 | `~/private/**` | 你 home 目录下的 `private` 目录 |
 | `**/tmp/**` | 任意层级的 `tmp` 目录 |
 
-按**路径段**匹配，不是包含关系：`test` 只匹配名为 `test` 的那一段，不会匹配 `my-latest-app`。
+按**路径段**匹配，不是包含关系：`test` 只匹配名为 `test` 的那一段，不会匹配 `my-latest-app`。相对 pattern 会被隐式前缀 `**/`。
 
 改完排除规则，用 §2.3 的演习模式验证是否生效。
 

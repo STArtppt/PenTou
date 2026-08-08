@@ -50,6 +50,10 @@ import {
 } from "./conversation-versions.js";
 import { matchAiProduct } from "../shared/ai-products.js";
 import { EmptyPayloadError, parseRawConversations } from "../shared/raw-dispatch.js";
+import {
+  DOCS_PLATFORM,
+  deriveDocsPathTitleFromExternalId,
+} from "../cli/collector/adapters/docs-scan.js";
 import { redactText } from "./redact.js";
 import {
   getIngestToken,
@@ -875,6 +879,12 @@ async function handleIngestRequest(
         const payload = validateDocumentPayload(item.data);
         let title = payload.title;
         let body = payload.body;
+        // docs 平台路径文档：按 externalId 重算侧栏标题，覆盖客户端 stale title
+        // （spec docs-path-title · design 决策 7：platform=docs + 含 `/` + 末段 .md）
+        if (item.platform === DOCS_PLATFORM && externalId) {
+          const pathTitle = deriveDocsPathTitleFromExternalId(externalId);
+          if (pathTitle) title = pathTitle;
+        }
         let redactions = 0;
         if (config.redact) {
           const redactedTitle = redactText(title);

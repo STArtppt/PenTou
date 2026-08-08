@@ -51,6 +51,11 @@ describe("push docs argument parsing", () => {
     expect(parsed.flags["--dry-run"]).toBe(true);
   });
 
+  it("collects repeatable --exclude flags", () => {
+    const parsed = parsePushArgs(["./docs", "--exclude", "src/**", "--exclude", "scripts/**"]);
+    expect(parsed.flags["--exclude"]).toEqual(["src/**", "scripts/**"]);
+  });
+
   it("rejects unknown options rather than swallowing typos", () => {
     expect(() => parsePushArgs(["./docs", "--dryrun"])).toThrow(/unknown option: --dryrun/);
   });
@@ -58,6 +63,7 @@ describe("push docs argument parsing", () => {
   it("requires a value for value flags", () => {
     expect(() => parsePushArgs(["./docs", "--token"])).toThrow(/missing value for --token/);
     expect(() => parsePushArgs(["./docs", "--token", "--verbose"])).toThrow(/missing value for --token/);
+    expect(() => parsePushArgs(["./docs", "--exclude"])).toThrow(/missing value for --exclude/);
   });
 });
 
@@ -124,7 +130,36 @@ describe("push docs run", () => {
     expect(client.calls[0]).toHaveLength(1);
   });
 
-  it("sends nothing on --dry-run and prints the target project", async () => {
+  it("applies the union of config and flag excludes (flag alone also works)", async () => {
+    const root = tmpDir();
+    write(root, "keep.md", "# Keep");
+    write(root, "src/a.md", "# Src");
+    write(root, "drafts/b.md", "# Draft");
+    // runPushCommand merges configExclude + flagExclude then passes the array;
+    // here we assert the same union semantics at the pushDocs boundary.
+    const client = new FakeClient();
+    const onlyFlag = await pushDocs({
+      dir: root,
+      exclude: ["src/**"],
+      client: client as any,
+      logger: silentLogger,
+    });
+    expect(onlyFlag.excluded).toBe(1);
+    expect(onlyFlag.sent).toBe(2);
+
+    const client2 = new FakeClient();
+    const union = await pushDocs({
+      dir: root,
+      exclude: ["**/drafts/**", "src/**"],
+      client: client2 as any,
+      logger: silentLogger,
+    });
+    expect(union.excluded).toBe(2);
+    expect(union.sent).toBe(1);
+    expect(client2.calls[0][0].externalId).toMatch(/keep\.md$/);
+  });
+
+  it("sends nothing on --dry-run and prints the display title", async () => {
     const root = tmpDir();
     write(root, "a.md", "# A");
     const client = new FakeClient();
@@ -139,7 +174,46 @@ describe("push docs run", () => {
     });
     expect(client.calls).toHaveLength(0);
     expect(summary.sent).toBe(0);
-    expect(lines).toEqual(['a.md -> project "pentou"']);
+    expect(lines).toEqual(['a.md -> project "pentou" title "pentou-a"']);
+  });
+
+  it("marks duplicate composed titles within a dry-run batch", async () => {
+    const root = tmpDir();
+    write(root, "skills/foo/SKILL.md", "# S1");
+    write(root, "data/skills/foo/SKILL.md", "# S2");
+    write(root, "unique.md", "# U");
+    const lines: string[] = [];
+    const warns: string[] = [];
+
+    await pushDocs({
+      dir: root,
+      project: "pentou",
+      dryRun: true,
+      logger: { log: (m) => lines.push(m), warn: (m) => warns.push(m) },
+    });
+
+    const skillLines = lines.filter((l) => l.includes("SKILL.md"));
+    expect(skillLines).toHaveLength(2);
+    expect(skillLines.every((l) => l.includes('title "foo-SKILL"') && l.includes("[duplicate title]"))).toBe(true);
+    expect(lines.some((l) => l.includes('title "pentou-unique"') && !l.includes("[duplicate title]"))).toBe(true);
+    expect(warns.some((w) => /collide|duplicate/i.test(w))).toBe(true);
+  });
+
+  it("honours --exclude on dry-run the same as on real push", async () => {
+    const root = tmpDir();
+    write(root, "keep.md", "# Keep");
+    write(root, "src/lib/x.md", "# Code");
+    const client = new FakeClient();
+    const summary = await pushDocs({
+      dir: root,
+      exclude: ["src/**"],
+      dryRun: true,
+      client: client as any,
+      logger: silentLogger,
+    });
+    expect(summary.excluded).toBe(1);
+    expect(summary.sent).toBe(0);
+    expect(client.calls).toHaveLength(0);
   });
 
   it("pushes in full every run — idempotency is the server's job", async () => {

@@ -33,6 +33,8 @@
 
 两者的扫描范围、标题推导、归属规则**完全一致**，可以混用。
 
+> **想用自然语言推？** 把 [`docs/agent-skills/pentou-docs-push`](./agent-skills/README.md) 整夹复制进你的 Agent 技能目录，就可以说「把这个项目推到 pentou」——Agent 会按建议 → 确认 → dry-run → 正式推送的闸门走完。安装说明见 [agent-skills/README.md](./agent-skills/README.md)。
+
 ### 2.1 一次性推送
 
 ```bash
@@ -47,7 +49,18 @@ npx -y @startist/pentou@latest push docs ./docs \
 npx -y @startist/pentou@latest push docs ./docs
 ```
 
-**正式推之前先演习一次**，它只列清单、不发任何请求：
+单次排除不想上传的目录（**不写**全局配置，可重复）：
+
+```bash
+npx -y @startist/pentou@latest push docs . \
+  --exclude 'src/**' \
+  --exclude 'scripts/**' \
+  --dry-run
+```
+
+`--exclude` 与采集器配置里的 exclude **合并生效**（配置为底、本次 flag 叠加），只影响这一次 `push docs`。常驻采集请仍用 `collect init --exclude`（见 [auto-collect-guide.md §2.6](./auto-collect-guide.md)），注意那是全局且累积的。
+
+**正式推之前先演习一次**，它只列清单与展示标题、不发任何请求：
 
 ```bash
 npx -y @startist/pentou@latest push docs ./docs --dry-run
@@ -56,8 +69,8 @@ npx -y @startist/pentou@latest push docs ./docs --dry-run
 ```text
   /Users/you/proj/pentou/docs
     project: pentou (git repository root)
-README.md -> project "pentou"
-guides/deploy.md -> project "pentou"
+README.md -> project "pentou" title "pentou-README"
+guides/deploy.md -> project "pentou" title "guides-deploy"
 scanned=2 sent=0 excluded=0
 ```
 
@@ -161,11 +174,28 @@ Pentou 的文档平面有一个**项目**维度，在侧边栏文件夹列表**�
 
 Pentou 用「项目名 + 相对路径」给每份文档一个稳定身份，因此：
 
-- **内容没变** → `skipped`，什么都不做；
-- **内容变了** → `merged`：旧正文自动存档为一个 `pre-import-overwrite` 版本，新正文作为 `import` 版本成为当前版本。文档 id、归属、批注全部保留；
+- **内容没变** → `skipped`；若侧栏展示标题与路径拼串规则不一致，会**只刷新标题**（不追加版本、不改 `updatedAt`）；
+- **内容变了** → `merged`：旧正文自动存档为一个 `pre-import-overwrite` 版本，新正文作为 `import` 版本成为当前版本。文档 id、归属、批注全部保留，标题一并更新为路径拼串结果；
 - 你在 Pentou 里手动改过的内容**不会阻断推送**（执行推送就是在声明「以我的文件为准」），但也**不会丢**——在版本面板里能看到并一键回滚。
 
 改标题、改开头段落都不会产生第二份文档。
+
+### 4.1 侧栏展示标题（路径拼串）
+
+CLI 文档推送入库后，侧栏显示名按路径拼串，**不再**使用 frontmatter `title` 或正文 `#` 一级标题：
+
+| 文件相对推送根 | 展示标题（项目 key = `pentou`） |
+| --- | --- |
+| `README.md`（根文件） | `pentou-README` |
+| `skills/design-system-loop/SKILL.md` | `design-system-loop-SKILL` |
+| `openspec/changes/plan-run-status/tasks.md` | `plan-run-status-tasks` |
+| `docs/guide.md` | `docs-guide` |
+
+公式：`{父目录名}-{文件名 stem}`。文件就在推送根下时，父目录名用**项目 key**。
+
+**推送根会影响标题**：同一份 `docs/guide.md`，以仓库根推 → `docs-guide`；以 `docs/` 为根推 → `{项目 key}-guide`。收窄根会降低区分度。
+
+同名父目录在不同子树下可能撞名（例如两个 `foo/SKILL.md` 都显示 `foo-SKILL`）。dry-run 会标 `[duplicate title]`；身份仍靠路径，可收窄推送根或事后在 Pentou 内手改标题。
 
 ---
 
@@ -188,7 +218,20 @@ Pentou 用「项目名 + 相对路径」给每份文档一个稳定身份，因�
 
 `node_modules`、`.git`、`dist`、`dist-server`、`build`、`.next`、`coverage`、`.venv`
 
-在此之上，采集器的 `--exclude` 规则同样对文档生效（`push docs` 也会读取配置里的 exclude）：
+### 6.1 单次推送：`push docs --exclude`
+
+```bash
+npx -y @startist/pentou@latest push docs ~/proj/pentou \
+  --exclude "src/**" \
+  --exclude "**/drafts/**" \
+  --dry-run
+```
+
+- 可重复；与 `~/.pentou/collector.json` 里的 exclude **并集**，**不写配置**
+- 相对 pattern 会被隐式前缀 `**/`：`src/**` 会匹配任意层级的 `src` 目录（含 `docs/src/`）；要精确限定请用绝对路径
+- 用 dry-run 的 `excluded` 计数复核
+
+### 6.2 常驻采集：`collect init --exclude`
 
 ```bash
 npx -y @startist/pentou@latest collect init \
@@ -199,7 +242,7 @@ npx -y @startist/pentou@latest collect init \
   --exclude "**/private/**"
 ```
 
-改完用 `--dry-run` 验证是否生效。排除规则的完整写法见 [auto-collect-guide.md §2.6](./auto-collect-guide.md)。
+这会写入**全局**配置，且多次 init **累积**（影响所有项目与所有 adapter，含对话采集）。完整写法见 [auto-collect-guide.md §2.6](./auto-collect-guide.md)。
 
 ---
 
@@ -233,6 +276,7 @@ npx -y @startist/pentou@latest collect init \
 
 ## 9. 相关文档
 
+- [agent-skills/README.md](./agent-skills/README.md) —— 用 Agent 自然语言推送（可整夹复制的 skill）
 - [auto-collect-guide.md](./auto-collect-guide.md) —— 对话的自动采集（CLI 采集器 + 浏览器插件）
 - [user-guide.md](./user-guide.md) —— 从零把 Pentou 跑起来
 - [pentou-introduction.md](./pentou-introduction.md) —— 产品介绍与能力说明

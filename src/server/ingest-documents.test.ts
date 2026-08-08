@@ -355,3 +355,91 @@ describe("document ingest upsert and project attribution", () => {
     expect(listDocs(dataDir)).toEqual([]);
   });
 });
+
+// ── 路径拼串标题规范化（spec docs-path-title）────────────────────────────────
+
+describe("document path-composed title on ingest", () => {
+  it("overrides a stale client title for docs platform path externalIds", async () => {
+    const dataDir = makeDataDir();
+    const res = await push(dataDir, [
+      docItem({
+        externalId: "pentou/skills/foo/SKILL.md",
+        data: { title: "My Skill", body: "# Skill\n\nbody text here." },
+      }),
+    ]);
+    expect(res.status).toBe(200);
+    expect(res.body.results[0].documents[0].title).toBe("foo-SKILL");
+    const id = listDocs(dataDir)[0].replace(".md", "");
+    expect(readDoc(dataDir, id)).toMatch(/title:\s*foo-SKILL/);
+  });
+
+  it("does not rewrite title when externalId has no path slash", async () => {
+    const dataDir = makeDataDir();
+    const res = await push(dataDir, [
+      docItem({
+        externalId: "legacy-doc-id",
+        data: { title: "Keep Me", body: "# Keep\n\nbody." },
+      }),
+    ]);
+    expect(res.body.results[0].documents[0].title).toBe("Keep Me");
+  });
+
+  it("does not rewrite title for non-docs platforms even with path externalIds", async () => {
+    const dataDir = makeDataDir();
+    const res = await push(dataDir, [
+      docItem({
+        platform: "notion",
+        externalId: "workspace/page-id",
+        data: { title: "Notion Page", body: "# Page\n\nbody." },
+      }),
+    ]);
+    expect(res.body.results[0].documents[0].title).toBe("Notion Page");
+  });
+
+  it("does not rewrite title when last segment is not .md", async () => {
+    const dataDir = makeDataDir();
+    const res = await push(dataDir, [
+      docItem({
+        externalId: "workspace/page-id",
+        data: { title: "Custom", body: "# C\n\nbody." },
+      }),
+    ]);
+    expect(res.body.results[0].documents[0].title).toBe("Custom");
+  });
+
+  it("refreshes title on re-push without creating a version when body is unchanged", async () => {
+    const dataDir = makeDataDir();
+    // First push → server normalizes to guides-deploy
+    const first = await push(dataDir, [docItem({ data: { title: "旧标题", body: "# Body\n\nstable body content." } })]);
+    const id = first.body.results[0].documents[0].id as string;
+    expect(versionTypes(dataDir, id)).toEqual(["import"]);
+    expect(readDoc(dataDir, id)).toMatch(/title:\s*guides-deploy/);
+
+    // Simulate a library that still has the pre-rule-switch title (or a hand-edited display name)
+    const stale = readDoc(dataDir, id).replace(/title:\s*guides-deploy/, "title: SKILL");
+    fs.writeFileSync(path.join(docsDir(dataDir), `${id}.md`), stale, "utf-8");
+    const updatedAtBefore = stale.match(/updatedAt:\s*(\S+)/)?.[1];
+
+    // Re-push same body with any client title → server re-normalizes, title-only path
+    const second = await push(dataDir, [docItem({ data: { title: "Stale Client Title", body: "# Body\n\nstable body content." } })]);
+    expect(second.body.results[0].documents[0].action).toBe("skipped");
+    expect(second.body.results[0].documents[0].id).toBe(id);
+    expect(second.body.results[0].documents[0].title).toBe("guides-deploy");
+    expect(versionTypes(dataDir, id)).toEqual(["import"]); // no new versions
+    const mdAfter = readDoc(dataDir, id);
+    expect(mdAfter).toMatch(/title:\s*guides-deploy/);
+    expect(mdAfter.match(/updatedAt:\s*(\S+)/)?.[1]).toBe(updatedAtBefore);
+  });
+
+  it("still merges with path title when body changes", async () => {
+    const dataDir = makeDataDir();
+    const first = await push(dataDir, [docItem({ data: { body: "# Body\n\nold content." } })]);
+    const id = first.body.results[0].documents[0].id as string;
+    const second = await push(dataDir, [docItem({ data: { title: "whatever", body: "# Body\n\nnew content." } })]);
+    expect(second.body.results[0].documents[0].action).toBe("merged");
+    expect(second.body.results[0].documents[0].title).toBe("guides-deploy");
+    expect(versionTypes(dataDir, id)).toEqual(["import", "pre-import-overwrite", "import"]);
+    expect(readDoc(dataDir, id)).toContain("new content");
+    expect(readDoc(dataDir, id)).toMatch(/title:\s*guides-deploy/);
+  });
+});

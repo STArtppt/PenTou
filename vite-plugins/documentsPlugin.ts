@@ -618,12 +618,24 @@ export function upsertDocument(incoming: any, opts: UpsertDocumentOptions = {}):
   const existing = resolveExisting();
   if (existing) {
     if (documentSignature(existing).contentHash === sig.contentHash) {
-      // 内容未变但归属可认领：只改 frontmatter 的 projectId，不追加版本、不改 updatedAt
+      // 正文未变时的元数据旁路：只改 frontmatter，不 appendVersion、不改 updatedAt
+      // （project 认领见 shouldAdoptProject；标题刷新见 docs-path-title design 决策 3）
+      let next = existing;
+      let dirty = false;
       if (shouldAdoptProject(existing, incoming)) {
-        const adopted = { ...existing, projectId: incoming.projectId };
-        fs.writeFileSync(path.join(DOCS_DIR, `${existing.id}.md`), documentToMd(adopted), "utf-8");
-        if (index) indexDocument(index, adopted);
-        return { action: "skipped", id: existing.id, title: existing.title, document: adopted };
+        next = { ...next, projectId: incoming.projectId };
+        dirty = true;
+      }
+      if (incoming.title && incoming.title !== existing.title) {
+        next = { ...next, title: incoming.title };
+        dirty = true;
+      }
+      if (dirty) {
+        // 显式保留 updatedAt，避免 documentToMd 侧或调用方误刷排序
+        next = { ...next, updatedAt: existing.updatedAt };
+        fs.writeFileSync(path.join(DOCS_DIR, `${existing.id}.md`), documentToMd(next), "utf-8");
+        if (index) indexDocument(index, next);
+        return { action: "skipped", id: existing.id, title: next.title, document: next };
       }
       return { action: "skipped", id: existing.id, title: existing.title, document: existing };
     }

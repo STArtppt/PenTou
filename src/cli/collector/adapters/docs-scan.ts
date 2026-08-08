@@ -79,22 +79,50 @@ export function entryForFile(entries: DocsDirEntry[], file: string): DocsDirEntr
   return best?.entry ?? null;
 }
 
-/** 标题：frontmatter `title` > 正文首个一级标题 > 文件名去扩展名。 */
-export function deriveDocTitle(content: string, file: string): string {
-  const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (frontmatter) {
-    const line = frontmatter[1].split(/\r?\n/).find((candidate) => /^title:\s*/.test(candidate));
-    if (line) {
-      let value = line.slice(line.indexOf(":") + 1).trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-      if (value) return value;
-    }
-  }
-  const heading = content.match(/^#\s+(.+)$/m);
-  if (heading?.[1]?.trim()) return heading[1].trim();
-  return path.basename(file, path.extname(file));
+/**
+ * 路径拼串展示标题：`{parent}-{stem}`（spec docs-path-title）。
+ *
+ * - `stem` = 文件名去掉最后一个扩展名，**保留大小写**
+ * - 文件在登记根下：`parent` = 项目 key
+ * - 文件在子目录：`parent` = 直接父级文件夹名
+ * - 连接符固定为单个 `-`
+ *
+ * 这是 `externalId` 的纯函数形式的核心；CLI 与服务端共用同一公式。
+ */
+export function composeDocsPathTitle(projectKey: string, relativePosix: string): string {
+  const segments = relativePosix.split("/").filter((s) => s.length > 0);
+  if (segments.length === 0) return projectKey;
+  const fileName = segments[segments.length - 1];
+  const ext = path.extname(fileName);
+  const stem = ext ? fileName.slice(0, -ext.length) : fileName;
+  const parent = segments.length === 1 ? projectKey : segments[segments.length - 2];
+  return `${parent}-${stem}`;
+}
+
+/**
+ * CLI 侧：从文件路径 / 登记根 / 项目 key 推导展示标题。
+ * 路径分隔符统一归一为 `/`，与 externalId 公式一致。
+ */
+export function deriveDocsPathTitle(file: string, root: string, projectKey: string): string {
+  const relative = path.relative(root, path.resolve(file)).split(path.sep).join("/");
+  return composeDocsPathTitle(projectKey, relative);
+}
+
+/**
+ * 服务端加固：从 `externalId` 重算路径拼串标题。
+ * 仅当 externalId 含 `/` 且末段以 `.md` 结尾时返回标题；否则返回 null（调用方保留原 title）。
+ */
+export function deriveDocsPathTitleFromExternalId(externalId: string): string | null {
+  const slash = externalId.indexOf("/");
+  if (slash <= 0) return null;
+  const projectKey = externalId.slice(0, slash);
+  const relative = externalId.slice(slash + 1);
+  if (!relative) return null;
+  const lastSeg = relative.includes("/")
+    ? relative.slice(relative.lastIndexOf("/") + 1)
+    : relative;
+  if (!lastSeg.toLowerCase().endsWith(".md")) return null;
+  return composeDocsPathTitle(projectKey, relative);
 }
 
 /**
@@ -127,7 +155,8 @@ export async function toDocumentItem(file: string, entry: DocsDirEntry): Promise
     externalId: deriveDocExternalId(projectKey, root, file),
     format: "document",
     data: {
-      title: deriveDocTitle(body, file),
+      // 侧栏展示标题 = 路径拼串，不再用 frontmatter / # 标题（spec docs-path-title）
+      title: deriveDocsPathTitle(file, root, projectKey),
       body,
       // rootPath 只在服务端**创建**项目那一刻被消费，用于初始化描述；
       // 命中已有项目时不回写，用户改过的描述不被覆盖（design 决策 5）。
