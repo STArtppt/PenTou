@@ -24,14 +24,31 @@ const FILE_RE = /\.(tsx?|jsx?|css)$/;
 /** Allowed arbitrary z-index values (startist layering table). */
 const ALLOWED_Z = new Set([30, 50, 60, 70]);
 
+/**
+ * Keeps utility-class rules from matching mid-identifier (`custombg-[#fff]`).
+ * Zero-width on purpose: a consuming guard would leak the preceding character
+ * into m[0] — and thus into the baseline's `match` key — and would also skip
+ * back-to-back violations (`bg-[#fff]bg-[#000]` matched only the first).
+ * Needs no `^` alternative: a lookbehind is vacuously true at position 0.
+ */
+const LEADING_GUARD = "(?<![a-zA-Z0-9_-])";
+
+/** Tailwind variant prefixes: dark:, hover:, group-hover:, … */
+const VARIANTS = "(?:[a-z-]+:)*";
+
 export const RULES = [
   {
     id: "hardcoded-hex",
     description: "hardcoded hex color utilities (use semantic tokens)",
     // bg-[#1A1A1A], text-[#fff], border-[#222], dark:bg-[#151515], etc.
-    re: /(?:^|[^a-zA-Z0-9_-])(?:[a-z-]+:)*(?:bg|text|border|ring|from|to|via|fill|stroke|outline|decoration|accent|caret|divide|shadow)-\[#[0-9a-fA-F]{3,8}\]/g,
+    re: new RegExp(
+      `${LEADING_GUARD}${VARIANTS}(?:bg|text|border|ring|from|to|via|fill|stroke|outline|decoration|accent|caret|divide|shadow)-\\[#[0-9a-fA-F]{3,8}\\]`,
+      "g"
+    ),
   },
   {
+    // Not a utility class, so LEADING_GUARD does not apply: `window.confirm(`
+    // is already anchored by the `window.` qualifier.
     id: "window-confirm",
     description: "window.confirm (use ConfirmDialog)",
     re: /window\.confirm\s*\(/g,
@@ -39,12 +56,12 @@ export const RULES = [
   {
     id: "arbitrary-text-px",
     description: "arbitrary text-[Npx] font size (use text-xs… scale)",
-    re: /text-\[\d+px\]/g,
+    re: new RegExp(`${LEADING_GUARD}text-\\[\\d+px\\]`, "g"),
   },
   {
     id: "arbitrary-z-index",
     description: "arbitrary z-[N] outside layering table (30/50/60/70)",
-    re: /z-\[(\d+)\]/g,
+    re: new RegExp(`${LEADING_GUARD}z-\\[(\\d+)\\]`, "g"),
     filter: (match) => {
       const n = Number(match[1]);
       return !ALLOWED_Z.has(n);

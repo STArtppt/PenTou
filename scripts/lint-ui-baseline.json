@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-06T03:22:47.251Z",
+  "generatedAt": "2026-08-06T03:43:48.970Z",
   "totalHits": 78,
-  "groupCount": 43,
+  "groupCount": 41,
   "violations": [
     {
       "rule": "arbitrary-text-px",
@@ -54,7 +54,7 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "match": "\"bg-[#35B86B]",
+      "match": "bg-[#35B86B]",
       "count": 1
     },
     {
@@ -144,7 +144,7 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/MermaidBlock.tsx",
-      "match": "\"bg-[#151515]",
+      "match": "bg-[#151515]",
       "count": 1
     },
     {
@@ -198,32 +198,20 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.list-ux.test.ts",
-      "match": "\"bg-[#FAFAFA]",
-      "count": 1
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/Sidebar.list-ux.test.ts",
-      "match": "\"dark:bg-[#151515]",
-      "count": 1
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/Sidebar.list-ux.test.ts",
       "match": "bg-[#FAFAFA]",
-      "count": 2
+      "count": 3
     },
     {
       "rule": "hardcoded-hex",
-      "file": "src/app/components/Sidebar.tsx",
-      "match": "\"bg-[#FAFAFA]",
+      "file": "src/app/components/Sidebar.list-ux.test.ts",
+      "match": "dark:bg-[#151515]",
       "count": 1
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/Sidebar.tsx",
       "match": "bg-[#FAFAFA]",
-      "count": 4
+      "count": 5
     },
     {
       "rule": "hardcoded-hex",

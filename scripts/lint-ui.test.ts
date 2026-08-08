@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { diffAgainstBaseline, isLegacyBaseline, reclaimableCount, scanSource } from "./lint-ui.mjs";
+import {
+  RULES,
+  diffAgainstBaseline,
+  isLegacyBaseline,
+  keyOf,
+  reclaimableCount,
+  scanSource,
+} from "./lint-ui.mjs";
 
 /** Baseline entry helper: grouped format is (rule, file, match, count). */
 const group = (rule: string, file: string, match: string, count: number) => ({
@@ -34,6 +41,58 @@ describe("lint-ui rules", () => {
     const source = `<Button className="bg-primary text-muted-foreground border-border z-50" />`;
     const hits = scanSource(source);
     expect(hits).toHaveLength(0);
+  });
+});
+
+describe("lint-ui leading guard", () => {
+  it("keeps surrounding quotes out of the match text", () => {
+    const hits = scanSource(`<div className="bg-[#FAFAFA]" />`, "x.tsx");
+    expect(hits).toHaveLength(1);
+    expect(hits[0].match).toBe("bg-[#FAFAFA]");
+  });
+
+  it("groups the quoted and unquoted spellings of one violation together", () => {
+    const [quoted] = scanSource(`<div className="bg-[#FAFAFA]" />`, "x.tsx");
+    const [inCn] = scanSource(`<div className={cn("pad", "bg-[#FAFAFA]")} />`, "x.tsx");
+    expect(quoted.match).toBe(inCn.match);
+    expect(keyOf(quoted)).toBe(keyOf(inCn));
+  });
+
+  it("catches back-to-back violations — a consuming guard would skip the second", () => {
+    const hits = scanSource(`bg-[#fff]bg-[#000]`, "x.tsx");
+    expect(hits).toHaveLength(2);
+    expect(hits.map((h) => h.match)).toEqual(["bg-[#fff]", "bg-[#000]"]);
+  });
+
+  it("still refuses to match mid-identifier", () => {
+    expect(scanSource(`custombg-[#fff]`, "x.tsx")).toHaveLength(0);
+    expect(scanSource(`mytext-[12px]`, "x.tsx")).toHaveLength(0);
+    expect(scanSource(`myz-[85]`, "x.tsx")).toHaveLength(0);
+  });
+
+  it("keeps the variant prefix inside the match text", () => {
+    const hits = scanSource(`<div className="dark:bg-[#fff]" />`, "x.tsx");
+    expect(hits).toHaveLength(1);
+    expect(hits[0].match).toBe("dark:bg-[#fff]");
+  });
+
+  it("still flags a hex utility behind an unknown variant", () => {
+    // The guard blocks a utility glued to identifier chars (`custombg-`), not an
+    // unrecognized variant name — `xdark:bg-[#fff]` is a hardcoded hex either way.
+    const hits = scanSource(`xdark:bg-[#fff]`, "x.tsx");
+    expect(hits).toHaveLength(1);
+    expect(hits[0].match).toBe("xdark:bg-[#fff]");
+  });
+
+  it("guards every utility-class rule with the same zero-width lookbehind", () => {
+    const GUARD = "(?<![a-zA-Z0-9_-])";
+    const utilityRules = RULES.filter((r) => r.id !== "window-confirm");
+    expect(utilityRules).toHaveLength(3);
+    for (const rule of utilityRules) {
+      expect(rule.re.source.startsWith(GUARD)).toBe(true);
+    }
+    // window-confirm is not a utility class and deliberately carries no guard.
+    expect(RULES.find((r) => r.id === "window-confirm")!.re.source.startsWith(GUARD)).toBe(false);
   });
 
   it("allows baseline exemptions and fails only on novel hits", () => {
