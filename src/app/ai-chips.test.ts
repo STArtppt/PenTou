@@ -6,7 +6,6 @@ const base: ChipState = {
   hasConversation: true,
   hasDocument: false,
   hasCommentAnnotations: false,
-  isPlanDoc: false,
   hasLLM: true,
 };
 
@@ -91,7 +90,7 @@ describe("各 chip 走各自的确认形态（design D5）", () => {
   it("每个 chip 都有选中态引导语与完整 a11y 文案 key", () => {
     const all = [
       ...chipsForView(base),
-      ...chipsForView({ ...base, activeView: "doc", hasDocument: true, isPlanDoc: true }),
+      ...chipsForView({ ...base, activeView: "doc", hasDocument: true }),
     ];
     for (const chip of all) {
       expect(chip.armedPromptKey).toBeTruthy();
@@ -101,28 +100,23 @@ describe("各 chip 走各自的确认形态（design D5）", () => {
   });
 });
 
-describe("计划的执行入口（spec agent-write-policy 批准协议）", () => {
-  it("打开一份计划文档时，执行入口排在文档视图 chip 首位", () => {
-    expect(idsOf({ activeView: "doc", hasDocument: true, isPlanDoc: true })).toEqual([
-      "run-plan",
-      "doc-folder-organize",
-      "annotation-driven-rewrite",
-    ]);
+describe("执行计划不在 chip 组里（spec plan-run-status D6）", () => {
+  // 执行入口在计划状态条上：一个永远置灰的 chip 是噪音，
+  // 而「能不能执行」本来就是状态条要回答的问题。
+  it("任何视图、任何前置条件下都不出现 run-plan chip", () => {
+    const combos: Partial<ChipState>[] = [
+      { activeView: "chat" },
+      { activeView: "doc", hasDocument: true },
+      { activeView: "doc", hasDocument: true, hasCommentAnnotations: true },
+      { activeView: "doc", hasDocument: false, hasLLM: false },
+    ];
+    for (const over of combos) {
+      expect(idsOf(over)).not.toContain("run-plan");
+    }
   });
 
-  it("普通文档不出现执行入口 —— 没有计划就没有可执行的东西", () => {
-    expect(idsOf({ activeView: "doc", hasDocument: true })).not.toContain("run-plan");
-  });
-
-  it("会话视图不出现执行入口", () => {
-    expect(idsOf({ activeView: "chat", isPlanDoc: true })).not.toContain("run-plan");
-  });
-
-  it("执行计划不需要模型 —— 没配模型时它依然可用", () => {
-    const chips = chipsForView({ ...base, activeView: "doc", hasDocument: true, isPlanDoc: true, hasLLM: false });
-    const runPlan = chips.find((c) => c.id === "run-plan")!;
-    expect(runPlan.disabled).toBe(false);
-    expect(chips.find((c) => c.id === "doc-folder-organize")!.disabled).toBe(true);
+  it("chip 的确认形态里不再有 execute-plan", () => {
+    const all = [...chipsForView(base), ...chipsForView({ ...base, activeView: "doc", hasDocument: true })];
+    expect(all.map((c) => c.confirmation)).not.toContain("execute-plan");
   });
 });
-

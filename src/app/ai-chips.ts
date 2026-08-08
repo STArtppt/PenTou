@@ -12,11 +12,15 @@ export type ChipId =
   | "conversation-to-doc"
   | "topic-digest"
   | "doc-folder-organize"
-  | "annotation-driven-rewrite"
-  | "run-plan";
+  | "annotation-driven-rewrite";
 
-/** 确认形态。批量且改动既有数据的才配计划文档；单件、产物即预览的不该被拖成三步。 */
-export type ChipConfirmation = "plan-doc" | "artifact-preview" | "rewrite-dialog" | "execute-plan";
+/**
+ * 确认形态。批量且改动既有数据的才配计划文档；单件、产物即预览的不该被拖成三步。
+ *
+ * 注意这里**没有**「执行计划」—— 执行入口在计划状态条上，不在 chip 组里（spec plan-run-status D6）：
+ * 计划文档本身就是批准形态，再要求「点 chip 进选中态 → 回车派发」是多余的一跳。
+ */
+export type ChipConfirmation = "plan-doc" | "artifact-preview" | "rewrite-dialog";
 
 export interface IntentChip {
   id: ChipId;
@@ -40,8 +44,6 @@ export interface ChipState {
   hasDocument: boolean;
   /** 当前文档是否有带评论的批注。 */
   hasCommentAnnotations: boolean;
-  /** 当前文档是否是一份可执行的行动计划（带 `aiPlan` 结构化绑定）。 */
-  isPlanDoc: boolean;
   hasLLM: boolean;
 }
 
@@ -59,8 +61,7 @@ export function chipsForView(state: ChipState): IntentChip[] {
     requiresInput: boolean,
     blocked: string | null,
   ): IntentChip => {
-    // 执行计划不需要模型 —— 计划已经写死了要做什么，执行阶段不该再问模型
-    const noLLM = !state.hasLLM && confirmation !== "execute-plan";
+    const noLLM = !state.hasLLM;
     return {
       id,
       labelKey,
@@ -97,20 +98,6 @@ export function chipsForView(state: ChipState): IntentChip[] {
   }
 
   return [
-    // 计划文档本身在场时，执行入口排第一 —— 用户刚勾完复选框，下一步就是执行
-    ...(state.isPlanDoc
-      ? [
-          chip(
-            "run-plan",
-            "aiSidebar.chipRunPlan",
-            "aiSidebar.chipRunPlanA11y",
-            "execute-plan",
-            "aiSidebar.chipRunPlanArmed",
-            false,
-            null,
-          ),
-        ]
-      : []),
     chip(
       "doc-folder-organize",
       "aiSidebar.chipOrganizeFolders",

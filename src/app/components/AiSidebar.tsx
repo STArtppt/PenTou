@@ -34,7 +34,9 @@ import { isImeComposing } from "../ime";
 import { generateDocId } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
 import { useTranslation } from "../i18n";
-import { formatDisplayDate } from "../utils/dateFormat";
+import { formatDisplayDate, formatDisplayDateTime } from "../utils/dateFormat";
+import { parsePlanRun } from "../skills/plan-doc";
+import { PlanRunBanner } from "./PlanRunBanner";
 import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { RunTrace } from "./RunTrace";
 import { stripTraceFence, RUN_TRACE_LANG } from "../run-trace";
@@ -173,11 +175,16 @@ export function AiSidebar() {
         hasConversation: !!activeConversationId,
         hasDocument: !!activeDocId,
         hasCommentAnnotations: (annotationsByDoc[activeDocId ?? ""] ?? []).some((a: { comment?: string }) => a.comment),
-        isPlanDoc: !!documents.find((doc) => doc.id === activeDocId)?.aiPlan,
         hasLLM,
       }),
-    [activeView, activeConversationId, activeDocId, annotationsByDoc, documents, hasLLM],
+    [activeView, activeConversationId, activeDocId, annotationsByDoc, hasLLM],
   );
+
+  // 计划文档的执行状态（spec plan-run-status）：状态与操作同处上下文条幅下方那一条。
+  // 执行入口只在这里 —— chip 组里没有、也不该有「执行计划」（design D6 修订）。
+  const activeDoc = documents.find((doc) => doc.id === activeDocId);
+  const planRun = useMemo(() => parsePlanRun(activeDoc?.aiPlanRun), [activeDoc?.aiPlanRun]);
+  const showPlanBanner = activeView === "doc" && !!activeDoc?.aiPlan;
 
   const isCurrentEmpty = currentAiSession.messages.length === 0;
   const canOpenHistory = aiSessions.length > 0;
@@ -266,10 +273,6 @@ export function AiSidebar() {
       setInput("");
       if (armedChip.confirmation === "rewrite-dialog") {
         setRewriteDialogOpen(true);
-        return;
-      }
-      if (armedChip.confirmation === "execute-plan") {
-        await executeCurrentPlan(armedChip);
         return;
       }
       // 无参 chip 忽略输入文本，按意图派发
@@ -432,13 +435,14 @@ export function AiSidebar() {
 
   /**
    * 执行当前这份计划。经 registry 起会话，全程零 LLM。
+   * 由状态条上的「执行」按钮直接调用 —— 不经 chip 的选中态，**计划文档本身就是批准形态**
+   * （spec agent-write-policy 批准协议 / plan-run-status D6），再要求点一下回车是多余的一跳。
    */
-  const executeCurrentPlan = async (chip: IntentChip) => {
+  const executeCurrentPlan = async () => {
     if (!activeDocId) return;
-    clearArmed();
     const seed = {
-      title: `${t(chip.labelKey)} · ${documents.find((d) => d.id === activeDocId)?.title ?? activeDocId}`,
-      userContent: t(chip.a11yLabelKey),
+      title: `${t("planRun.runSessionTitle")} · ${documents.find((d) => d.id === activeDocId)?.title ?? activeDocId}`,
+      userContent: t("planRun.runSessionIntent"),
       skillId: "run-plan",
       model: llmConfig.model,
       contextType: "doc" as const,
@@ -664,7 +668,20 @@ export function AiSidebar() {
           available={!!view}
           savedBodyHint={carriesContext && !!view?.hasUnsavedEdit}
           onToggle={() => setContextEnabled((on) => !on)}
+          className={showPlanBanner ? "mb-2" : "mb-4"}
         />
+        {showPlanBanner && (
+          <PlanRunBanner
+            run={planRun}
+            ranAtLabel={planRun ? formatDisplayDateTime(planRun.ranAt, language) || planRun.ranAt : ""}
+            canViewTrace={!!planRun?.sessionId && aiSessions.some((s) => s.id === planRun.sessionId)}
+            running={currentRunStatus === "running"}
+            onRun={() => void executeCurrentPlan()}
+            onViewTrace={() => {
+              if (planRun?.sessionId) void selectAiSession(planRun.sessionId);
+            }}
+          />
+        )}
         {!hasLLM && (
           <div className="mb-4 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
             <p className="font-medium">{t("aiSidebar.configureModel")}</p>
@@ -866,17 +883,20 @@ function ContextPill({
   available,
   savedBodyHint,
   onToggle,
+  className,
 }: {
   label: string;
   enabled: boolean;
   available: boolean;
   savedBodyHint: boolean;
   onToggle: () => void;
+  /** 下方紧跟计划状态条时收窄间距，让两条读成一组 */
+  className?: string;
 }) {
   const { t } = useTranslation();
   const on = enabled && available;
   return (
-    <div className="mb-4">
+    <div className={className ?? "mb-4"}>
       <button
         type="button"
         role="switch"

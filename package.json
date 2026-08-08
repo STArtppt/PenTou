@@ -33,10 +33,11 @@
     "start": "node dist-server/src/server/index.js",
     "dev": "vite",
     "postinstall": "node scripts/download-obscura.cjs",
-    "test": "vitest run && node scripts/lint-ui.mjs",
+    "test": "vitest run && node scripts/lint-ui.mjs && node scripts/typecheck.mjs",
     "test:unit": "vitest run",
     "test:watch": "vitest",
-    "lint:ui": "node scripts/lint-ui.mjs"
+    "lint:ui": "node scripts/lint-ui.mjs",
+    "typecheck": "node scripts/typecheck.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -70,6 +71,8 @@
     "@types/formidable": "^3.4.5",
     "@types/mdast": "^4.0.4",
     "@types/node": "^25.6.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "4.7.0",
     "jsdom": "^29.1.1",
     "node-gyp": "^12.4.0",

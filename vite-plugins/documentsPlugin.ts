@@ -341,6 +341,8 @@ function documentToMd(doc: any): string {
   // 行动计划的结构化绑定（spec agent-write-policy D4）：单行 JSON 字符串。
   // 存 frontmatter 而非正文，正是为了「改正文的条目文字不影响执行」。
   if (doc.aiPlan) lines.push(`aiPlan: ${escapeFrontmatterValue(doc.aiPlan)}`);
+  // 该计划的执行终态（spec plan-run-status）：缺此键即「未执行」。
+  if (doc.aiPlanRun) lines.push(`aiPlanRun: ${escapeFrontmatterValue(doc.aiPlanRun)}`);
   lines.push("---");
   lines.push("");
   lines.push(doc.body ?? "");
@@ -389,6 +391,7 @@ function parseDocumentMd(id: string, content: string): any {
     importedFrom: meta.importedFrom || undefined,
     importedAt: meta.importedAt || undefined,
     aiPlan: meta.aiPlan || undefined,
+    aiPlanRun: meta.aiPlanRun || undefined,
   };
 }
 

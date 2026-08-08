@@ -122,6 +122,12 @@ export interface Document {
   versionType?: VersionType;
   /** 行动计划的结构化绑定（单行 JSON）。只有 AI 空间里的计划文档才有（spec agent-write-policy）。 */
   aiPlan?: string;
+  /**
+   * 计划的**执行终态**（单行 JSON，与 `aiPlan` 同构，spec plan-run-status）。
+   * 缺此键 = 未执行。存 frontmatter 而非正文：正文用户可自由改写、执行也不解析它，
+   * 承载不了一个程序还要回读的状态。
+   */
+  aiPlanRun?: string;
 }
 
 export interface DocumentFolder {
@@ -865,6 +871,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               signal: controller.signal,
             },
             planDocId,
+            sessionId,
           );
           applyRunEvent(mem, {
             type: "step",

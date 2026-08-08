@@ -201,9 +201,12 @@ describe("MinerU document import config and local converters", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.successCount).toBe(2);
-    expect(res.body.results[0].document.body).toContain("| name | city |");
-    expect(res.body.results[0].document.body).toContain("| Ada, A. | New York |");
-    expect(res.body.results[1].document.body).toContain("```xml\n<root><item>ok</item></root>\n```");
+    // 按 originalName 取，不按下标 —— multipart 的枚举顺序不是契约的一部分，
+    // 靠下标断言会在并发跑测时随机翻个个（与同批次的「mixed batch」用例同一口径）
+    const byName = new Map<string, any>(res.body.results.map((item: any) => [item.originalName, item]));
+    expect(byName.get("people.csv").document.body).toContain("| name | city |");
+    expect(byName.get("people.csv").document.body).toContain("| Ada, A. | New York |");
+    expect(byName.get("feed.xml").document.body).toContain("```xml\n<root><item>ok</item></root>\n```");
   });
 
   it("fails only MinerU formats when token is missing in a mixed batch", async () => {
@@ -218,7 +221,7 @@ describe("MinerU document import config and local converters", () => {
     expect(res.status).toBe(200);
     expect(res.body.successCount).toBe(1);
     expect(res.body.failedCount).toBe(1);
-    const byName = new Map(res.body.results.map((item: any) => [item.originalName, item]));
+    const byName = new Map<string, any>(res.body.results.map((item: any) => [item.originalName, item]));
     expect(byName.get("notes.md")).toMatchObject({ originalName: "notes.md", success: true });
     expect(byName.get("scan.pdf")).toMatchObject({ originalName: "scan.pdf", success: false });
     expect(byName.get("scan.pdf").error).toContain("需配置 MinerU Token");

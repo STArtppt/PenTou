@@ -238,6 +238,68 @@ export interface PlanExecutionResult {
 }
 
 /**
+ * 计划的**执行终态**（spec plan-run-status）：与 `AgentPlan` 同构的单行 JSON，
+ * 存在计划文档 frontmatter 的 `aiPlanRun`。缺此键即「未执行」。
+ *
+ * 是**终态**不是日志：`PUT /api/documents/:id` 无条件刷新 `updatedAt`，执行必然改掉目标文档的
+ * `updatedAt`，同一份计划在物理上不可能被执行第二次 —— 因此只有一条记录，没有历史。
+ */
+export interface AgentPlanRun {
+  version: number;
+  /** `done` = 已勾选条目全部执行完；`partial` = 写入中途失败，已有部分改动落地。 */
+  status: "done" | "partial";
+  ranAt: string;
+  approved: number;
+  skipped: number;
+  cleaned: number;
+  createdFolders: { id: string; name: string }[];
+  assigned: { docId: string; folderId: string }[];
+  /** 产生该次执行的 AI 会话 id；明细只在那次 run 会话里，文档侧不复制一份（design D5）。 */
+  sessionId?: string;
+  /**
+   * `partial` 的中断原因（design D8）。只存这一句，不存步骤轨迹。
+   * 它是用户判断「接下来怎么办」的唯一依据，而 run 会话可被删除 —— 不随终态一起存下来就会丢。
+   */
+  error?: string;
+}
+
+export function serializePlanRun(run: AgentPlanRun): string {
+  return JSON.stringify(run);
+}
+
+/** 坏数据一律当「未执行」处理：状态条宁可少显示，也不能显示一个编造的终态。 */
+export function parsePlanRun(raw: string | undefined): AgentPlanRun | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as AgentPlanRun;
+    if (parsed?.status !== "done" && parsed?.status !== "partial") return null;
+    return {
+      ...parsed,
+      createdFolders: Array.isArray(parsed.createdFolders) ? parsed.createdFolders : [],
+      assigned: Array.isArray(parsed.assigned) ? parsed.assigned : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 写入阶段中途失败（spec plan-run-status「三态语义」）：携带**实际已完成**的清单一起抛出，
+ * 好让调用方把 `partial` 终态记下来 —— 数据已经变了却显示「未执行」是最危险的错误状态。
+ * 校验阶段（快照 / 基底）的抛错不经这里：那时零改动，仍是未执行。
+ */
+export class PlanWriteInterrupted extends Error {
+  readonly reason: unknown;
+  readonly result: PlanExecutionResult;
+  constructor(reason: unknown, result: PlanExecutionResult) {
+    super(reason instanceof Error ? reason.message : String(reason));
+    this.name = "PlanWriteInterrupted";
+    this.reason = reason;
+    this.result = result;
+  }
+}
+
+/**
  * 执行一份被批准的计划。顺序刻意如此：先校验（快照 → 基底），再建文件夹，最后改归属。
  * 任何一步抛错都在**写入之前**，因此中止时数据零变更。
  */
@@ -280,15 +342,21 @@ export async function executePlan(
     idByName.set(folderName, id);
     result.createdFolders.push({ id, name: folderName });
   }
-  if (result.createdFolders.length) await api.saveFolders(appended);
+  // 从这里往下就是写入阶段：没有事务，中途失败会留下部分改动。
+  // 因此失败一律包成 PlanWriteInterrupted 带出当前 result，绝不让「已改了数据」被记成未执行。
+  try {
+    if (result.createdFolders.length) await api.saveFolders(appended);
 
-  for (const item of approved) {
-    const folderName = targetFolderName(item, lang);
-    const folderId = (item.kind === "assign-folder" ? item.folderId : null) || idByName.get(folderName);
-    if (!folderId) continue;
-    await api.assignFolder(item.docId, folderId, projectId);
-    result.assigned.push({ docId: item.docId, folderId });
-    if (item.kind === "suggest-cleanup") result.cleaned++;
+    for (const item of approved) {
+      const folderName = targetFolderName(item, lang);
+      const folderId = (item.kind === "assign-folder" ? item.folderId : null) || idByName.get(folderName);
+      if (!folderId) continue;
+      await api.assignFolder(item.docId, folderId, projectId);
+      result.assigned.push({ docId: item.docId, folderId });
+      if (item.kind === "suggest-cleanup") result.cleaned++;
+    }
+  } catch (e) {
+    throw new PlanWriteInterrupted(e, result);
   }
   return result;
 }

@@ -619,23 +619,27 @@ describe("AiSidebar", () => {
     unmount();
   });
 
-  it("打开计划文档时出现执行入口，选中回车后按勾选执行且全程零 LLM", async () => {
+  /** 执行入口在计划状态条上，点一下即执行 —— 不经 chip 选中态（spec plan-run-status D6）。 */
+  const bannerButton = (container: HTMLElement) =>
+    container.querySelector<HTMLButtonElement>('[data-slot="plan-run-banner"] button');
+
+  it("打开计划文档时状态条给出「执行」，点击即按勾选执行且全程零 LLM", async () => {
     mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
     mocks.appContext.activeView = "doc";
     mocks.appContext.activeDocId = "doc_plan";
     mocks.appContext.documents = [{ id: "doc_plan", title: "整理计划", body: "- [x] a", aiPlan: '{"items":[]}' }];
     const { container, unmount } = await renderSidebar();
 
-    const runButton = Array.from(container.querySelectorAll("button")).find((b) =>
-      b.textContent?.includes("Run plan"),
-    )!;
-    expect(runButton).toBeDefined();
+    // chip 组里绝不能再出现执行入口
+    expect(Array.from(container.querySelectorAll("button")).some((b) => b.textContent?.includes("Run plan"))).toBe(
+      false,
+    );
+
+    const runButton = bannerButton(container)!;
+    expect(runButton.textContent).toContain("Run");
 
     await act(async () => {
       Simulate.click(runButton);
-    });
-    await act(async () => {
-      Simulate.keyDown(container.querySelector("textarea")!, { key: "Enter" });
       await new Promise((r) => setTimeout(r, 0));
     });
 
@@ -653,18 +657,79 @@ describe("AiSidebar", () => {
     mocks.skills.fail = "《A》在计划生成之后被改过，计划已过期。请让 AI 重新生成一份计划。";
     const { container, unmount } = await renderSidebar();
 
-    const runButton = Array.from(container.querySelectorAll("button")).find((b) =>
-      b.textContent?.includes("Run plan"),
-    )!;
     await act(async () => {
-      Simulate.click(runButton);
-    });
-    await act(async () => {
-      Simulate.keyDown(container.querySelector("textarea")!, { key: "Enter" });
+      Simulate.click(bannerButton(container)!);
       await new Promise((r) => setTimeout(r, 0));
     });
 
     expect(mocks.toast.error).toHaveBeenCalledWith(mocks.skills.fail);
+    unmount();
+  });
+
+  it("已执行的计划：状态条给「查记录」而非「执行」", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.activeView = "doc";
+    mocks.appContext.activeDocId = "doc_plan";
+    mocks.appContext.documents = [
+      {
+        id: "doc_plan",
+        title: "整理计划",
+        body: "- [x] a",
+        aiPlan: '{"items":[]}',
+        aiPlanRun: JSON.stringify({
+          version: 1,
+          status: "done",
+          ranAt: "2026-08-05T10:00:00.000Z",
+          approved: 2,
+          skipped: 0,
+          cleaned: 0,
+          createdFolders: [],
+          assigned: [],
+          sessionId: "ai_1",
+        }),
+      },
+    ];
+    mocks.appContext.aiSessions = [{ id: "ai_1", title: "执行计划", messages: [], updatedAt: "2026-08-05" }];
+    const { container, unmount } = await renderSidebar();
+
+    const banner = container.querySelector('[data-slot="plan-run-banner"]')!;
+    expect(banner.textContent).toContain("View run");
+    // 执行入口在已执行的计划上必须消失 —— 这正是本变更要堵的误导报错入口
+    expect(bannerButton(container)!.textContent).not.toContain("Run plan");
+    expect(mocks.skills.dispatched).toEqual([]);
+    unmount();
+  });
+
+  it("中断的计划：状态条给「详情」，且没有任何重试入口", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.activeView = "doc";
+    mocks.appContext.activeDocId = "doc_plan";
+    mocks.appContext.documents = [
+      {
+        id: "doc_plan",
+        title: "整理计划",
+        body: "- [x] a",
+        aiPlan: '{"items":[]}',
+        aiPlanRun: JSON.stringify({
+          version: 1,
+          status: "partial",
+          ranAt: "2026-08-05T10:00:00.000Z",
+          approved: 3,
+          skipped: 0,
+          cleaned: 0,
+          createdFolders: [],
+          assigned: [{ docId: "doc_a", folderId: "df_1" }],
+          error: "PUT /api/documents/doc_b failed: 500",
+        }),
+      },
+    ];
+    const { container, unmount } = await renderSidebar();
+
+    const banner = container.querySelector('[data-slot="plan-run-banner"]')!;
+    expect(banner.textContent).toContain("Details");
+    for (const b of Array.from(banner.querySelectorAll("button"))) {
+      expect(b.textContent).not.toMatch(/Retry|Run/);
+    }
     unmount();
   });
 });

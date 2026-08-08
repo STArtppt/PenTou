@@ -15,7 +15,8 @@ export type RunSkillFn = (
   },
 ) => AsyncGenerator<RunEvent, void, void>;
 
-export type RunPlanDocFn = (deps: SkillDeps, planDocId: string) => Promise<unknown>;
+/** `sessionId` 会随执行终态写进计划文档，供状态条跳回那次 run 会话（spec plan-run-status D5）。 */
+export type RunPlanDocFn = (deps: SkillDeps, planDocId: string, sessionId?: string) => Promise<unknown>;
 
 let runSkillImpl: RunSkillFn | null = null;
 let runPlanDocImpl: RunPlanDocFn | null = null;

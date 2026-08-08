@@ -162,6 +162,17 @@ describe("documentMetaFields", () => {
     expect(rows.find((r) => r.key === "importedFrom")?.value).toContain("file.md");
   });
 
+  // 执行状态是**动态当前状态**，归常驻状态条；默认折叠的来历元数据面板不碰它（spec plan-run-status）
+  it("never emits aiPlanRun either — run status belongs to the banner, not the panel", () => {
+    const rows = documentMetaFields(
+      { ...base, aiPlanRun: '{"status":"done","approved":3}' } as typeof base,
+      [{ id: "dp_x", name: "笔记" }],
+      [{ id: "df_y", name: "指南" }],
+      { formatDateTime: fmt, defaultProjectName: "默认目录" },
+    );
+    expect(rows.some((r) => r.key === "aiPlanRun" || r.value.includes("done"))).toBe(false);
+  });
+
   it("falls back to raw project id when not found", () => {
     const rows = documentMetaFields(
       { ...base, projectId: "dp_missing" },

@@ -10,7 +10,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "types": ["vite/client", "node"],
-    "baseUrl": ".",
+    // 不设 baseUrl：TS 5+ 起 paths 直接相对本文件解析，而 baseUrl 在 TS 7 会停止工作
     "paths": {
       "@/*": ["./src/*"]
     }

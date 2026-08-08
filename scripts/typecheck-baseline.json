@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-08-05T07:51:34.667Z",
+  "count": 52,
+  "errors": [
+    [
+      "src/app/components/AiSidebar.test.tsx|TS2322|Type 'Mock<[x: number, y: number], void>' is not assignable to type '{ (options?: ScrollToOptions | undefined): void; (x: number, y: number): void; }'.",
+      1
+    ],
+    [
+      "src/app/components/AiSidebar.tsx|TS2345|Argument of type 'string' is not assignable to parameter of type '\"sidebar.import\" | \"sidebar.new\" | \"sidebar.newFolder\" | \"sidebar.folderName\" | \"sidebar.conversationTitle\" | \"sidebar.documentTitle\" | \"sidebar.cancel\" | \"sidebar.create\" | ... 472 more ... | \"mobile.import\"'.",
+      7
+    ],
+    [
+      "src/app/components/DocViewer.test.tsx|TS2322|Type 'Mock<[x: number, y: number], void>' is not assignable to type '{ (options?: ScrollToOptions | undefined): void; (x: number, y: number): void; }'.",
+      1
+    ],
+    [
+      "src/app/components/ImportDrawer.tsx|TS2345|Argument of type '(key: keyof (typeof translations)[\"en\"], placeholders?: Record<string, string | number>) => string' is not assignable to parameter of type '(key: string) => string'.",
+      1
+    ],
+    [
+      "src/app/components/MermaidBlock.test.tsx|TS2454|Variable 'root' is used before being assigned.",
+      1
+    ],
+    [
+      "src/app/components/ProjectSwitcher.test.tsx|TS2322|Type 'Mock<[x: number, y: number], void>' is not assignable to type '{ (options?: ScrollToOptions | undefined): void; (x: number, y: number): void; }'.",
+      1
+    ],
+    [
+      "src/app/components/RunTrace.tsx|TS2345|Argument of type '(key: keyof (typeof translations)[\"en\"], placeholders?: Record<string, string | number>) => string' is not assignable to parameter of type '(k: string) => string'.",
+      1
+    ],
+    [
+      "src/app/components/settings/SettingsNav.tsx|TS2322|Type 'ForwardRefExoticComponent<Omit<LucideProps, \"ref\"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ComponentType<{ className?: string | undefined; size?: number | undefined; }>'.",
+      7
+    ],
+    [
+      "src/app/components/settings/tabs/LLMTab.tsx|TS2345|Argument of type 'ProviderKind' is not assignable to parameter of type 'BuiltinProviderId'.",
+      1
+    ],
+    [
+      "src/app/components/Sidebar.tsx|TS2322|Type '(value: string) => void' is not assignable to type '(value: string | null, eventDetails: SelectRootChangeEventDetails) => void'.",
+      1
+    ],
+    [
+      "src/app/llm.test.ts|TS2322|Type 'ReadableStream<Uint8Array<ArrayBufferLike>>' is not assignable to type 'ReadableStream<Uint8Array<ArrayBuffer>>'.",
+      2
+    ],
+    [
+      "src/app/llm.test.ts|TS2322|Type 'VitestUtils' is not assignable to type 'Awaitable<void>'.",
+      1
+    ],
+    [
+      "src/app/skills/doc-folder-organize.ts|TS18048|'p.doc' is possibly 'undefined'.",
+      5
+    ],
+    [
+      "src/app/skills/doc-folder-organize.ts|TS2677|A type predicate's type must be assignable to its parameter's type.",
+      1
+    ],
+    [
+      "src/cli/collector/command.test.ts|TS2740|Type '{ \"claude-code\": { enabled: true; root: string; }; waylog: { enabled: true; dirs: string[]; }; }' is missing the following properties from type '{ \"claude-code\": { enabled: boolean; root?: string | undefined; }; waylog: { enabled: boolean; dirs: string[]; }; codex: { enabled: boolean; root?: string | undefined; }; \"grok-cli\": { enabled: boolean; root?: string | undefined; }; ... 6 more ...; docs: { ...; }; }': codex, \"grok-cli\", pi, \"copilot-vscode\", and 5 more.",
+      1
+    ],
+    [
+      "src/cli/collector/engine.test.ts|TS2740|Type '{ \"claude-code\": { enabled: true; root: string; }; waylog: { enabled: false; dirs: never[]; }; }' is missing the following properties from type '{ \"claude-code\": { enabled: boolean; root?: string | undefined; }; waylog: { enabled: boolean; dirs: string[]; }; codex: { enabled: boolean; root?: string | undefined; }; \"grok-cli\": { enabled: boolean; root?: string | undefined; }; ... 6 more ...; docs: { ...; }; }': codex, \"grok-cli\", pi, \"copilot-vscode\", and 5 more.",
+      10
+    ],
+    [
+      "src/cli/collector/project-key.test.ts|TS2493|Tuple type '[]' of length '0' has no element at index '0'.",
+      1
+    ],
+    [
+      "src/cli/collector/query-adapters.test.ts|TS2345|Argument of type 'string | Record<string, unknown>' is not assignable to parameter of type 'string'.",
+      4
+    ],
+    [
+      "src/main.tsx|TS5097|An import path can only end with a '.tsx' extension when 'allowImportingTsExtensions' is enabled.",
+      1
+    ],
+    [
+      "src/server/embedding-provider.test.ts|TS2352|Conversion of type 'undefined' to type 'string' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+      1
+    ],
+    [
+      "src/server/embedding-provider.test.ts|TS2493|Tuple type '[]' of length '0' has no element at index '0'.",
+      1
+    ],
+    [
+      "vite-plugins/obscura.ts|TS2531|Object is possibly 'null'.",
+      1
+    ],
+    [
+      "vite.config.ts|TS7006|Parameter 'id' implicitly has an 'any' type.",
+      1
+    ]
+  ]
+}
