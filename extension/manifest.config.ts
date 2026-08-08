@@ -4,7 +4,7 @@ const manifest: ManifestV3Export = {
   manifest_version: 3,
   name: "Pentou Collector",
   description: "Collect logged-in AI conversations into local Pentou.",
-  version: "0.1.0",
+  version: "0.1.1",
   icons: {
     "128": "icon-128.png",
   },
@@ -16,7 +16,8 @@ const manifest: ManifestV3Export = {
     service_worker: "src/background/index.ts",
     type: "module",
   },
-  permissions: ["activeTab", "alarms", "notifications", "scripting", "storage", "tabs"],
+  // No "tabs": sendMessage/create work via activeTab + host_permissions (CWS Purple Potassium).
+  permissions: ["activeTab", "alarms", "notifications", "scripting", "storage"],
   host_permissions: [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
