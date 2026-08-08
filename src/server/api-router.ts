@@ -374,6 +374,9 @@ function aiChatSessionToMd(session: any): string {
   if (session.model) lines.push(`model: ${escapeFrontmatterValue(session.model)}`);
   if (session.contextType) lines.push(`contextType: ${escapeFrontmatterValue(session.contextType)}`);
   if (session.contextId) lines.push(`contextId: ${escapeFrontmatterValue(session.contextId)}`);
+  if (session.kind === "run" || session.kind === "chat") {
+    lines.push(`kind: ${escapeFrontmatterValue(session.kind)}`);
+  }
   lines.push("---", "");
 
   for (const message of session.messages ?? []) {
@@ -383,6 +386,7 @@ function aiChatSessionToMd(session: any): string {
       `status=${message.status ?? "done"}`,
       message.error ? `error="${escapeAttr(message.error)}"` : "",
       message.contextLabel ? `contextLabel="${escapeAttr(message.contextLabel)}"` : "",
+      message.runSkillId ? `runSkillId="${escapeAttr(message.runSkillId)}"` : "",
     ].filter(Boolean);
     lines.push(`<!-- ai-msg ${attrs.join(" ")} -->`);
     lines.push(message.content ?? "");
@@ -426,6 +430,7 @@ function parseAiChatMd(id: string, content: string): any {
       content: rawContent,
       error: attrs.error || undefined,
       contextLabel: attrs.contextLabel || undefined,
+      runSkillId: attrs.runSkillId || undefined,
     });
   }
 
@@ -437,6 +442,7 @@ function parseAiChatMd(id: string, content: string): any {
     model: meta.model || undefined,
     contextType: meta.contextType === "chat" || meta.contextType === "doc" ? meta.contextType : undefined,
     contextId: meta.contextId || undefined,
+    kind: meta.kind === "run" || meta.kind === "chat" ? meta.kind : undefined,
     messages,
   };
 }

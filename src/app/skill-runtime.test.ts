@@ -212,4 +212,136 @@ describe("runWithTools（工具往返）", () => {
       "tool step requires deps.executeTool",
     );
   });
+
+  it("订阅 onEvent 时产出成对的 tool 事件（running → ok）", async () => {
+    let round = 0;
+    const events: RunEvent[] = [];
+    const deps = mockDeps({
+      callLLM: async () => {
+        round += 1;
+        return round === 1
+          ? { content: "", toolCalls: [{ id: "c1", name: "search_corpus", arguments: '{"q":"x"}' }] }
+          : { content: "done", toolCalls: [] };
+      },
+      executeTool: async () => ({ hits: 1 }),
+      onEvent: (e) => events.push(e),
+    });
+
+    const out = await runWithTools(deps, [{ role: "user", content: "q" }], { tools });
+
+    const toolEvents = events.filter((e) => e.type === "tool");
+    expect(toolEvents).toHaveLength(2);
+    expect(toolEvents[0]).toMatchObject({
+      type: "tool",
+      call: { id: "c1", name: "search_corpus", status: "running", arguments: { q: "x" } },
+    });
+    expect(toolEvents[1]).toMatchObject({
+      type: "tool",
+      call: { id: "c1", name: "search_corpus", status: "ok", result: { hits: 1 } },
+    });
+    expect(out.calls[0].result).toEqual({ hits: 1 });
+  });
+
+  it("工具失败时仍产出 tool 结束事件（status: error），且失败回灌不中止", async () => {
+    let round = 0;
+    const events: RunEvent[] = [];
+    const deps = mockDeps({
+      callLLM: async (_cfg, messages) => {
+        round += 1;
+        if (round === 1) return { content: "", toolCalls: [{ id: "c1", name: "search_corpus", arguments: "{}" }] };
+        return { content: `saw:${messages.at(-1)?.content}`, toolCalls: [] };
+      },
+      executeTool: async () => {
+        throw new Error("search failed: 500");
+      },
+      onEvent: (e) => events.push(e),
+    });
+
+    const out = await runWithTools(deps, [{ role: "user", content: "q" }], { tools });
+
+    const toolEvents = events.filter((e) => e.type === "tool");
+    expect(toolEvents).toHaveLength(2);
+    expect(toolEvents[0]).toMatchObject({ call: { status: "running" } });
+    expect(toolEvents[1]).toMatchObject({
+      call: { status: "error", error: "search failed: 500" },
+    });
+    expect(out.content).toBe(`saw:${JSON.stringify({ error: "search failed: 500" })}`);
+    expect(out.calls[0].error).toBe("search failed: 500");
+  });
+});
+
+describe("RunEvent 出口（chunk / tool 可选）", () => {
+  const streamingLlmDef: SkillDef = {
+    id: "stream-llm",
+    inputSchema: { type: "object", properties: {}, additionalProperties: true },
+    steps: [
+      {
+        id: "generate",
+        kind: "llm",
+        run: async (ctx) => {
+          const { content } = await ctx.deps.callLLM(ctx.deps.llmConfig, [{ role: "user", content: "hi" }], {
+            signal: ctx.deps.signal,
+          });
+          return content;
+        },
+      },
+    ],
+    buildOutput: (ctx) => ({ text: ctx.results.generate }),
+  };
+
+  it("订阅时收到 llm 步的 chunk 事件（带 stepId）", async () => {
+    const sideEvents: RunEvent[] = [];
+    const deps = mockDeps({
+      callLLM: async (_cfg, _messages, opts) => {
+        opts?.onChunk?.("hello");
+        opts?.onChunk?.(" world");
+        return { content: "hello world", toolCalls: [] };
+      },
+      onEvent: (e) => sideEvents.push(e),
+    });
+
+    const evs = await collect(executeSkill(streamingLlmDef, {}, deps));
+    const chunks = sideEvents.filter((e) => e.type === "chunk");
+    expect(chunks).toEqual([
+      { type: "chunk", stepId: "generate", text: "hello" },
+      { type: "chunk", stepId: "generate", text: " world" },
+    ]);
+    expect(evs.find((e) => e.type === "result")).toEqual({
+      type: "result",
+      output: { text: "hello world" },
+    });
+  });
+
+  it("不订阅 onEvent 时产物与订阅时一致（契约：可选性）", async () => {
+    const callLLM = async (_cfg: unknown, _messages: unknown, opts?: { onChunk?: (c: string) => void }) => {
+      opts?.onChunk?.("partial");
+      return { content: "full-answer", toolCalls: [] as [] };
+    };
+
+    const withSub: RunEvent[] = [];
+    const without = await collect(
+      executeSkill(streamingLlmDef, {}, mockDeps({ callLLM: callLLM as SkillDeps["callLLM"] })),
+    );
+    const withOn = await collect(
+      executeSkill(
+        streamingLlmDef,
+        {},
+        mockDeps({
+          callLLM: callLLM as SkillDeps["callLLM"],
+          onEvent: (e) => withSub.push(e),
+        }),
+      ),
+    );
+
+    const strip = (evs: RunEvent[]) =>
+      evs.map((e) => {
+        if (e.type === "step") {
+          const { output: _o, ...step } = e.step;
+          return { type: e.type, step: { ...step, output: e.step.output } };
+        }
+        return e;
+      });
+    expect(strip(without)).toEqual(strip(withOn));
+    expect(withSub.some((e) => e.type === "chunk")).toBe(true);
+  });
 });

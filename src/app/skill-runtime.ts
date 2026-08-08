@@ -21,9 +21,25 @@ export interface RunStep {
   error?: string;
 }
 
-/** runner 逐步产出的事件：step 进度 → 终态 result 或 error。 */
+/** 工具调用事件载荷：开始为 running，结束为 ok / error。 */
+export interface ToolCallEvent {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  status: "running" | "ok" | "error";
+  result?: unknown;
+  error?: string;
+}
+
+/**
+ * runner 逐步产出的事件。
+ * `step` / `result` / `error` 经 async generator yield；
+ * `chunk` / `tool` 经可选 `SkillDeps.onEvent` 回调（可发生在步骤中间）。
+ */
 export type RunEvent =
   | { type: "step"; step: RunStep }
+  | { type: "chunk"; stepId: string; text: string }
+  | { type: "tool"; call: ToolCallEvent }
   | { type: "result"; output: unknown }
   | { type: "error"; error: string };
 
@@ -53,6 +69,31 @@ export interface SkillDeps {
    * 不得回落到任何服务端 LLM 通道。未注入时 `tool` 步骤会明确报错而非静默跳过。
    */
   executeTool?: (call: ExecutableToolCall, deps: SkillDeps) => Promise<unknown>;
+  /**
+   * 可选事件出口（chunk / tool）。不注入时执行路径与产物必须与注入时一致。
+   * step / result / error 仍经 generator yield，本回调专供步骤中途事件。
+   */
+  onEvent?: (event: RunEvent) => void;
+}
+
+/**
+ * 为 llm 步包装 deps：把 onEvent 接到 callLLM 的 onChunk，并带上 stepId。
+ * 技能里直接调 `ctx.deps.callLLM` 也能拿到流式 chunk 事件。
+ */
+export function depsWithChunkEvents(deps: SkillDeps, stepId: string): SkillDeps {
+  if (!deps.onEvent) return deps;
+  const onEvent = deps.onEvent;
+  return {
+    ...deps,
+    callLLM: (cfg, messages, opts) =>
+      deps.callLLM(cfg, messages, {
+        ...opts,
+        onChunk: (text) => {
+          opts?.onChunk?.(text);
+          onEvent({ type: "chunk", stepId, text });
+        },
+      }),
+  };
 }
 
 /** 一次待执行的工具调用：`arguments` 已从模型的 JSON 字符串解析为对象。 */
@@ -194,13 +235,25 @@ export async function runWithTools(
 
     for (const call of toolCalls) {
       const parsed: ExecutableToolCall = { id: call.id, name: call.name, arguments: parseToolArguments(call.arguments) };
+      deps.onEvent?.({
+        type: "tool",
+        call: { id: parsed.id, name: parsed.name, arguments: parsed.arguments, status: "running" },
+      });
       try {
         const result = await deps.executeTool(parsed, deps);
+        deps.onEvent?.({
+          type: "tool",
+          call: { id: parsed.id, name: parsed.name, arguments: parsed.arguments, status: "ok", result },
+        });
         calls.push({ name: parsed.name, arguments: parsed.arguments, result });
         conversation.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result ?? null) });
       } catch (e) {
         // 工具失败回灌给模型而不是中止：模型可以改用别的工具或如实说明做不到。
         const error = e instanceof Error ? e.message : String(e);
+        deps.onEvent?.({
+          type: "tool",
+          call: { id: parsed.id, name: parsed.name, arguments: parsed.arguments, status: "error", error },
+        });
         calls.push({ name: parsed.name, arguments: parsed.arguments, error });
         conversation.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error }) });
       }
@@ -226,7 +279,7 @@ export async function* executeSkill(
     return;
   }
   const valid = validateInput(def.inputSchema, input);
-  if (!valid.ok) {
+  if (valid.ok === false) {
     yield { type: "error", error: valid.error };
     return;
   }
@@ -235,7 +288,10 @@ export async function* executeSkill(
   for (const step of def.steps) {
     yield { type: "step", step: { id: step.id, kind: step.kind, status: "running" } };
     try {
-      const out = await step.run(ctx);
+      // llm 步经 helper 注入 onChunk → chunk 事件；其它步原样，保证不注入 onEvent 时路径不变
+      const stepDeps = step.kind === "llm" ? depsWithChunkEvents(deps, step.id) : deps;
+      const stepCtx: RunCtx = stepDeps === deps ? ctx : { ...ctx, deps: stepDeps };
+      const out = await step.run(stepCtx);
       ctx.results[step.id] = out;
       yield { type: "step", step: { id: step.id, kind: step.kind, status: "done", output: out } };
     } catch (e) {

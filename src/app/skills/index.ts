@@ -28,6 +28,8 @@ export interface RunSkillOptions {
   signal?: AbortSignal;
   /** 工具执行的环境（当前视图等）；不给则只有不依赖视图的工具可用。 */
   toolEnv?: ToolEnv;
+  /** 可选：订阅 chunk / tool 等步骤中途事件（见 SkillDeps.onEvent）。 */
+  onEvent?: SkillDeps["onEvent"];
 }
 
 /**
@@ -47,6 +49,7 @@ export function runSkill(
     llmConfig: opts.llmConfig ?? getActiveLLMConfig(loadLLMSettingsFromLocalStorage()),
     signal: opts.signal,
     executeTool: createToolExecutor(opts.toolEnv ?? {}),
+    onEvent: opts.onEvent,
   };
   return executeSkill(def, input, deps);
 }

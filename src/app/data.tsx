@@ -10,6 +10,7 @@ import { resolveMoveProjectId } from "./document-projects";
 import { isAiWorkspaceFolderId, sortAiWorkspaceFirst } from "../shared/ai-workspace";
 import {
   AiChatSession,
+  convergeInterruptedSession,
   createEmptyAiChatSession,
   deleteSession as deleteAiChatFile,
   listSessions as listAiChatSessions,
@@ -23,6 +24,19 @@ import {
   writeAiSidebarSide,
 } from "./ai-sidebar-prefs";
 import { useIsMobile } from "./hooks/useIsMobile";
+import { getRunPlanDoc, getRunSkill } from "./skill-run-bridge";
+import {
+  applyRunEvent,
+  contentForDisplay,
+  contentForPersist,
+  createLiveRunMemory,
+  createRunSession,
+  patchAssistant,
+  shouldPersistEvent,
+  type SkillRunSeed,
+  type SkillRunStatus,
+} from "./skill-run";
+import type { RunEvent } from "./skill-runtime";
 
 // "Codex" 仅存量数据兼容：新解析一律输出 "ChatGPT"（spec collector-source-expansion 决策 2）
 export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode";
@@ -363,6 +377,16 @@ interface AppContextType {
   selectAiSession: (id: string) => Promise<{ session: AiChatSession | null; didJump: boolean }>;
   deleteAiSession: (id: string) => Promise<void>;
   refreshAiSessions: () => Promise<void>;
+  /** 意图执行 registry（spec agent-run-session）：与 UI 组件生命周期解耦。 */
+  startSkillRun: (
+    chipId: string,
+    input: Record<string, unknown>,
+    seed: SkillRunSeed,
+  ) => Promise<{ session: AiChatSession; started: boolean; output?: unknown }>;
+  abortSkillRun: (sessionId: string) => Promise<void>;
+  runStatusOf: (sessionId: string) => SkillRunStatus | null;
+  /** 订阅 runs 状态变更（HistoryPanel / 气泡）。 */
+  runRegistryVersion: number;
   isLoading: boolean;
 }
 
@@ -434,7 +458,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [aiSidebarSide, setAiSidebarSideState] = useState<AiSidebarSide>(() => readAiSidebarSide());
   const [aiSessions, setAiSessions] = useState<AiChatSession[]>([]);
   const [currentAiSession, setCurrentAiSessionState] = useState<AiChatSession>(() => createEmptyAiChatSession());
+  const currentAiSessionIdRef = useRef<string>("");
+  currentAiSessionIdRef.current = currentAiSession.id;
+  /** sessionId → 进行中的执行（AbortController + 状态）。终态后移除。 */
+  const runsRef = useRef(
+    new Map<string, { controller: AbortController; status: SkillRunStatus }>(),
+  );
+  const [runRegistryVersion, setRunRegistryVersion] = useState(0);
+  const bumpRunRegistry = useCallback(() => setRunRegistryVersion((v) => v + 1), []);
   const [isLoading, setIsLoading] = useState(true);
+
+  const interruptedNote = useCallback(
+    () =>
+      language === "zh"
+        ? "因页面刷新中断"
+        : "Interrupted by page refresh",
+    [language],
+  );
+
+  const applyConverge = useCallback(
+    (session: AiChatSession): AiChatSession =>
+      convergeInterruptedSession(session, interruptedNote()),
+    [interruptedNote],
+  );
 
   // Hydration tracking: which ids have already been (or are being) fetched in full.
   // Refs (not state) so the dedupe check inside the effect sees the in-flight set
@@ -473,7 +519,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     listAiChatSessions()
       .then((sessions) => {
-        setAiSessions(sessions);
+        // D7：加载时内存收敛 streaming → aborted，不批量写盘
+        setAiSessions(
+          sessions.map((s) =>
+            convergeInterruptedSession(
+              s,
+              (localStorage.getItem("pentou-language") as "en" | "zh") === "zh"
+                ? "因页面刷新中断"
+                : "Interrupted by page refresh",
+            ),
+          ),
+        );
       })
       .catch((e) => console.error({ module: "data", op: "loadAiChats", err: e }));
   }, []);
@@ -586,8 +642,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshAiSessions = useCallback(async () => {
     const sessions = await listAiChatSessions();
-    setAiSessions(sessions);
-  }, []);
+    // D7：惰性收敛，不写盘
+    setAiSessions(sessions.map((s) => applyConverge(s)));
+  }, [applyConverge]);
 
   const setCurrentAiSession = useCallback((next: AiChatSession | ((session: AiChatSession) => AiChatSession)) => {
     setCurrentAiSessionState((prevSession) => {
@@ -646,28 +703,215 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const selectAiSession = useCallback(async (id: string) => {
     const existing = aiSessions.find((session) => session.id === id);
     if (existing) {
-      setCurrentAiSessionState(existing);
-      const didJump = jumpToAiSessionContext(existing);
-      return { session: existing, didJump };
+      const converged = applyConverge(existing);
+      setCurrentAiSessionState(converged);
+      if (converged !== existing) {
+        setAiSessions((prev) => prev.map((s) => (s.id === id ? converged : s)));
+      }
+      const didJump = jumpToAiSessionContext(converged);
+      return { session: converged, didJump };
     }
     const sessions = await listAiChatSessions();
-    const target = sessions.find((session) => session.id === id);
-    setAiSessions(sessions);
+    const convergedList = sessions.map((s) => applyConverge(s));
+    setAiSessions(convergedList);
+    const target = convergedList.find((session) => session.id === id);
     if (target) {
       setCurrentAiSessionState(target);
       const didJump = jumpToAiSessionContext(target);
       return { session: target, didJump };
     }
     return { session: null, didJump: false };
-  }, [aiSessions, jumpToAiSessionContext]);
+  }, [aiSessions, jumpToAiSessionContext, applyConverge]);
+
+  const runStatusOf = useCallback((sessionId: string): SkillRunStatus | null => {
+    return runsRef.current.get(sessionId)?.status ?? null;
+  }, [runRegistryVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- version 触发订阅者重渲染
+
+  const abortSkillRun = useCallback(async (sessionId: string) => {
+    const entry = runsRef.current.get(sessionId);
+    if (!entry || entry.status !== "running") return;
+    entry.controller.abort();
+    // 状态收尾由 startSkillRun 的 finally/catch 路径完成；这里只发 abort 信号。
+    // 若循环已退出但 Map 仍残留，就地清理。
+  }, []);
 
   const deleteAiSession = useCallback(async (id: string) => {
+    // 防 controller 泄漏：先终止再删
+    await abortSkillRun(id);
+    const entry = runsRef.current.get(id);
+    if (entry) {
+      entry.status = "aborted";
+      runsRef.current.delete(id);
+      bumpRunRegistry();
+    }
     await deleteAiChatFile(id);
     setAiSessions((prev) => prev.filter((session) => session.id !== id));
-    if (currentAiSession.id === id) {
+    if (currentAiSessionIdRef.current === id) {
       setCurrentAiSessionState(createEmptyAiChatSession());
     }
-  }, [currentAiSession.id]);
+  }, [abortSkillRun, bumpRunRegistry]);
+
+  /**
+   * 起一次意图执行：立即建会话落盘 → registry 持有 controller → 消费 RunEvent。
+   * 同一 sessionId 已 running 时拒绝（D8）；本 API 每次新建会话，故跨会话可并行。
+   */
+  const startSkillRun = useCallback(
+    async (
+      chipId: string,
+      input: Record<string, unknown>,
+      seed: SkillRunSeed,
+    ): Promise<{ session: AiChatSession; started: boolean; output?: unknown }> => {
+      const { session: created, assistantId } = createRunSession({
+        ...seed,
+        skillId: seed.skillId || chipId,
+        model: seed.model ?? llmConfig.model,
+      });
+      const sessionId = created.id;
+      // 防御：若调用方复用 id 且已 running
+      if (runsRef.current.get(sessionId)?.status === "running") {
+        return { session: created, started: false };
+      }
+
+      const controller = new AbortController();
+      runsRef.current.set(sessionId, { controller, status: "running" });
+      bumpRunRegistry();
+
+      let session = created;
+      // 立即落盘：马上进历史且可终止
+      await saveAiChatFile(session);
+      setCurrentAiSession(session);
+
+      const mem = createLiveRunMemory(seed.skillId || chipId);
+
+      const publish = (next: AiChatSession, persist: boolean) => {
+        session = next;
+        // 始终更新列表；当前选中该会话时同步 current
+        setAiSessions((prev) => {
+          const list = prev.some((s) => s.id === next.id)
+            ? prev.map((s) => (s.id === next.id ? next : s))
+            : [next, ...prev];
+          return list.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        });
+        if (currentAiSessionIdRef.current === next.id) {
+          setCurrentAiSessionState(next);
+        }
+        if (persist) {
+          void saveAiChatFile(next).catch((e) =>
+            console.error({ module: "data", op: "persistSkillRun", err: e, context: { id: next.id } }),
+          );
+        }
+      };
+
+      const lang = language === "en" ? "en" : "zh";
+
+      const onEvent = (event: RunEvent) => {
+        applyRunEvent(mem, event);
+        const display = contentForDisplay(mem, "running", lang);
+        const next = patchAssistant(session, assistantId, {
+          content: display,
+          status: "streaming",
+        });
+        // chunk 只更新内存视图；step 终结才落盘（D6）
+        publish(next, shouldPersistEvent(event));
+      };
+
+      try {
+        if (chipId === "run-plan") {
+          // 非技能：合成 step 事件，仍走同一会话与 registry
+          applyRunEvent(mem, {
+            type: "step",
+            step: { id: "execute", kind: "api", status: "running" },
+          });
+          publish(
+            patchAssistant(session, assistantId, {
+              content: contentForDisplay(mem, "running", lang),
+              status: "streaming",
+            }),
+            true,
+          );
+          const planDocId = String(input.planDocId ?? input.docId ?? "");
+          const result = await getRunPlanDoc()(
+            {
+              apiBase: "",
+              fetchImpl: fetch.bind(globalThis),
+              callLLM: async () => {
+                throw new Error("run-plan must not call LLM");
+              },
+              llmConfig,
+              signal: controller.signal,
+            },
+            planDocId,
+          );
+          applyRunEvent(mem, {
+            type: "step",
+            step: { id: "execute", kind: "api", status: "done" },
+          });
+          applyRunEvent(mem, { type: "result", output: result });
+        } else {
+          for await (const event of getRunSkill()(chipId, input, {
+            llmConfig,
+            signal: controller.signal,
+            onEvent,
+          })) {
+            if (controller.signal.aborted) break;
+            applyRunEvent(mem, event);
+            if (event.type === "step" || event.type === "result" || event.type === "error") {
+              const runningContent = contentForDisplay(mem, "running", lang);
+              publish(
+                patchAssistant(session, assistantId, {
+                  content: runningContent,
+                  status: "streaming",
+                  error: event.type === "error" ? event.error : undefined,
+                }),
+                shouldPersistEvent(event),
+              );
+            }
+          }
+        }
+
+        const aborted = controller.signal.aborted;
+        const status: SkillRunStatus = aborted ? "aborted" : mem.error ? "error" : "done";
+        const finalContent = contentForPersist(mem, status, lang);
+        const finalSession = patchAssistant(session, assistantId, {
+          content: finalContent,
+          status: status === "done" ? "done" : status === "aborted" ? "aborted" : "error",
+          error: status === "error" ? mem.error : undefined,
+        });
+        await saveAiChatFile(finalSession);
+        publish(finalSession, false);
+
+        const entry = runsRef.current.get(sessionId);
+        if (entry) {
+          entry.status = status;
+          runsRef.current.delete(sessionId);
+          bumpRunRegistry();
+        }
+
+        return { session: finalSession, started: true, output: mem.output };
+      } catch (e) {
+        const aborted = controller.signal.aborted;
+        const message = e instanceof Error ? e.message : String(e);
+        if (!aborted) mem.error = message;
+        const status: SkillRunStatus = aborted ? "aborted" : "error";
+        applyRunEvent(mem, {
+          type: "step",
+          step: { id: "error", kind: "api", status: "error", error: message },
+        });
+        const finalContent = contentForPersist(mem, status, lang);
+        const finalSession = patchAssistant(session, assistantId, {
+          content: finalContent,
+          status: status === "aborted" ? "aborted" : "error",
+          error: status === "error" ? message : undefined,
+        });
+        await saveAiChatFile(finalSession).catch(() => {});
+        publish(finalSession, false);
+        runsRef.current.delete(sessionId);
+        bumpRunRegistry();
+        return { session: finalSession, started: true, output: mem.output };
+      }
+    },
+    [llmConfig, language, setCurrentAiSession, bumpRunRegistry],
+  );
 
   // ── Folder operations ───────────────────────────────────────────────────────
 
@@ -1220,6 +1464,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         selectAiSession,
         deleteAiSession,
         refreshAiSessions,
+        startSkillRun,
+        abortSkillRun,
+        runStatusOf,
+        runRegistryVersion,
         isLoading,
       }}
     >

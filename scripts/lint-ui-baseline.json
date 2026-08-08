@@ -1,78 +1,60 @@
 {
-  "generatedAt": "2026-08-03T05:52:34.324Z",
-  "count": 81,
+  "generatedAt": "2026-08-03T06:53:34.659Z",
+  "count": 78,
   "violations": [
     {
       "rule": "hardcoded-hex",
       "file": "src/app/App.tsx",
-      "line": 125,
+      "line": 131,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 55,
+      "line": 91,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 80,
+      "line": 697,
+      "match": "dark:bg-[#151515]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/AiSidebar.tsx",
+      "line": 709,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 643,
+      "line": 789,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 655,
-      "match": "dark:bg-[#1A1A1A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/AiSidebar.tsx",
-      "line": 737,
+      "line": 813,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 761,
+      "line": 833,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 781,
-      "match": "dark:bg-[#151515]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/AiSidebar.tsx",
-      "line": 829,
+      "line": 881,
       "match": "\"bg-[#35B86B]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 910,
+      "line": 979,
       "match": "dark:bg-[#202020]"
-    },
-    {
-      "rule": "arbitrary-text-px",
-      "file": "src/app/components/AiSidebar.tsx",
-      "line": 55,
-      "match": "text-[13px]"
-    },
-    {
-      "rule": "arbitrary-text-px",
-      "file": "src/app/components/AiSidebar.tsx",
-      "line": 926,
-      "match": "text-[13px]"
     },
     {
       "rule": "hardcoded-hex",

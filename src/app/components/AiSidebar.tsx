@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/IconTooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Check, ChevronLeft, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, PanelLeft, PanelRight, Plus, Settings, Sparkles, Square, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, PanelLeft, PanelRight, Play, Plus, Settings, Sparkles, Square, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAppContext } from "../data";
@@ -31,13 +31,13 @@ import { createToolExecutor } from "../skills/tool-executor";
 import { AGENT_TOOLS, toolsForLLM } from "@/shared/agent-tools";
 import { chipsForView, type IntentChip } from "../ai-chips";
 import { isImeComposing } from "../ime";
-import { runSkill } from "../skills";
-import { runPlanDoc } from "../skills/run-plan";
 import { generateDocId } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
 import { useTranslation } from "../i18n";
 import { formatDisplayDate } from "../utils/dateFormat";
 import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
+import { RunTrace } from "./RunTrace";
+import { stripTraceFence, RUN_TRACE_LANG } from "../run-trace";
 
 // 图片获得与对话/文档一致的渲染（spec media-assets US-01）
 const aiMarkdownComponents = {
@@ -51,15 +51,26 @@ const aiMarkdownComponents = {
   blockquote: ({ node, ...props }: any) => (
     <blockquote className="my-4 rounded-r-md border-l-2 border-zinc-300 bg-zinc-50/80 py-2 pl-3 text-zinc-700 dark:border-zinc-600 dark:bg-white/5 dark:text-zinc-300" {...props} />
   ),
-  pre: ({ children, ...props }: any) => (
-    <pre className="my-4 overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-[13px] leading-6 text-zinc-800 shadow-sm custom-scrollbar dark:border-white/10 dark:bg-[#1A1A1A] dark:text-zinc-200" {...props}>
-      {children}
-    </pre>
+  // 与 ChatBody 同构：pre 只把 isBlock 传给 code，由 code 决定渲染（含 RunTrace）
+  pre: ({ children }: any) => (
+    <>
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) return React.cloneElement(child, { isBlock: true } as any);
+        return child;
+      })}
+    </>
   ),
-  code: ({ node, className, children, ...props }: any) => {
-    const isBlock = typeof className === "string" && className.includes("language-");
+  code: ({ node, className, children, isBlock, ...props }: any) => {
+    const language = typeof className === "string" ? className.match(/language-(\S+)/)?.[1] : undefined;
+    if (isBlock && language === RUN_TRACE_LANG) {
+      return <RunTrace source={String(children).replace(/\n$/, "")} />;
+    }
     if (isBlock) {
-      return <code className={clsx(className, "font-mono")} {...props}>{children}</code>;
+      return (
+        <pre className="my-4 overflow-x-auto rounded-lg border border-border bg-muted px-3 py-2.5 text-xs leading-6 text-foreground shadow-sm custom-scrollbar">
+          <code className={clsx(className, "font-mono")} {...props}>{children}</code>
+        </pre>
+      );
     }
     return (
       <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[0.92em] text-zinc-800 dark:bg-white/10 dark:text-zinc-200" {...props}>
@@ -101,6 +112,10 @@ export function AiSidebar() {
     selectAiSession,
     deleteAiSession,
     refreshAiSessions,
+    startSkillRun,
+    abortSkillRun,
+    runStatusOf,
+    runRegistryVersion,
     activeView,
     activeConversationId,
     activeDocId,
@@ -134,6 +149,9 @@ export function AiSidebar() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const contextKeyRef = useRef<string | null>(null);
   const selectingHistoryRef = useRef(false);
+  // 仅用于完成 toast 时判断用户是否仍在该会话（startSkillRun 跨 await 后读）
+  const currentSessionIdRef = useRef(currentAiSession.id);
+  currentSessionIdRef.current = currentAiSession.id;
 
   const hasLLM = !!(llmConfig.endpoint && llmConfig.apiKey && llmConfig.model);
   // 当前视图的完整快照留在内存里；进提示词的只有轻量头，正文经工具按需取（spec ask-ai-context）
@@ -144,8 +162,10 @@ export function AiSidebar() {
   const [contextEnabled, setContextEnabled] = useState(true);
   const carriesContext = contextEnabled && !!view;
   // chip 完全由本地状态算出：展示与视图切换零 LLM 调用（spec ai-intent-chips）
-  const [runningChip, setRunningChip] = useState<IntentChip | null>(null);
+  // 执行态在 data.tsx registry，不再用 runningChip 钉死 UI
   const [armedChip, setArmedChip] = useState<IntentChip | null>(null);
+  const currentRunStatus = runStatusOf(currentAiSession.id);
+  void runRegistryVersion; // 订阅 registry 重渲染
   const chips = useMemo(
     () =>
       chipsForView({
@@ -212,7 +232,12 @@ export function AiSidebar() {
   const clearArmed = () => setArmedChip(null);
 
   const handleStop = () => {
+    // 问答流式
     abortRef.current?.abort();
+    // 当前会话若是进行中的执行，一并终止
+    if (runStatusOf(currentAiSession.id) === "running") {
+      void abortSkillRun(currentAiSession.id);
+    }
     clearArmed();
   };
 
@@ -225,12 +250,11 @@ export function AiSidebar() {
   }, [rewriteDialogOpen, armedChip]);
 
   const handleSend = async (text = input) => {
-    // 流式中：回车/发送 = 停止（spec ai-intent-chips）
-    if (streamingId) {
+    // 流式中 / 执行中：回车/发送 = 停止
+    if (streamingId || currentRunStatus === "running") {
       handleStop();
       return;
     }
-    if (runningChip) return;
 
     // 选中 chip：回车派发意图（与发送同义）
     if (armedChip) {
@@ -377,11 +401,10 @@ export function AiSidebar() {
 
   /**
    * 点击 chip 进入选中态（spec ai-intent-chips）：清空输入、换引导语；回车才派发。
-   * 流式中全禁用；技能执行中禁止切换选中。
+   * 流式问答中全禁用；技能执行在 registry 后台跑，不独占 chip。
    */
   const handleChip = (chip: IntentChip) => {
     if (chip.disabled || streamingId) return;
-    if (runningChip) return; // 技能执行中禁止切换
     if (armedChip?.id === chip.id) {
       clearArmed();
       return;
@@ -391,79 +414,106 @@ export function AiSidebar() {
     inputRef.current?.focus();
   };
 
+  const notifyRunFinished = (session: AiChatSession, successToastKey: string, placeholders?: Record<string, string | number>) => {
+    const stillViewing = currentSessionIdRef.current === session.id;
+    if (stillViewing) {
+      toast.success(t(successToastKey as any, placeholders));
+      return;
+    }
+    toast.success(t("aiSidebar.runDoneToast", { title: session.title || t("aiSidebar.runKindBadge") }), {
+      action: {
+        label: t("aiSidebar.runView"),
+        onClick: () => {
+          void selectAiSession(session.id);
+        },
+      },
+    });
+  };
+
   /**
-   * 执行当前这份计划。全程零 LLM —— 勾选状态与结构化绑定已经说清了要做什么。
-   * 快照 / 文件夹基底失配时抛错并中止，此时数据零变更。
+   * 执行当前这份计划。经 registry 起会话，全程零 LLM。
    */
   const executeCurrentPlan = async (chip: IntentChip) => {
     if (!activeDocId) return;
-    setRunningChip(chip);
-    const controller = new AbortController();
-    abortRef.current = controller;
-    try {
-      const result = await runPlanDoc(
-        {
-          apiBase: "",
-          fetchImpl: fetch.bind(window),
-          callLLM: chatCompletion,
-          llmConfig,
-          signal: controller.signal,
-        },
-        activeDocId,
-      );
-      await refreshDocuments();
-      toast.success(t("aiSidebar.chipPlanDone", { done: result.approved, skipped: result.skipped }));
-    } catch (e: any) {
-      toast.error(String(e?.message ?? e));
-    } finally {
-      abortRef.current = null;
-      setRunningChip(null);
-      clearArmed(); // 本轮运行终态清除选中
+    clearArmed();
+    const seed = {
+      title: `${t(chip.labelKey)} · ${documents.find((d) => d.id === activeDocId)?.title ?? activeDocId}`,
+      userContent: t(chip.a11yLabelKey),
+      skillId: "run-plan",
+      model: llmConfig.model,
+      contextType: "doc" as const,
+      contextId: activeDocId,
+    };
+    const { session, output } = await startSkillRun(
+      "run-plan",
+      { planDocId: activeDocId },
+      seed,
+    );
+    await refreshDocuments();
+    const assistant = session.messages.find((m) => m.role === "assistant");
+    if (assistant?.status === "error") {
+      toast.error(assistant.error || t("aiSidebar.error"));
+      return;
     }
+    if (assistant?.status === "aborted") return;
+    const result = output as { approved?: number; skipped?: number } | undefined;
+    notifyRunFinished(session, "aiSidebar.chipPlanDone", {
+      done: result?.approved ?? 0,
+      skipped: result?.skipped ?? 0,
+    });
   };
 
   const dispatchSkill = async (chip: IntentChip, arg?: string) => {
-    setRunningChip(chip);
-    const controller = new AbortController();
-    abortRef.current = controller;
-    try {
-      const skillInput =
-        chip.id === "conversation-to-doc"
-          ? { conversationId: activeConversationId! }
-          : chip.id === "topic-digest"
-            ? { topic: arg!, ...(activeProjectId ? { projectId: activeProjectId } : {}) }
-            : { ...(activeProjectId ? { projectId: activeProjectId } : {}) };
+    clearArmed();
+    const skillInput: Record<string, unknown> =
+      chip.id === "conversation-to-doc"
+        ? { conversationId: activeConversationId! }
+        : chip.id === "topic-digest"
+          ? { topic: arg!, ...(activeProjectId ? { projectId: activeProjectId } : {}) }
+          : { ...(activeProjectId ? { projectId: activeProjectId } : {}) };
 
-      let output: any;
-      let failure = "";
-      for await (const event of runSkill(chip.id, skillInput, { llmConfig, signal: controller.signal })) {
-        if (event.type === "result") output = event.output;
-        if (event.type === "error") failure = event.error;
-      }
-      if (failure) throw new Error(failure);
-
-      await refreshDocuments();
-      const docId = output?.docId ?? output?.planDocId;
-      if (docId) {
-        setActiveView("doc");
-        setActiveDocId(docId);
-      }
-      toast.success(
-        t(
-          chip.confirmation === "plan-doc"
-            ? "aiSidebar.chipPlanReady"
-            : chip.id === "topic-digest"
-              ? "aiSidebar.chipDigestReady"
-              : "aiSidebar.chipDocReady",
-        ),
-      );
-    } catch (e: any) {
-      toast.error(String(e?.message ?? e));
-    } finally {
-      abortRef.current = null;
-      setRunningChip(null);
-      clearArmed(); // 成功或失败均清除选中
+    const titleParts = [t(chip.labelKey)];
+    if (arg) titleParts.push(arg);
+    else if (chip.id === "conversation-to-doc") {
+      const conv = conversations.find((c) => c.id === activeConversationId);
+      if (conv?.title) titleParts.push(conv.title);
     }
+    const seed = {
+      title: titleParts.join(" · "),
+      userContent: arg
+        ? `${t(chip.a11yLabelKey)}\n\n${arg}`
+        : t(chip.a11yLabelKey),
+      skillId: chip.id,
+      model: llmConfig.model,
+      contextType: activeView as "chat" | "doc",
+      contextId: activeView === "chat" ? activeConversationId ?? undefined : activeDocId ?? undefined,
+    };
+
+    const { session, output } = await startSkillRun(chip.id, skillInput, seed);
+    await refreshDocuments();
+
+    const assistant = session.messages.find((m) => m.role === "assistant");
+    if (assistant?.status === "error") {
+      toast.error(assistant.error || t("aiSidebar.error"));
+      return;
+    }
+    if (assistant?.status === "aborted") return;
+
+    const out = output as { docId?: string; planDocId?: string } | undefined;
+    const docId = out?.docId ?? out?.planDocId;
+    // 产出文档时跳转（与改前行为一致）；用户是否仍在该会话只影响 toast，不影响跳转
+    if (docId) {
+      setActiveView("doc");
+      setActiveDocId(docId);
+    }
+
+    const successKey =
+      chip.confirmation === "plan-doc"
+        ? "aiSidebar.chipPlanReady"
+        : chip.id === "topic-digest"
+          ? "aiSidebar.chipDigestReady"
+          : "aiSidebar.chipDocReady";
+    notifyRunFinished(session, successKey);
   };
 
   const handleNewSession = async () => {
@@ -500,7 +550,9 @@ export function AiSidebar() {
   };
 
   const handleMessageToDoc = async (message: AiSidebarMessage) => {
-    await createDocumentFromAi(message.content, titleFromMarkdown(message.content), currentAiSession.id);
+    // D2：剥离轨迹围栏，避免漏进用户正式文档
+    const body = stripTraceFence(message.content);
+    await createDocumentFromAi(body, titleFromMarkdown(body), currentAiSession.id);
   };
 
   const handleThreadToDoc = async () => {
@@ -555,8 +607,10 @@ export function AiSidebar() {
               <HistoryPanel
                 sessions={aiSessions}
                 currentId={currentAiSession.id}
+                runStatusOf={runStatusOf}
                 onSelect={handleSelectSession}
                 onDelete={handleDeleteSession}
+                onAbort={(id) => void abortSkillRun(id)}
               />
             )}
           </div>
@@ -628,7 +682,7 @@ export function AiSidebar() {
                 <MessageBubble
                   key={message.id}
                   message={message}
-                  streaming={message.id === streamingId}
+                  streaming={message.id === streamingId || message.status === "streaming"}
                   copied={copiedId === message.id}
                   onCopy={() => handleCopy(message)}
                   onToDoc={() => handleMessageToDoc(message)}
@@ -665,7 +719,7 @@ export function AiSidebar() {
               if (isImeComposing(e)) return;
               if (e.key === "Escape") {
                 // Esc：运行中不清选中；空闲有选中 → 取消选中
-                if (!streamingId && !runningChip && armedChip) {
+                if (!streamingId && currentRunStatus !== "running" && armedChip) {
                   e.preventDefault();
                   clearArmed();
                 }
@@ -686,7 +740,6 @@ export function AiSidebar() {
               <ChipBar
                 chips={chips}
                 armedId={armedChip?.id ?? null}
-                runningId={runningChip?.id ?? null}
                 streaming={!!streamingId}
                 onPick={handleChip}
               />
@@ -694,16 +747,15 @@ export function AiSidebar() {
             <span className="max-w-[7rem] shrink-0 truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
               {llmConfig.model || t("settings.llm.model")}
             </span>
-            <IconTooltip label={streamingId || runningChip ? t("aiSidebar.stop") : t("aiSidebar.send")}>
+            <IconTooltip label={streamingId || currentRunStatus === "running" ? t("aiSidebar.stop") : t("aiSidebar.send")}>
               <Button
                 variant="primary"
                 size="icon"
-                onClick={streamingId || runningChip ? handleStop : () => handleSend()}
+                onClick={streamingId || currentRunStatus === "running" ? handleStop : () => handleSend()}
                 disabled={
-                  !!runningChip
+                  streamingId || currentRunStatus === "running"
                     ? false
-                    : !streamingId &&
-                      !(armedChip
+                    : !(armedChip
                         ? armedChip.requiresInput
                           ? !!input.trim()
                           : true
@@ -711,7 +763,7 @@ export function AiSidebar() {
                 }
                 className="size-8 transition-[opacity,transform] hover:scale-[1.02] active:scale-95 disabled:opacity-30"
               >
-                {streamingId || runningChip ? <Square size={14} fill="currentColor" /> : <CornerDownLeft size={16} />}
+                {streamingId || currentRunStatus === "running" ? <Square size={14} fill="currentColor" /> : <CornerDownLeft size={16} />}
               </Button>
             </IconTooltip>
           </div>
@@ -767,7 +819,7 @@ export function AiSidebar() {
         onKeyDown={(e) => {
           if (e.key !== "Escape" || isImeComposing(e as unknown as React.KeyboardEvent)) return;
           // 运行中不清选中/不收起；空闲有选中 → 取消；无选中 → 收起
-          if (streamingId || runningChip) return;
+          if (streamingId || currentRunStatus === "running") return;
           if (armedChip) {
             e.preventDefault();
             clearArmed();
@@ -850,13 +902,11 @@ function ContextPill({
 function ChipBar({
   chips,
   armedId,
-  runningId,
   streaming,
   onPick,
 }: {
   chips: IntentChip[];
   armedId: string | null;
-  runningId: string | null;
   streaming: boolean;
   onPick: (chip: IntentChip) => void;
 }) {
@@ -864,9 +914,8 @@ function ChipBar({
   return (
     <div className="flex flex-nowrap gap-1.5">
       {chips.map((chip) => {
-        const running = runningId === chip.id;
-        // 流式：全部禁用；技能执行：禁止切换（全部 disabled，当前 running 显示 spinner）
-        const locked = streaming || !!runningId;
+        // 仅问答流式时锁 chip；技能执行在后台，可并行起多次
+        const locked = streaming;
         const a11y = t(chip.a11yLabelKey);
         return (
           <button
@@ -885,8 +934,8 @@ function ChipBar({
                 : "border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/10",
             )}
           >
-            {running ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-            {running ? t("aiSidebar.chipRunning") : t(chip.labelKey)}
+            <Sparkles size={11} />
+            {t(chip.labelKey)}
           </button>
         );
       })}
@@ -894,16 +943,36 @@ function ChipBar({
   );
 }
 
+/** 从会话消息推导展示用运行状态（registry 优先，落盘 status 兜底）。 */
+export function sessionRunDisplayStatus(
+  session: AiChatSession,
+  live: string | null | undefined,
+): "running" | "done" | "error" | "aborted" | null {
+  if (session.kind !== "run") return null;
+  if (live === "running" || live === "done" || live === "error" || live === "aborted") return live;
+  const assistant = [...session.messages].reverse().find((m) => m.role === "assistant");
+  if (!assistant) return null;
+  if (assistant.status === "streaming") return "running";
+  if (assistant.status === "error") return "error";
+  if (assistant.status === "aborted") return "aborted";
+  if (assistant.status === "done") return "done";
+  return null;
+}
+
 function HistoryPanel({
   sessions,
   currentId,
+  runStatusOf,
   onSelect,
   onDelete,
+  onAbort,
 }: {
   sessions: AiChatSession[];
   currentId: string;
+  runStatusOf: (id: string) => string | null;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onAbort: (id: string) => void;
 }) {
   const { t, language } = useTranslation();
   return (
@@ -913,36 +982,87 @@ function HistoryPanel({
         <span>{t("aiSidebar.historyPanelTitle")}</span>
       </div>
       <div className="max-h-[238px] space-y-1 overflow-y-auto custom-scrollbar">
-        {sessions.map((session) => (
-          <div
-            key={session.id}
-            className={clsx(
-              "flex items-center gap-2 rounded-md text-left text-sm",
-              session.id === currentId ? "bg-zinc-100 dark:bg-white/10" : "hover:bg-zinc-50 dark:hover:bg-white/5",
-            )}
-          >
-            <button onClick={() => onSelect(session.id)} className="min-w-0 flex-1 px-2 py-2 text-left">
-              <div className="truncate font-medium text-zinc-800 dark:text-zinc-100">{session.title || t("aiSidebar.newChat")}</div>
-              <div className="mt-2 flex items-center justify-between gap-3 text-[13px] font-normal text-zinc-500 dark:text-zinc-400">
-                <span className="min-w-0 flex-1 truncate">{firstUserQuestion(session) || t("aiSidebar.newChat")}</span>
-                <span className="shrink-0 text-zinc-400 dark:text-zinc-500">{formatRelativeTime(session.updatedAt, language)}</span>
-              </div>
-            </button>
-            <IconTooltip label={t("aiSidebar.delete")}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="mr-1 size-7 text-zinc-400 hover:bg-destructive/10 hover:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(session.id);
-                }}
-              >
-                <Trash2 size={14} />
-              </Button>
-            </IconTooltip>
-          </div>
-        ))}
+        {sessions.map((session) => {
+          const runStatus = sessionRunDisplayStatus(session, runStatusOf(session.id));
+          return (
+            <div
+              key={session.id}
+              data-testid={`history-item-${session.id}`}
+              className={clsx(
+                "flex items-center gap-1 rounded-md text-left text-sm",
+                session.id === currentId ? "bg-zinc-100 dark:bg-white/10" : "hover:bg-zinc-50 dark:hover:bg-white/5",
+              )}
+            >
+              <button onClick={() => onSelect(session.id)} className="min-w-0 flex-1 px-2 py-2 text-left">
+                <div className="flex items-center gap-1.5">
+                  {session.kind === "run" && (
+                    <span
+                      className="inline-flex shrink-0 items-center gap-0.5 rounded bg-violet-100 px-1 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-500/20 dark:text-violet-300"
+                      title={t("aiSidebar.runKindBadge")}
+                    >
+                      <Play size={9} />
+                      {t("aiSidebar.runKindBadge")}
+                    </span>
+                  )}
+                  <span className="truncate font-medium text-zinc-800 dark:text-zinc-100">
+                    {session.title || t("aiSidebar.newChat")}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-center justify-between gap-3 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                  <span className="min-w-0 flex-1 truncate">
+                    {runStatus === "running" && (
+                      <span className="mr-1 inline-flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                        <Loader2 size={11} className="animate-spin" />
+                        {t("aiSidebar.runStatusRunning")}
+                      </span>
+                    )}
+                    {runStatus === "error" && (
+                      <span className="mr-1 text-red-600 dark:text-red-400">{t("aiSidebar.runStatusError")}</span>
+                    )}
+                    {runStatus === "aborted" && (
+                      <span className="mr-1 text-zinc-400">{t("aiSidebar.runStatusAborted")}</span>
+                    )}
+                    {runStatus === "done" && (
+                      <span className="mr-1 text-emerald-600 dark:text-emerald-400">{t("aiSidebar.runStatusDone")}</span>
+                    )}
+                    {!runStatus && (firstUserQuestion(session) || t("aiSidebar.newChat"))}
+                  </span>
+                  <span className="shrink-0 text-zinc-400 dark:text-zinc-500">{formatRelativeTime(session.updatedAt, language)}</span>
+                </div>
+              </button>
+              {runStatus === "running" && (
+                <IconTooltip label={t("aiSidebar.abortRun")}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-zinc-400 hover:bg-amber-500/10 hover:text-amber-600"
+                    aria-label={t("aiSidebar.abortRun")}
+                    data-testid={`abort-run-${session.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAbort(session.id);
+                    }}
+                  >
+                    <Square size={12} fill="currentColor" />
+                  </Button>
+                </IconTooltip>
+              )}
+              <IconTooltip label={t("aiSidebar.delete")}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mr-1 size-7 text-zinc-400 hover:bg-destructive/10 hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(session.id);
+                  }}
+                >
+                  <Trash2 size={14} />
+                </Button>
+              </IconTooltip>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1048,7 +1168,15 @@ function MessageBubble({
       )}
       {!isUser && (
         <div className="mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          {message.status === "aborted" && <span className="mr-1 text-xs text-zinc-400 dark:text-zinc-500">{t("aiSidebar.aborted")}</span>}
+          {message.status === "aborted" && (
+            <span className="mr-1 text-xs text-zinc-400 dark:text-zinc-500">{t("aiSidebar.runStatusAborted")}</span>
+          )}
+          {message.status === "error" && (
+            <span className="mr-1 text-xs text-red-600 dark:text-red-400">{t("aiSidebar.runStatusError")}</span>
+          )}
+          {message.status === "done" && message.runSkillId && (
+            <span className="mr-1 text-xs text-emerald-600 dark:text-emerald-400">{t("aiSidebar.runStatusDone")}</span>
+          )}
           {streaming && <Loader2 size={13} className="animate-spin text-zinc-400 dark:text-zinc-500" />}
           <IconTooltip label={t("main.copy")}>
             <Button variant="ghost" size="icon" className="size-7 text-zinc-400" onClick={onCopy}>
@@ -1150,10 +1278,14 @@ function titleFromMarkdown(markdown: string): string {
   return line.length > 40 ? `${line.slice(0, 40)}...` : line;
 }
 
-function serializeAiThread(session: AiChatSession): string {
+/** 整线程转文档：剥离轨迹围栏（D2）。导出供单测钉住。 */
+export function serializeAiThread(session: AiChatSession): string {
   return session.messages
     .filter((message) => message.content.trim())
-    .map((message) => `## ${message.role === "user" ? "User" : "Assistant"}\n\n${message.content}`)
+    .map((message) => {
+      const body = stripTraceFence(message.content);
+      return `## ${message.role === "user" ? "User" : "Assistant"}\n\n${body}`;
+    })
     .join("\n\n---\n\n");
 }
 

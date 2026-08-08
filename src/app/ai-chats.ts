@@ -14,11 +14,15 @@ export interface AiSidebarMessage {
   status: AiSidebarMessageStatus;
   error?: string;
   contextLabel?: string;
+  /** 执行类助手消息所属技能 id（kind=run 时写入 md 属性）。 */
+  runSkillId?: string;
   /** 检索增强（transient）：语义检索状态与命中片段。 */
   retrievalStatus?: "searching" | "done";
   retrievalCount?: number;
   citations?: AiCitation[];
 }
+
+export type AiChatSessionKind = "chat" | "run";
 
 export interface AiChatSession {
   id: string;
@@ -29,6 +33,8 @@ export interface AiChatSession {
   model?: string;
   contextType?: "chat" | "doc";
   contextId?: string;
+  /** 会话类型：执行类为 "run"；缺失按 "chat"（旧文件零迁移）。 */
+  kind?: AiChatSessionKind;
 }
 
 const AI_CHAT_ID_RE = /^chat_[a-zA-Z0-9_]+$/;
@@ -104,6 +110,9 @@ export function aiChatSessionToMd(session: AiChatSession): string {
   if (session.model) lines.push(`model: ${escapeFrontmatterValue(session.model)}`);
   if (session.contextType) lines.push(`contextType: ${escapeFrontmatterValue(session.contextType)}`);
   if (session.contextId) lines.push(`contextId: ${escapeFrontmatterValue(session.contextId)}`);
+  if (session.kind === "run" || session.kind === "chat") {
+    lines.push(`kind: ${escapeFrontmatterValue(session.kind)}`);
+  }
   lines.push("---", "");
 
   for (const message of session.messages) {
@@ -113,6 +122,7 @@ export function aiChatSessionToMd(session: AiChatSession): string {
       `status=${message.status}`,
       message.error ? `error="${escapeAttr(message.error)}"` : "",
       message.contextLabel ? `contextLabel="${escapeAttr(message.contextLabel)}"` : "",
+      message.runSkillId ? `runSkillId="${escapeAttr(message.runSkillId)}"` : "",
     ].filter(Boolean);
     lines.push(`<!-- ai-msg ${attrs.join(" ")} -->`);
     lines.push(message.content ?? "");
@@ -156,8 +166,12 @@ export function parseAiChatSessionMd(id: string, content: string): AiChatSession
       content: rawContent,
       error: attrs.error || undefined,
       contextLabel: attrs.contextLabel || undefined,
+      runSkillId: attrs.runSkillId || undefined,
     });
   }
+
+  const kind: AiChatSessionKind | undefined =
+    meta.kind === "run" || meta.kind === "chat" ? meta.kind : undefined;
 
   return {
     id: meta.id || id,
@@ -167,8 +181,37 @@ export function parseAiChatSessionMd(id: string, content: string): AiChatSession
     model: meta.model || undefined,
     contextType: meta.contextType === "chat" || meta.contextType === "doc" ? meta.contextType : undefined,
     contextId: meta.contextId || undefined,
+    kind,
     messages,
   };
+}
+
+/**
+ * 加载时把仍为 streaming 的消息收敛为 aborted（D7 僵尸态）。
+ * 纯函数、不写盘；调用方在内存里改，下次保存时才持久化。
+ */
+export function convergeInterruptedMessages(
+  messages: AiSidebarMessage[],
+  interruptedNote: string,
+): AiSidebarMessage[] {
+  let changed = false;
+  const next = messages.map((message) => {
+    if (message.status !== "streaming") return message;
+    changed = true;
+    const base = message.content.trimEnd();
+    const content = base ? `${base}\n\n${interruptedNote}` : interruptedNote;
+    return { ...message, status: "aborted" as const, content };
+  });
+  return changed ? next : messages;
+}
+
+export function convergeInterruptedSession(
+  session: AiChatSession,
+  interruptedNote: string,
+): AiChatSession {
+  const messages = convergeInterruptedMessages(session.messages, interruptedNote);
+  if (messages === session.messages) return session;
+  return { ...session, messages };
 }
 
 function isAiMessageStatus(value: string | undefined): value is AiSidebarMessageStatus {

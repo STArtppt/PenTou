@@ -30,24 +30,7 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("../skills/run-plan", () => ({
-  runPlanDoc: async (_deps: unknown, docId: string) => {
-    mocks.skills.dispatched.push({ skillId: "run-plan", input: { docId } });
-    if (mocks.skills.fail) throw new Error(mocks.skills.fail);
-    return { approved: 5, skipped: 3, createdFolders: [], assigned: [] };
-  },
-}));
-
-vi.mock("../skills", () => ({
-  runSkill: (skillId: string, input: any) => {
-    mocks.skills.dispatched.push({ skillId, input });
-    const { result, fail } = mocks.skills;
-    return (async function* () {
-      if (fail) yield { type: "error", error: fail };
-      else yield { type: "result", output: result };
-    })();
-  },
-}));
+// 技能派发已迁到 data.tsx startSkillRun；测试通过 mock startSkillRun 记录派发
 
 vi.mock("../data", () => ({
   useAppContext: () => mocks.appContext,
@@ -160,6 +143,40 @@ describe("AiSidebar", () => {
       selectAiSession: vi.fn().mockResolvedValue({ session: null, didJump: false }),
       deleteAiSession: vi.fn().mockResolvedValue(undefined),
       refreshAiSessions: vi.fn().mockResolvedValue(undefined),
+      startSkillRun: vi.fn(async (chipId: string, input: any, seed: any) => {
+        mocks.skills.dispatched.push({ skillId: chipId, input });
+        // 复用当前会话 id，模拟「start 时已切到该会话」后 ref 已对齐（无真实 re-render）
+        const session: AiChatSession = {
+          id: mocks.appContext.currentAiSession.id,
+          title: seed?.title ?? chipId,
+          kind: "run",
+          createdAt: "2026-06-18T02:30:00.000Z",
+          updatedAt: "2026-06-18T02:30:00.000Z",
+          messages: [
+            { id: "u", role: "user", status: "done", content: seed?.userContent ?? "" },
+            {
+              id: "a",
+              role: "assistant",
+              status: mocks.skills.fail ? "error" : "done",
+              content: mocks.skills.fail || "ok",
+              error: mocks.skills.fail || undefined,
+              runSkillId: chipId,
+            },
+          ],
+        };
+        mocks.appContext.currentAiSession = session;
+        if (mocks.skills.fail) {
+          return { session, started: true, output: undefined };
+        }
+        const output =
+          chipId === "run-plan"
+            ? { approved: 5, skipped: 3, createdFolders: [], assigned: [] }
+            : mocks.skills.result;
+        return { session, started: true, output };
+      }),
+      abortSkillRun: vi.fn().mockResolvedValue(undefined),
+      runStatusOf: vi.fn().mockReturnValue(null),
+      runRegistryVersion: 0,
       activeView: "chat",
       activeConversationId: "conv_1",
       activeDocId: null,
@@ -619,7 +636,7 @@ describe("AiSidebar", () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(mocks.skills.dispatched).toEqual([{ skillId: "run-plan", input: { docId: "doc_plan" } }]);
+    expect(mocks.skills.dispatched).toEqual([{ skillId: "run-plan", input: { planDocId: "doc_plan" } }]);
     expect(mocks.llm.seen).toEqual([]);
     expect(mocks.toast.success).toHaveBeenCalledWith("Done: 5 applied, 3 left unticked");
     unmount();

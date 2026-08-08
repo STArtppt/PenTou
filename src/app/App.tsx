@@ -7,6 +7,12 @@ import { AppProvider, useAppContext } from "./data";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { bindSkillRunners } from "./skill-run-bridge";
+import { runSkill } from "./skills";
+import { runPlanDoc } from "./skills/run-plan";
+
+// 启动时绑定 runner，data.tsx registry 经 bridge 调用（避免 server 编译链拉 skills）
+bindSkillRunners({ runSkill, runPlanDoc });
 
 const ImportDrawer = lazy(() =>
   import("./components/ImportDrawer").then(m => ({ default: m.ImportDrawer }))
