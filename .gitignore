@@ -60,7 +60,12 @@ pentou-data/
 # IDE and editors
 .idea/
 .obsidian/
-.claude/
+# .claude/ 混着三类内容，按性质切：
+#   生成物（skills/openspec-*、commands/opsx/*，由 `openspec init --tools claude` 产出）→ 不跟，避免升级 diff 噪音
+#   settings.local.json（本机权限记录）→ 不跟
+#   settings.json（团队共享 hooks / 权限规则，有人类决策含量）→ 跟
+.claude/*
+!.claude/settings.json
 .trae/
 /.drafts/
 *.swp
@@ -70,7 +75,9 @@ pentou-data/
 *.sublime-project
 *.sublime-workspace
 .pnpm-store/
-.grok/
+# 同 .claude/：.grok/skills/ 是手写的 Grok 入口薄壳（真源在 skills/），跟；其余会话/缓存不跟。
+.grok/*
+!.grok/skills/
 
 # OS files
 .DS_Store
