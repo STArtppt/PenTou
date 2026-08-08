@@ -120,3 +120,18 @@ describe("searchService", () => {
     expect(search("apple", 30).hits).toHaveLength(5);
   });
 });
+
+describe("记忆参与检索（spec ai-workspace）", () => {
+  it("记忆文档能作为命中结果返回，与普通文档无异", () => {
+    configureSearch(dir);
+    fs.writeFileSync(
+      path.join(dir, "documents", "doc_memory_dp_default.md"),
+      `---\nid: doc_memory_dp_default\ntitle: 记忆\nfolderId: df_ai_dp_default\ncreatedAt: 2026-05-28T00:00:00.000Z\nupdatedAt: 2026-05-29T00:00:00.000Z\ncurrentVersionId: ver_1\n---\n\n用户偏好用中文回答，且喜欢先给结论。\n`,
+    );
+    refreshNow();
+
+    const r = search("中文回答", 30);
+    expect(r.hits.map((h) => h.id)).toContain("doc_memory_dp_default");
+  });
+});
+

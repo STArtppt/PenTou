@@ -17,6 +17,16 @@ import {
 } from "./mineruPlugin.js";
 import { documentSignature, documentDedupable } from "../src/server/dedup.js";
 import { localizeMedia } from "../src/server/media-assets.js";
+import {
+  AI_WORKSPACE_FOLDER_NAME,
+  MEMORY_DOC_TEMPLATE,
+  MEMORY_DOC_TITLE,
+  aiWorkspaceFolder,
+  aiWorkspaceFolderId,
+  isAiWorkspaceFolderId,
+  memoryDocId,
+  sortAiWorkspaceFirst,
+} from "../src/shared/ai-workspace.js";
 
 // Module-level state: prod entry / vite plugin should call setDocsDataDir() at startup.
 // We use a mutable module variable rather than threading dataDir through ~30 helper
@@ -42,6 +52,7 @@ export function ensureDocDirs(dataDir?: string): void {
   if (!fs.existsSync(DOC_FOLDERS_FILE)) {
     fs.writeFileSync(DOC_FOLDERS_FILE, JSON.stringify([], null, 2), "utf-8");
   }
+  ensureAiWorkspaceDocs();
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -68,15 +79,16 @@ function normalizeDocumentFolders(data: unknown): any[] {
   if (!Array.isArray(data)) return [];
   // projectId 是文档文件夹的归属维度（spec document-projects）；对话文件夹的
   // platform 维度绝不进这里，两个平面显式隔离。
+  // AI 空间与 df_default 一样是虚拟条目，读时注入、写时剔除（spec ai-workspace D1）。
   return data
-    .filter((folder: any) => folder?.id !== "df_default")
+    .filter((folder: any) => folder?.id !== "df_default" && !isAiWorkspaceFolderId(folder?.id))
     .map((folder: any) => ({
       ...folder,
       ...(folder?.projectId ? { projectId: String(folder.projectId) } : {}),
     }));
 }
 
-function readDocumentFolders(): any[] {
+function readStoredDocumentFolders(): any[] {
   try {
     if (!fs.existsSync(DOC_FOLDERS_FILE)) return [];
     return normalizeDocumentFolders(JSON.parse(fs.readFileSync(DOC_FOLDERS_FILE, "utf-8")));
@@ -85,8 +97,33 @@ function readDocumentFolders(): any[] {
   }
 }
 
+/** 每个项目（含默认目录）各一个 AI 空间；顺序即注入顺序，前端再各自置顶。 */
+function aiWorkspaceFolders(): any[] {
+  return [aiWorkspaceFolder(null), ...readDocumentProjects().map((project) => aiWorkspaceFolder(project.id))];
+}
+
+function readDocumentFolders(): any[] {
+  return sortAiWorkspaceFirst([...aiWorkspaceFolders(), ...readStoredDocumentFolders()]);
+}
+
 function writeDocumentFolders(folders: any[]): void {
   fs.writeFileSync(DOC_FOLDERS_FILE, JSON.stringify(normalizeDocumentFolders(folders), null, 2), "utf-8");
+}
+
+/**
+ * AI 空间受保护（spec ai-workspace）：文件夹表是整表覆写，所以「删除 / 改名」表现为
+ * 载荷里少了某个 AI 空间、或它的名字变了。已删除项目的 AI 空间自然消失，不算删除。
+ * 返回拒绝原因，`null` 表示放行。
+ */
+function aiWorkspaceViolation(payload: unknown): string | null {
+  if (!Array.isArray(payload)) return null;
+  const byId = new Map(payload.filter((f: any) => f?.id).map((f: any) => [String(f.id), f]));
+  for (const expected of aiWorkspaceFolders()) {
+    const got = byId.get(expected.id);
+    if (!got) return `「${AI_WORKSPACE_FOLDER_NAME}」不可删除`;
+    if (String(got.name ?? "") !== expected.name) return `「${AI_WORKSPACE_FOLDER_NAME}」不可改名`;
+  }
+  return null;
 }
 
 // ── Document projects（spec document-projects：文件夹之上的分组维度）──────────
@@ -144,7 +181,31 @@ export function findOrCreateProjectByKey(
     createdAt: new Date().toISOString(),
   };
   writeDocumentProjects([...projects, project]);
+  ensureAiWorkspaceDocs(); // CLI 推送出来的项目同样立刻拥有 AI 空间（spec ai-workspace）
   return project;
+}
+
+/**
+ * 双层记忆（spec ai-workspace）：默认目录 AI 空间放全局 `记忆`，各项目 AI 空间放项目 `记忆`。
+ * 记忆是**普通文档**，因而白得版本历史、语义检索与用户可编辑性；id 由项目确定性推导，
+ * 不需要额外索引就能定位。缺失时补建，已存在时一个字节都不动。
+ */
+export function ensureAiWorkspaceDocs(): void {
+  if (!fs.existsSync(DOCS_DIR)) return;
+  for (const projectId of [null, ...readDocumentProjects().map((project) => project.id)]) {
+    const docId = memoryDocId(projectId);
+    if (fs.existsSync(path.join(DOCS_DIR, `${docId}.md`))) continue;
+    const now = new Date().toISOString();
+    createDocWithV1({
+      id: docId,
+      title: MEMORY_DOC_TITLE,
+      folderId: aiWorkspaceFolderId(projectId),
+      ...(projectId ? { projectId } : {}),
+      createdAt: now,
+      updatedAt: now,
+      body: MEMORY_DOC_TEMPLATE,
+    });
+  }
 }
 
 /**
@@ -277,6 +338,9 @@ function documentToMd(doc: any): string {
   if (doc.generatedAt) lines.push(`generatedAt: ${escapeFrontmatterValue(doc.generatedAt)}`);
   if (doc.importedFrom) lines.push(`importedFrom: ${escapeFrontmatterValue(doc.importedFrom)}`);
   if (doc.importedAt) lines.push(`importedAt: ${escapeFrontmatterValue(doc.importedAt)}`);
+  // 行动计划的结构化绑定（spec agent-write-policy D4）：单行 JSON 字符串。
+  // 存 frontmatter 而非正文，正是为了「改正文的条目文字不影响执行」。
+  if (doc.aiPlan) lines.push(`aiPlan: ${escapeFrontmatterValue(doc.aiPlan)}`);
   lines.push("---");
   lines.push("");
   lines.push(doc.body ?? "");
@@ -324,6 +388,7 @@ function parseDocumentMd(id: string, content: string): any {
     generatedAt: meta.generatedAt || undefined,
     importedFrom: meta.importedFrom || undefined,
     importedAt: meta.importedAt || undefined,
+    aiPlan: meta.aiPlan || undefined,
   };
 }
 
@@ -623,7 +688,15 @@ export async function documentsApiHandler(
   // ── POST /api/document-folders ─────────────────────────────────────────────
   if (url === "/api/document-folders" && method === "POST") {
     try {
-      writeDocumentFolders(JSON.parse(await readBody(req)));
+      const payload = JSON.parse(await readBody(req));
+      // AI 空间受保护（spec ai-workspace）：拒绝时文件夹表零变更，且明确说明原因，
+      // 而不是靠 normalize 静默剔除 —— 静默会让调用方以为改名/删除成功了。
+      const violation = aiWorkspaceViolation(payload);
+      if (violation) {
+        json(res, 400, { error: violation });
+        return true;
+      }
+      writeDocumentFolders(payload);
       json(res, 200, { ok: true });
     } catch (e) {
       json(res, 500, { error: String(e) });
@@ -666,6 +739,8 @@ export async function documentsApiHandler(
         createdAt: new Date().toISOString(),
       };
       writeDocumentProjects([...projects, project]);
+      // 新项目立即拥有 AI 空间与项目记忆，无需用户操作（spec ai-workspace）
+      ensureAiWorkspaceDocs();
       json(res, 201, { ok: true, project });
     } catch (e) {
       json(res, 500, { error: String(e) });

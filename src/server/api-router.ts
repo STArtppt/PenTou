@@ -30,6 +30,7 @@ import {
   ASSET_MAX_SIZE,
 } from "./media-assets.js";
 import { conversationSignature, conversationDedupable } from "./dedup.js";
+import { AGENT_TOOLS } from "../shared/agent-tools.js";
 import {
   configureSearch,
   markStale,
@@ -988,6 +989,13 @@ export async function handleApiRequest(
   // ── GET /api/health （plane B 探活；无副作用、无鉴权，spec skill-runtime） ──
   if (pathOnly === "/api/health" && method === "GET") {
     json(res, 200, { status: "ok", service: "pentou", version: ctx.version ?? "0.0.0" });
+    return true;
+  }
+
+  // ── GET /api/tools （手写 agent 工具目录；只读、无副作用，spec skill-runtime）──
+  // 内部 runner 与外部 agent（含 MCP）消费同一份目录；目录本体在 src/shared/agent-tools.ts。
+  if (pathOnly === "/api/tools" && method === "GET") {
+    json(res, 200, { tools: AGENT_TOOLS });
     return true;
   }
 

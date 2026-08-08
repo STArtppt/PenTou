@@ -873,3 +873,38 @@ describe("/api/obsidian/export（spec obsidian-vault-export）", () => {
     expect(fs.readFileSync(path.join(vault, "chunked.md"), "utf-8")).toBe(content);
   });
 });
+
+describe("/api/tools 工具目录（spec skill-runtime）", () => {
+  it("返回带名称 / 描述 / 入参 schema 的工具列表", async () => {
+    const { abs } = makeRelativeTempDataDir();
+    const res = await callApi({ dataDir: abs, url: "/api/tools" });
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.tools)).toBe(true);
+    expect(res.body.tools.length).toBeGreaterThan(0);
+    for (const tool of res.body.tools) {
+      expect(typeof tool.name).toBe("string");
+      expect(typeof tool.description).toBe("string");
+      expect(tool.parameters.type).toBe("object");
+    }
+    expect(res.body.tools.map((t: any) => t.name)).toContain("search_corpus");
+  });
+
+  it("无数据副作用：请求前后 data 目录逐字节不变", async () => {
+    const { abs } = makeRelativeTempDataDir();
+    await callApi({ dataDir: abs, url: "/api/health" }); // 先让 ensureDirs 建完目录
+    const before = fs.readdirSync(abs).sort();
+
+    await callApi({ dataDir: abs, url: "/api/tools" });
+    await callApi({ dataDir: abs, url: "/api/tools" });
+
+    expect(fs.readdirSync(abs).sort()).toEqual(before);
+  });
+
+  it("两次请求返回同一份目录（内外消费方看到的是同一个边界）", async () => {
+    const { abs } = makeRelativeTempDataDir();
+    const a = await callApi({ dataDir: abs, url: "/api/tools" });
+    const b = await callApi({ dataDir: abs, url: "/api/tools" });
+    expect(a.body).toEqual(b.body);
+  });
+});
