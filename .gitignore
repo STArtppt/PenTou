@@ -38,7 +38,9 @@ data/document-folders.json
 data/folders.json
 data/ai-chats/*
 data/assets/*
+assets/private/*
 # Search index (derived from .md, rebuildable)
+
 data/.qmd/
 .qmd/
 # Embedding backend config (contains API key)
