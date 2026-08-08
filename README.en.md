@@ -20,9 +20,9 @@ PenTou pulls those conversations off a dozen platforms onto your own machine, as
 
 </div>
 
-![PenTou main window: platform folder sidebar on the left, conversation body in the middle, docked AI chat panel on the right](./assets/demo/screenshot-Chats-main-interface.png)
+![PenTou main window: platform folder sidebar on the left, conversation body in the middle, the docked AI panel running a topic digest with its execution trace expanded](./assets/demo/screenshot-Chats-main-interface.png)
 
-<sub>The three-pane window: platform folders with counts · conversation body · a docked AI panel that already carries the open conversation as context</sub>
+<sub>The three-pane window (shown with the Chinese UI): platform folders with counts · conversation body · a docked AI panel. Here it's running “Digest topic” — name a subject and it searches the whole library, reads the closest hits, and writes a digest into the AI workspace, with every step and its timing laid out</sub>
 
 ---
 
@@ -38,15 +38,17 @@ PenTou pulls those conversations off a dozen platforms onto your own machine, as
 
 ## Why it's worth using now
 
-**Status: ready for daily use.** One command gets it running on your machine. Capture, search, distillation into documents, follow-up Q&A, and self-hosted deployment form a complete loop — this is a workbench you can use every day, not a demo.
+**Status: ready for daily use.** One command gets it running on your machine. Capture, search, distillation into documents, AI rework, and self-hosted deployment form a complete loop — this is a workbench you can use every day, not a demo.
 
 | Pain point | What PenTou does |
 | --- | --- |
-| Conversations scattered across a dozen platforms | **One inbox**: export files, share links, automatic CLI capture, browser extension |
+| Conversations scattered across a dozen platforms | **One inbox**: export files, share links, automatic CLI capture, browser extension (now on the Chrome Web Store) |
 | Project Markdown also needs a home | **CLI document push**: lands under a git-repo **project**, with optional always-on `watch` |
 | You know you discussed it, but can't find it | **Local full-text plus optional semantic search**, jump-and-highlight across conversations and documents |
 | After import, you can't tell where it came from | **Top-bar attribution badges**: capture method (Web / Terminal / Manual), project, document origin |
+| Hundreds of threads piled up, nobody to sort them | **AI skills**: name a topic and get a library-wide digest; get a filing plan drafted for your whole document tree |
 | Long threads never become knowledge | **Conversation → document → annotation → AI rewrite → push to Obsidian** |
+| No idea what the AI actually did | **Visible execution traces** and **approve-before-apply plans** — nothing touches your library behind your back |
 | Data sits in the cloud and won't come out | **Plain Markdown on disk**, consumable directly by VS Code, Git or Obsidian |
 | Deployment is a project in itself | **One `npx` command** locally, or **Docker** for self-hosting, with data portable between instances |
 
@@ -58,7 +60,7 @@ PenTou pulls those conversations off a dozen platforms onto your own machine, as
 
 - **Manual import**: ChatGPT / DeepSeek JSON exports, assorted `.jsonl` files, Markdown, and platform share links. Drop them in as a batch — one bad file won't sink the rest.
 - **CLI collector**: watches desktop agent sessions and reports them automatically, covering Claude Code, Codex, Cursor, Copilot, OpenCode, Hermes, Grok CLI, Pi and more. `pull` for batches, `watch` for incremental updates.
-- **Browser extension**: dumb capture in the page; parsing and deduplication happen server-side.
+- **Browser extension**: [Pentou Collector](https://chromewebstore.google.com/detail/pentou-collector/kfepbkfbnminfhcenaookdnikccdfmip) is live on the Chrome Web Store — install it, fill in two fields, and it captures ChatGPT / DeepSeek web threads. The extension only does dumb capture; parsing and deduplication happen server-side.
 - **Ingest gateway**: idempotent upserts, secret redaction, and automatic slimming of oversized sessions — syncing repeatedly won't litter your library with duplicates.
 - **Auto-filing on import**: conversations land in the folder matching their platform, so there's less to tidy by hand.
 - **CLI document push**: project Markdown (READMEs, design notes, research) lands in the **document plane** with one command; grouped by a git-repo **project** dimension, with optional `watch` for always-on sync.
@@ -68,7 +70,7 @@ Document push and project grouping: [`docs/cli-doc-push-guide.md`](./docs/cli-do
 
 ![Import panel: drag in export files, paste a share link, and set up the CLI collector or browser extension](./assets/demo/screenshot-Import-interface.png)
 
-<sub>One panel for all four channels — platform exports, share links, CLI collector, browser extension — each listing the platforms it already supports</sub>
+<sub>One panel for all four channels — platform exports, share links (8 platforms), CLI collector (9 desktop agents), browser extension — each card listing the platforms it supports and the three steps to wire it up</sub>
 
 ### 2. Local Markdown as the source of truth
 
@@ -78,22 +80,43 @@ Each conversation is a Markdown file (frontmatter plus message body) under your 
 
 - **Hybrid search**: SQLite FTS5 full-text by default, plus an optional embedding-based semantic path, fused with RRF ranking.
 - **Document loop**: one-click conversion to a document, message excerpts, and MinerU parsing for PDF / Docx / PPTX. Annotations drive AI rewrites, and every version can be rolled back.
-- **AI sidebar**: ask questions against the current conversation or document (bring your own key); answers can be saved back as documents.
+- **AI sidebar**: docked on the right, carrying the current conversation or document as context by default (bring your own key); answers can be saved back as documents.
 - **Obsidian export**: push finished material into your permanent knowledge base.
 
-![Document view: body text centred, an auto-generated outline on the right, and a toolbar for editing, AI rewriting, version history and Obsidian export](./assets/demo/screenshot-Docs-main-interface.png)
+![Document view: body text centred, an auto-generated outline on the right, and the AI panel drafting a folder plan for the document tree](./assets/demo/screenshot-Docs-main-interface.png)
 
-<sub>The document view (shown with the Chinese UI): an auto-generated outline on the right, and the whole rework loop in one toolbar — edit, AI rewrite, version history, push to Obsidian, ask AI</sub>
+<sub>The document view (shown with the Chinese UI): body plus an auto-generated outline, while the AI panel drafts a filing plan for 107 candidate documents into the AI workspace, waiting for you to tick items — the toolbar above holds the rest of the loop: edit, version history, push to Obsidian</sub>
 
-### 4. A product you can actually live in
+### 4. AI skills: not just answers — it does the work
+
+At the bottom of the sidebar sit a few **intent chips**. One click runs a built-in skill — this is what separates PenTou from “yet another chat box”:
+
+| Skill | What happens when you click it |
+| --- | --- |
+| **Digest topic** | Name a subject; it expands the query terms → searches the whole library → runs multi-axis stats → deep-reads the closest hits → writes a digest with a clickable source list |
+| **Tidy folders** | Detects the project type, compares against a typical folder structure, and drafts a **checkbox filing plan** for the whole library — not one document moves before you approve |
+| **To doc** | Turns the current conversation into structured Markdown; re-running it saves a version first, then overwrites, so it stays reversible |
+| **Rewrite** | Hands your annotations to the LLM as revision notes and produces a new version for confirmation |
+
+Three design choices make that trustworthy:
+
+- **The trace is open**: every step (understand / search / stats / deep-read / compose / persist) is listed under the answer with its timing, so you can see what ran and how long it took;
+- **Writes need approval**: any skill that would change your library drafts a plan first; cleanup moves files into a `_Pending Cleanup` folder — **nothing is ever silently deleted**;
+- **Output has a home**: skill results land in the **AI workspace**, never mixed into the material you imported.
+
+Each skill is a plain-text workflow in `data/skills/<name>/SKILL.md` whose runtime dependencies are expressed purely as `/api/*` contracts — you can edit them, and an external agent can read the same file, point at your Pentou instance, and reproduce the same run.
+
+### 5. A product you can actually live in
 
 - Three-pane layout — folder sidebar, conversation/document body, question outline — with light and dark themes in English and Chinese.
 - **Source at a glance in the top bar**: conversation headers show brand/form, capture method (Web / Terminal / Manual) and project; document headers show “Updated” plus origin (From Chat / From Terminal / Imported) — so you can tell extension vs CLI, or “pushed from a repo” vs “converted from a chat”, without opening settings.
+- **Metadata panel**: a collapsible block at the end of the body, putting fixed fields (platform / capture method / session time / source project / message count …) next to the document's own YAML frontmatter, verbatim and copyable.
+- **Plan status bar**: every AI-drafted action plan carries its run state at the top — not run yet / run / interrupted / failed — with the timestamp and how many changes landed, so you never have to guess whether a plan is stale.
 - Syntax highlighting, Mermaid diagrams, localized image assets, and a lightbox viewer.
 - Settings, import and search all have adapted layouts on desktop **and mobile**.
 - The UI runs on a unified design system; batch selection, drag-to-file, and time sorting are all in place.
 
-### 5. Three deployment shapes, with portable data
+### 6. Three deployment shapes, with portable data
 
 | Shape | Who it's for | Entry point |
 | --- | --- | --- |
@@ -195,6 +218,7 @@ Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese)
 | [`docs/user-guide.md`](./docs/user-guide.md) | Local `npx` user guide (Chinese) |
 | [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) | Automatic capture guide — CLI collector + browser extension (Chinese) |
 | [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md) | Pushing project Markdown into the document plane from the CLI (Chinese) |
+| [`docs/agent-skills/README.md`](./docs/agent-skills/README.md) | Agent Skills for end users — setup / collect / docs-push, copy the folder as-is (Chinese) |
 | [`docs/releases.md`](./docs/releases.md) | Release notes (Chinese) |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker deployment and reverse proxy (Chinese) |
 | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | Contribution guide |

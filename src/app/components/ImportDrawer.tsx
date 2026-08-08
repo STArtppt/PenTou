@@ -45,6 +45,10 @@ const CLI_COLLECTOR_PLATFORMS = [
 /** 浏览器插件 v1 支持平台 */
 const BROWSER_EXT_PLATFORMS = ["ChatGPT", "DeepSeek"] as const;
 
+/** Pentou Collector 在 Chrome 应用商店的详情页 */
+const BROWSER_EXT_STORE_URL =
+  "https://chromewebstore.google.com/detail/pentou-collector/kfepbkfbnminfhcenaookdnikccdfmip";
+
 /** 公开分享链接当前已适配平台（与 vite-plugins/obscura.ts 拦截 / 解析分支对齐） */
 const SHARE_LINK_PLATFORMS = [
   "ChatGPT",
@@ -635,7 +639,20 @@ export function ImportDrawer() {
                       ))}
                     </div>
                     <ul className="list-disc space-y-1.5 pl-4 text-xs text-zinc-600 marker:text-zinc-300 dark:text-zinc-400 dark:marker:text-zinc-600">
-                      <li>{t("import.browserExtStep1")}</li>
+                      <li>
+                        {t("import.browserExtStep1")}{" "}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto gap-1 p-0 text-xs font-medium text-foreground underline underline-offset-2 hover:bg-transparent"
+                          nativeButton={false}
+                          render={<a href={BROWSER_EXT_STORE_URL} target="_blank" rel="noreferrer" />}
+                        >
+                          {t("import.browserExtStoreLink")}
+                          <ExternalLink size={11} />
+                        </Button>{" "}
+                        {t("import.browserExtStep1Tail")}
+                      </li>
                       <li>{t("import.browserExtStep2")}</li>
                       <li>{t("import.browserExtStep3")}</li>
                     </ul>

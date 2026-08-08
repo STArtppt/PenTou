@@ -280,6 +280,6 @@ npx -y @startist/pentou@latest collect watch
 ## 边界
 
 - 只覆盖 **CLI 采集器**（本机 agent 会话 → 对话平面）
-- **不覆盖浏览器插件通道**（网页版 ChatGPT 等；需构建扩展、Chrome 开发者模式加载、选项页填表）。见仓库文档 `docs/auto-collect-guide.md` **§3**
+- **不覆盖浏览器插件通道**（网页版 ChatGPT 等；需从 Chrome 应用商店安装扩展、固定到工具栏、选项页填表，均为 Agent 无法代劳的 GUI 操作）。见仓库文档 `docs/auto-collect-guide.md` **§3**
 - 不修改用户 Agent 配置文件；不写 Pentou 内部实现路径
 - CLI 出现不兼容变更时，回到仓库 `docs/agent-skills/` 复制新版技能；用 frontmatter `version` 对照

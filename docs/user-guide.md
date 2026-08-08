@@ -3,7 +3,7 @@
 本文档面向想在自己电脑上**立刻用起来**的用户。无需克隆代码、无需安装 Git / pnpm、无需任何构建知识。
 适用平台：macOS / Windows / Linux。
 
-PenTou 已具备日常高可用价值：本机一条命令启动后，即可导入/自动采集对话、全文检索、提炼文档与侧边栏问答；数据全部留在本地。产品能力总览见 [pentou-introduction.md](./pentou-introduction.md)。跑起来之后想让对话自动进库（CLI 采集器 / 浏览器插件），见 [auto-collect-guide.md](./auto-collect-guide.md)；想把仓库里的 Markdown 推进文档平面，见 [cli-doc-push-guide.md](./cli-doc-push-guide.md)。桌面顶栏会用徽章标明采集方式（网页/终端/手工）、项目与文档来源，便于区分多源入库的内容。若要部署到服务器 / NAS 供公网或多人访问，请改用 Docker（见 [deployment.md](./deployment.md)）。
+PenTou 已具备日常高可用价值：本机一条命令启动后，即可导入/自动采集对话、全文检索、提炼文档，并用侧边栏的 AI 技能做跨库主题汇总与文档目录整理；数据全部留在本地。产品能力总览见 [pentou-introduction.md](./pentou-introduction.md)。跑起来之后想让对话自动进库（CLI 采集器 / 浏览器插件，插件已上架 Chrome 应用商店），见 [auto-collect-guide.md](./auto-collect-guide.md)；想把仓库里的 Markdown 推进文档平面，见 [cli-doc-push-guide.md](./cli-doc-push-guide.md)。桌面顶栏会用徽章标明采集方式（网页/终端/手工）、项目与文档来源，便于区分多源入库的内容。若要部署到服务器 / NAS 供公网或多人访问，请改用 Docker（见 [deployment.md](./deployment.md)）。
 
 ---
 

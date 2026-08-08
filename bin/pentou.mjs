@@ -35,12 +35,23 @@ if (Number.isNaN(MAJOR) || MAJOR < 20) {
   process.exit(1);
 }
 
-// ── 读取版本号 ─────────────────────────────────────────────────────────────────
-function readVersion() {
+// ── 读取版本号（与 server resolveAppVersion 同源：env / package.json / git v*）──
+function readPackageVersionFallback() {
   try {
-    return JSON.parse(fs.readFileSync(path.join(PKG_ROOT, "package.json"), "utf-8")).version || "0.0.0";
+    return JSON.parse(fs.readFileSync(path.join(PKG_ROOT, "package.json"), "utf-8")).version || "0.0.0-dev";
   } catch {
-    return "0.0.0";
+    return "0.0.0-dev";
+  }
+}
+
+async function readVersion() {
+  try {
+    const { resolveAppVersion } = await import(
+      new URL("../dist-server/src/server/app-version.js", import.meta.url).href
+    );
+    return resolveAppVersion(PKG_ROOT);
+  } catch {
+    return readPackageVersionFallback();
   }
 }
 
@@ -67,7 +78,14 @@ const HELP = `Pentou — 本地优先的 AI 对话管理器
 `;
 
 function parseArgs(argv) {
-  const opts = { port: 7766, dataDir: null, password: undefined, host: "127.0.0.1", open: true };
+  const opts = {
+    port: 7766,
+    dataDir: null,
+    password: undefined,
+    host: "127.0.0.1",
+    open: true,
+    versionOnly: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     switch (a) {
@@ -76,8 +94,7 @@ function parseArgs(argv) {
         process.exit(0);
         break;
       case "--version": case "-v":
-        process.stdout.write(readVersion() + "\n");
-        process.exit(0);
+        opts.versionOnly = true;
         break;
       case "--no-open":
         opts.open = false;
@@ -193,6 +210,11 @@ async function main() {
   }
 
   const opts = parseArgs(process.argv.slice(2));
+
+  if (opts.versionOnly) {
+    process.stdout.write((await readVersion()) + "\n");
+    return;
+  }
 
   // 安全边界：非回环 host 必须配 --password（spec US-03 AC3）。
   if (!isLoopback(opts.host) && !opts.password) {

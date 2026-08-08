@@ -245,11 +245,20 @@ npx -y @startist/pentou@latest collect pull --adapter cursor --verbose
 
 ### 3.1 现状说明
 
-插件目前支持 **ChatGPT**（`chatgpt.com` / `chat.openai.com`）和 **DeepSeek**（`chat.deepseek.com`）的会话页，浏览器为 **Chrome**（Edge 等 Chromium 内核浏览器同为 MV3、加载方式一致，但未逐一验证）。
+插件目前支持 **ChatGPT**（`chatgpt.com` / `chat.openai.com`）和 **DeepSeek**（`chat.deepseek.com`）的会话页，验证过的浏览器是 **Chrome**（Edge 等 Chromium 内核浏览器同为 MV3、装法一致，但未逐一验证）。
 
-**插件尚未上架 Chrome 应用商店**，当前需要从源码构建后以开发者模式加载。介意这一步的话，先用通道 A，或者用 Pentou 导入面板手动粘贴分享链接 / 导出文件。
+**插件已上架 Chrome 应用商店**，直接安装即可，不再需要克隆仓库、构建、开发者模式加载。
 
-### 3.2 构建并加载插件
+### 3.2 安装插件
+
+1. 打开商店详情页：**[Pentou Collector](https://chromewebstore.google.com/detail/pentou-collector/kfepbkfbnminfhcenaookdnikccdfmip)**；
+2. 点**「添加至 Chrome」**并确认；
+3. 把插件**固定到工具栏**：点地址栏右侧的拼图图标，找到 Pentou Collector，点旁边的图钉。手动采集全靠点这个图标。
+
+Edge 等 Chromium 内核浏览器可在其扩展设置里打开「允许来自其他应用商店的扩展」后从同一页面安装。
+
+<details>
+<summary>从源码构建（开发 / 想跑未发布改动时）</summary>
 
 需要本机有 Node.js ≥ 20 和 pnpm，以及一份仓库代码：
 
@@ -261,13 +270,11 @@ pnpm --dir extension install
 pnpm --dir extension exec vite build
 ```
 
-产物在 `extension/dist/`。然后在 Chrome 里加载：
+产物在 `extension/dist/`。然后在 Chrome 里：地址栏输入 `chrome://extensions/` → 打开右上角**开发者模式** → 点**「加载已解压的扩展程序」** → 选择 `extension/dist/` 目录（注意是 `dist/`，不是 `extension/` 本身）。
 
-1. 地址栏输入 `chrome://extensions/` 回车；
-2. 打开右上角**开发者模式**；
-3. 点**「加载已解压的扩展程序」**；
-4. 选择 `extension/dist/` 目录（注意是 `dist/`，不是 `extension/` 本身）；
-5. 建议把插件**固定到工具栏**：点地址栏右侧的拼图图标，找到 Pentou Collector，点旁边的图钉。手动采集全靠点这个图标。
+商店版与开发者模式版是两个独立的扩展实例，配置不共享；同时装着容易采重，建议只留一个。
+
+</details>
 
 ### 3.3 配置插件
 
@@ -376,7 +383,7 @@ pnpm --dir extension exec vite build
 | 角标显示数字 | Pentou 连不上，内容在队列里 | 启动 Pentou，等待重试或在选项页重新保存配置 |
 | Test connection 显示不可达 | Pentou 没启动 / 地址带了多余路径 | 确认 Pentou 在跑；地址只填到端口 |
 | 提示 ChatGPT / DeepSeek 未登录 | 浏览器里该平台登录态失效 | 在浏览器里重新登录该平台 |
-| 某平台突然采不了了 | 平台改了自己的接口 | 先升级 Pentou（解析在服务端），仍不行则重新构建插件 |
+| 某平台突然采不了了 | 平台改了自己的接口 | 先升级 Pentou（解析在服务端），仍不行则等商店推送插件更新（`chrome://extensions/` 可点「更新」手动催一次） |
 
 ---
 

@@ -24,6 +24,7 @@ import {
 } from "./auth.js";
 import { serveStatic } from "./static-server.js";
 import { log } from "./logger.js";
+import { resolveAppVersion } from "./app-version.js";
 
 const TRUST_PROXY = (process.env.TRUST_PROXY ?? "1") !== "0";
 const SESSION_MAX_AGE_SEC = Number(process.env.SESSION_MAX_AGE_SEC ?? 30 * 24 * 3600);
@@ -34,13 +35,8 @@ const HERE = path.dirname(url.fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(HERE, "../../..");
 const STATIC_ROOT = path.join(PROJECT_ROOT, "dist");
 
-// 读取一次 package version 供 /healthz 使用。
 function readVersion(): string {
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "package.json"), "utf-8"));
-    if (pkg.version) return String(pkg.version);
-  } catch { /* keep default */ }
-  return "0.0.0";
+  return resolveAppVersion(PROJECT_ROOT);
 }
 
 // ── 编程启动接口（CLI 唯一契约，spec §4.4）─────────────────────────────────────

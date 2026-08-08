@@ -9,16 +9,19 @@
 import type { Plugin } from "vite";
 import path from "node:path";
 import { handleApiRequest, ensureDirs } from "../src/server/api-router.js";
+import { resolveAppVersion } from "../src/server/app-version.js";
 
 export function pentouServerPlugin(): Plugin {
   const dataDir = path.resolve(process.cwd(), "data");
+  // 启动时解析一次：env / package.json / 最新 v* tag（main 上多为 x.y.z-dev）。
+  const version = resolveAppVersion(process.cwd());
   return {
     name: "pentou-server",
     configureServer(server) {
       ensureDirs(dataDir);
       server.middlewares.use(async (req, res, next) => {
         try {
-          const handled = await handleApiRequest(req, res, { dataDir });
+          const handled = await handleApiRequest(req, res, { dataDir, version });
           if (!handled) next();
         } catch (e) {
           if (!res.headersSent) {
