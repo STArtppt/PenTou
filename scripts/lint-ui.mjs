@@ -3,6 +3,10 @@
  * UI consistency guardrails (ui-consistency US-06).
  * Fails on NEW violations; existing ones are exempt via baseline file.
  *
+ * The baseline matches on (rule, file, match) + per-group hit count — never on line
+ * numbers. Moving or reformatting code must not manufacture "new" violations, since
+ * that pressures everyone into regenerating the baseline, which launders real ones.
+ *
  * Usage:
  *   node scripts/lint-ui.mjs              # check (exit 1 on new violations)
  *   node scripts/lint-ui.mjs --write-baseline  # regenerate baseline from current tree
@@ -89,13 +93,100 @@ function scanFile(absPath) {
   return scanSource(readFileSync(absPath, "utf8"), rel);
 }
 
+/** Match key is deliberately line-independent: moving code must not look like a new violation. */
 export function keyOf(v) {
-  return `${v.rule}|${v.file}|${v.line}|${v.match}`;
+  return `${v.rule}|${v.file}|${v.match}`;
 }
 
+/** Aggregate hits by key. Line numbers survive only for reporting, never for matching. */
+export function groupHits(violations) {
+  const groups = new Map();
+  for (const v of violations || []) {
+    const key = keyOf(v);
+    let g = groups.get(key);
+    if (!g) {
+      g = { rule: v.rule, file: v.file, match: v.match, count: 0, lines: [] };
+      groups.set(key, g);
+    }
+    g.count += 1;
+    if (typeof v.line === "number") g.lines.push(v.line);
+  }
+  for (const g of groups.values()) g.lines.sort((a, b) => a - b);
+  return groups;
+}
+
+/** A baseline written before the grouped format has no per-group `count`. */
+export function isLegacyBaseline(baseline) {
+  return (baseline?.violations || []).some((v) => typeof v?.count !== "number");
+}
+
+/** Baseline entries → allowed hit count per key. Tolerates legacy entries (1 hit each). */
+function quotaOf(baselineViolations) {
+  const quota = new Map();
+  for (const b of baselineViolations || []) {
+    const key = keyOf(b);
+    const n = typeof b.count === "number" ? b.count : 1;
+    quota.set(key, (quota.get(key) || 0) + n);
+  }
+  return quota;
+}
+
+/**
+ * Novel = hits exceeding their group's baseline quota.
+ * Over-quota groups report their LAST N lines — newly added code usually lands below.
+ */
 export function diffAgainstBaseline(violations, baselineViolations) {
-  const allowed = new Set((baselineViolations || []).map(keyOf));
-  return violations.filter((v) => !allowed.has(keyOf(v)));
+  const quota = quotaOf(baselineViolations);
+  const novel = [];
+  for (const [key, g] of groupHits(violations)) {
+    const allowed = quota.get(key) || 0;
+    const excess = g.count - allowed;
+    if (excess <= 0) continue;
+    for (const line of g.lines.slice(-excess)) {
+      novel.push({
+        rule: g.rule,
+        file: g.file,
+        match: g.match,
+        line,
+        baselineCount: allowed,
+        currentCount: g.count,
+      });
+    }
+  }
+  novel.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+  return novel;
+}
+
+/** Quota no longer occupied by current hits — reclaimable, and never a failure. */
+export function reclaimableCount(violations, baselineViolations) {
+  const current = groupHits(violations);
+  let total = 0;
+  for (const [key, allowed] of quotaOf(baselineViolations)) {
+    total += Math.max(0, allowed - (current.get(key)?.count || 0));
+  }
+  return total;
+}
+
+/** Line-keyed novelty — only to report what a migration regeneration would absorb. */
+function legacyNovelCount(violations, baselineViolations) {
+  const legacyKey = (v) => `${v.rule}|${v.file}|${v.line}|${v.match}`;
+  const allowed = new Set((baselineViolations || []).map(legacyKey));
+  return violations.filter((v) => !allowed.has(legacyKey(v))).length;
+}
+
+function buildBaseline(violations) {
+  const groups = [...groupHits(violations).values()]
+    .map(({ rule, file, match, count }) => ({ rule, file, match, count }))
+    .sort(
+      (a, b) =>
+        a.rule.localeCompare(b.rule) || a.file.localeCompare(b.file) || a.match.localeCompare(b.match)
+    );
+  return {
+    generatedAt: new Date().toISOString(),
+    totalHits: violations.length,
+    groupCount: groups.length,
+    violations: groups,
+  };
 }
 
 function main() {
@@ -103,38 +194,56 @@ function main() {
   const files = SCAN_DIRS.flatMap((d) => walk(join(ROOT, d)));
   const violations = files.flatMap(scanFile);
 
+  const existing = existsSync(BASELINE_PATH)
+    ? JSON.parse(readFileSync(BASELINE_PATH, "utf8"))
+    : null;
+
   if (writeBaseline) {
-    const baseline = {
-      generatedAt: new Date().toISOString(),
-      count: violations.length,
-      violations: violations.map((v) => ({
-        rule: v.rule,
-        file: v.file,
-        line: v.line,
-        match: v.match,
-      })),
-    };
+    const baseline = buildBaseline(violations);
     writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2) + "\n");
-    console.log(`Wrote baseline: ${violations.length} violation(s) → ${relative(ROOT, BASELINE_PATH)}`);
+    console.log(
+      `Wrote baseline: ${baseline.totalHits} hit(s) in ${baseline.groupCount} group(s) → ${relative(ROOT, BASELINE_PATH)}`
+    );
+    if (!existing) {
+      console.log(`本次登记 ${baseline.totalHits} 条为存量（此前无基线）。`);
+    } else {
+      const absorbed = isLegacyBaseline(existing)
+        ? legacyNovelCount(violations, existing.violations)
+        : diffAgainstBaseline(violations, existing.violations).length;
+      console.log(`本次登记 ${baseline.totalHits} 条为存量，其中 ${absorbed} 条相对旧基线是新增。`);
+      if (absorbed > 0) {
+        console.log("↑ 这些新增违规已被豁免——请确认这是评审后的有意决定，而不是为了让红灯消失。");
+      }
+    }
     process.exit(0);
   }
 
-  if (!existsSync(BASELINE_PATH)) {
+  if (!existing) {
     console.error(`Missing baseline at ${relative(ROOT, BASELINE_PATH)}.`);
     console.error("Run: node scripts/lint-ui.mjs --write-baseline");
     process.exit(2);
   }
 
-  const baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
-  const novel = diffAgainstBaseline(violations, baseline.violations);
+  if (isLegacyBaseline(existing)) {
+    console.error(`${relative(ROOT, BASELINE_PATH)} 仍是按行号记录的旧格式基线。`);
+    console.error("旧格式会把行号漂移误报成新增违规，已不再支持。");
+    console.error("一次性迁移：node scripts/lint-ui.mjs --write-baseline");
+    process.exit(2);
+  }
 
-  const currentKeys = new Set(violations.map(keyOf));
-  const cleaned = (baseline.violations || []).filter((v) => !currentKeys.has(keyOf(v)));
+  const novel = diffAgainstBaseline(violations, existing.violations);
+  const reclaimable = reclaimableCount(violations, existing.violations);
+  const currentGroups = groupHits(violations).size;
+  const baseHits = existing.totalHits ?? "?";
+  const baseGroups = existing.groupCount ?? existing.violations?.length ?? 0;
 
-  console.log(`lint:ui scanned ${files.length} files, ${violations.length} current hit(s), baseline ${baseline.count ?? baseline.violations?.length ?? 0}`);
+  console.log(
+    `lint:ui scanned ${files.length} files, ${violations.length} hit(s) in ${currentGroups} group(s); ` +
+      `baseline ${baseHits} hit(s) in ${baseGroups} group(s)`
+  );
 
-  if (cleaned.length) {
-    console.log(`Note: ${cleaned.length} baseline hit(s) no longer present (safe to regenerate baseline).`);
+  if (reclaimable) {
+    console.log(`Note: ${reclaimable} 条基线额度已不再被占用（违规已修掉），可在评审后重生成基线回收。`);
   }
 
   if (novel.length === 0) {
@@ -142,11 +251,15 @@ function main() {
     process.exit(0);
   }
 
-  console.error(`\nlint:ui FAILED — ${novel.length} new violation(s):\n`);
+  console.error(`\nlint:ui FAILED — ${novel.length} 处新增违规：\n`);
   for (const v of novel) {
-    console.error(`  [${v.rule}] ${v.file}:${v.line}  ${v.match}`);
+    console.error(
+      `  [${v.rule}] ${v.file}:${v.line}  ${v.match}  (基线额度 ${v.baselineCount} / 当前 ${v.currentCount})`
+    );
   }
-  console.error("\nFix the new code, or if intentional legacy, regenerate baseline after review.");
+  console.error("\n修复上述新增违规。");
+  console.error("仅当经人工评审确认属于有意保留的存量/例外时，才运行 node scripts/lint-ui.mjs --write-baseline —");
+  console.error("重生成会把当前全部违规登记为存量，它不是报红的常规解法。");
   process.exit(1);
 }
 
