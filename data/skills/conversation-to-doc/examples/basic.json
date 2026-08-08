@@ -1,0 +1,10 @@
+{
+  "input": { "conversationId": "conv_20260712_a1b2" },
+  "output": {
+    "docId": "doc_1770000000_ab12",
+    "title": "本地优先存储的选型取舍",
+    "created": true,
+    "projectId": null
+  },
+  "note": "同一会话再转一次时 created=false 且带 versionId —— 旧正文已落为可回滚的版本。"
+}

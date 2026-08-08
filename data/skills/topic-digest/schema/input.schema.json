@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/topic-digest/input",
+  "title": "topic-digest input",
+  "type": "object",
+  "properties": {
+    "topic": { "type": "string", "description": "用户点名的主题" },
+    "topK": { "type": "integer", "description": "可选：检索片段数，默认 12" },
+    "projectId": { "type": "string", "description": "可选：汇总落进哪个项目的 AI 空间；省略则落默认目录" }
+  },
+  "required": ["topic"],
+  "additionalProperties": false
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/doc-folder-organize/output",
+  "title": "doc-folder-organize output",
+  "type": "object",
+  "properties": {
+    "planDocId": { "type": "string", "description": "行动计划文档 id" },
+    "folderId": { "type": "string", "description": "计划所在 AI 空间的文件夹 id" },
+    "itemCount": { "type": "integer", "description": "计划里的待办条目数" },
+    "candidateCount": { "type": "integer", "description": "参与判断的候选文档数（不含记忆与 AI 空间内文档）" },
+    "notes": {
+      "type": "array",
+      "description": "只报告不处置的数据异常（孤儿 / 重名文件夹等）",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["planDocId", "folderId", "itemCount", "candidateCount", "notes"],
+  "additionalProperties": false
+}

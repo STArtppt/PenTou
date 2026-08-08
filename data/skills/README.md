@@ -53,16 +53,35 @@ data/skills/
 - runner 顺序执行步骤并串联上下文；本期只支持线性工作流（无分支/循环）。
 - `SKILL.md` 是**人读 + 外部 agent 读**的权威描述；runner 的可执行定义（`src/app` 内建注册）须与之对齐。
 
-## 当前技能（规划中）
+## 当前技能
 
 | 技能 | 场景 | 运行时依赖 `/api/*` | 状态 |
 | --- | --- | --- | --- |
-| `conversation-to-doc` | 对话转文档（选风格） | 读对话、`llm`、`documents` | planned |
-| `annotation-driven-rewrite` | 批注驱动 AI 重写 | `annotations`、`llm`、`documents` | planned |
-| `ask-ai-context` | Ask AI 上下文 + 语义检索 | `search`/`embedding`、`llm` | planned |
+| `ask-ai-context` | Ask AI 上下文 + 语义检索 | `search`/`embedding`、`llm` | active |
+| `conversation-to-doc` | 对话转文档 | 读对话、`llm`、`documents` | active |
+| `annotation-driven-rewrite` | 批注驱动 AI 重写 | `annotations`、`llm`、`documents` | active |
+| `doc-folder-organize` | 整理文档目录（出行动计划） | `documents`、`document-folders`、`document-projects`、`llm` | active |
+| `topic-digest` | 主题会话汇总 | `search`、`llm`、`documents` | active |
 
-> 先落**技能编排器**（首个 OpenSpec 立项 `skill-orchestrator`），再逐个补上述技能。
 > 平面切分提醒：批注**渲染 UI** 属 plane A（`src/app/annotations.ts`）；批注的 **AI 处理工作流**才是 plane B。
+
+## AI 的写权限与产物落位
+
+技能改动数据时受统一约束（spec `agent-write-policy` / `ai-workspace`）：
+
+- **写权限按出身划**：可改 = 带 `generatedBy` / `sourceConversationId` 的文档 ∪ AI 空间内的一切；
+  用户导入或手写文档的**正文**不可改（归属元数据可改，它不动正文）。
+- **改正文必经 `commit-version`** —— 可回滚是覆盖行为可被接受的前提。
+- **AI 不删除**任何文档或文件夹，**不改动**任何会话（含其 `folderId` —— 那是采集来源身份而非分类）。
+- **产物落位按谁发起**：AI 自主产物（计划、主题汇总、记忆）落 AI 空间；用户点名要的产物
+  （转文档、重写结果）落用户的地盘，按来源继承项目，跨项目或无项目属性则落默认目录。
+- **批量且改动既有数据**的操作先出计划文档，勾选批准后才执行；执行前校验数据快照与文件夹基底。
+
+## 工具目录
+
+`GET /api/tools` 暴露一份**手工维护**的 agent 形状工具目录（`src/shared/agent-tools.ts`），
+内部 runner 与外部 agent 消费同一份，差异只在于谁调用 LLM。它刻意**不从 `/api/*` 自动派生** ——
+既有端点是 CRUD 形状且无 schema，直接暴露（尤其整表覆写的 `POST /api/document-folders`）等于邀请事故。
 
 ## 新增技能
 

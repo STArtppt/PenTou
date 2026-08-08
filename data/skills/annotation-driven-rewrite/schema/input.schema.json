@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/annotation-driven-rewrite/input",
+  "title": "annotation-driven-rewrite input",
+  "type": "object",
+  "properties": {
+    "docId": { "type": "string", "description": "待重写的文档 id" },
+    "annotationIds": {
+      "type": "array",
+      "description": "可选：只依据这些批注；省略则用全部带评论的批注",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["docId"],
+  "additionalProperties": false
+}

@@ -96,7 +96,8 @@ export const askAiContext: SkillDef = {
       kind: "llm",
       run: async (ctx: RunCtx): Promise<string> => {
         const messages = ctx.results.context as ChatMessage[];
-        return ctx.deps.callLLM(ctx.deps.llmConfig, messages, undefined, ctx.deps.signal);
+        const { content } = await ctx.deps.callLLM(ctx.deps.llmConfig, messages, { signal: ctx.deps.signal });
+        return content;
       },
     },
   ],

@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/doc-folder-organize/input",
+  "title": "doc-folder-organize input",
+  "type": "object",
+  "properties": {
+    "projectId": { "type": "string", "description": "整理哪个项目的目录；省略或 dp_default 表示默认目录" },
+    "planTitle": { "type": "string", "description": "可选：计划文档标题；省略则按日期生成" }
+  },
+  "additionalProperties": false
+}

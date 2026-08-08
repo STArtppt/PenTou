@@ -1,0 +1,11 @@
+{
+  "input": { "projectId": "dp_default" },
+  "output": {
+    "planDocId": "doc_1770000002_ef56",
+    "folderId": "df_ai_dp_default",
+    "itemCount": 8,
+    "candidateCount": 27,
+    "notes": ["文件夹「旧项目遗留」(df_3) 的所属项目 dp_gone 已不存在 —— 只报告，未做任何处置。"]
+  },
+  "note": "此时一篇文档都没被改动。用户在计划里勾选后才进入执行阶段；快照或文件夹基底失配则中止并要求重新生成。"
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/conversation-to-doc/output",
+  "title": "conversation-to-doc output",
+  "type": "object",
+  "properties": {
+    "docId": { "type": "string", "description": "产物文档 id" },
+    "title": { "type": "string", "description": "取自正文首个 H1，缺省退回会话标题" },
+    "created": { "type": "boolean", "description": "true=新建；false=覆盖既有产物（已落新版本）" },
+    "projectId": { "type": ["string", "null"], "description": "产物所属项目；null 表示默认目录" },
+    "versionId": { "type": "string", "description": "覆盖既有产物时新落的版本 id" }
+  },
+  "required": ["docId", "title", "created", "projectId"],
+  "additionalProperties": false
+}

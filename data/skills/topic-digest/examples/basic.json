@@ -1,0 +1,14 @@
+{
+  "input": { "topic": "检索方案的取舍", "topK": 8 },
+  "output": {
+    "docId": "doc_1770000001_cd34",
+    "folderId": "df_ai_dp_default",
+    "topic": "检索方案的取舍",
+    "sourceCount": 8,
+    "citations": [
+      { "type": "conversation", "id": "conv_a", "title": "BM25 还是向量" },
+      { "type": "document", "id": "doc_b", "title": "hybrid-search 设计" }
+    ]
+  },
+  "note": "零命中时技能失败并提示换个说法，不产出空汇总。"
+}

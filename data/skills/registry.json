@@ -4,20 +4,32 @@
   "skills": [
     {
       "name": "conversation-to-doc",
-      "scenario": "对话转文档（选风格）",
+      "scenario": "对话转文档（产物落用户地盘，再转一次走 commit-version）",
       "apiDeps": ["conversations:read", "llm", "documents"],
-      "status": "planned"
+      "status": "active"
     },
     {
       "name": "annotation-driven-rewrite",
-      "scenario": "批注驱动 AI 重写",
+      "scenario": "批注驱动 AI 重写（只出提案，落盘由确认框完成）",
       "apiDeps": ["annotations", "llm", "documents"],
-      "status": "planned"
+      "status": "active"
     },
     {
       "name": "ask-ai-context",
       "scenario": "Ask AI 上下文 + 语义检索",
       "apiDeps": ["search", "embedding", "llm"],
+      "status": "active"
+    },
+    {
+      "name": "doc-folder-organize",
+      "scenario": "整理文档目录（产出复选框行动计划，批准后才执行）",
+      "apiDeps": ["documents", "document-folders", "document-projects", "llm"],
+      "status": "active"
+    },
+    {
+      "name": "topic-digest",
+      "scenario": "主题会话汇总（用户点名主题 → 检索 → 汇总落 AI 空间）",
+      "apiDeps": ["search", "llm", "documents"],
       "status": "active"
     }
   ]

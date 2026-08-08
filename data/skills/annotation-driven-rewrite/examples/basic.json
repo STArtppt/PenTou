@@ -1,0 +1,10 @@
+{
+  "input": { "docId": "doc_1770000000_ab12" },
+  "output": {
+    "docId": "doc_1770000000_ab12",
+    "proposedBody": "# 本地优先存储的选型取舍\n\n（按批注修订后的完整正文……）",
+    "annotationCount": 3,
+    "usedAnnotationIds": ["anno_1", "anno_2", "anno_5"]
+  },
+  "note": "文档没有带评论的批注、或它是用户导入/手写的文档时，技能在调 LLM 之前就失败并说明原因。"
+}

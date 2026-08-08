@@ -6,9 +6,18 @@ import { executeSkill, type RunEvent, type SkillDef, type SkillDeps } from "../s
 import { chatCompletion, type LLMConfig } from "../llm";
 import { getActiveLLMConfig, loadLLMSettingsFromLocalStorage } from "../llm-settings";
 import { askAiContext } from "./ask-ai-context";
+import { annotationDrivenRewrite } from "./annotation-driven-rewrite";
+import { conversationToDoc } from "./conversation-to-doc";
+import { docFolderOrganize } from "./doc-folder-organize";
+import { topicDigest } from "./topic-digest";
+import { createToolExecutor, type ToolEnv } from "./tool-executor";
 
 export const SKILL_REGISTRY: Record<string, SkillDef> = {
   [askAiContext.id]: askAiContext,
+  [conversationToDoc.id]: conversationToDoc,
+  [topicDigest.id]: topicDigest,
+  [docFolderOrganize.id]: docFolderOrganize,
+  [annotationDrivenRewrite.id]: annotationDrivenRewrite,
 };
 
 export interface RunSkillOptions {
@@ -17,6 +26,8 @@ export interface RunSkillOptions {
   callLLM?: SkillDeps["callLLM"];
   llmConfig?: LLMConfig;
   signal?: AbortSignal;
+  /** 工具执行的环境（当前视图等）；不给则只有不依赖视图的工具可用。 */
+  toolEnv?: ToolEnv;
 }
 
 /**
@@ -35,6 +46,7 @@ export function runSkill(
     callLLM: opts.callLLM ?? chatCompletion,
     llmConfig: opts.llmConfig ?? getActiveLLMConfig(loadLLMSettingsFromLocalStorage()),
     signal: opts.signal,
+    executeTool: createToolExecutor(opts.toolEnv ?? {}),
   };
   return executeSkill(def, input, deps);
 }

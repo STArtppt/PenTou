@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/conversation-to-doc/input",
+  "title": "conversation-to-doc input",
+  "type": "object",
+  "properties": {
+    "conversationId": { "type": "string", "description": "待转换的会话 id" },
+    "projectId": { "type": "string", "description": "可选：产物落入的项目；省略则按来源继承，跨项目或无项目属性时落默认目录" }
+  },
+  "required": ["conversationId"],
+  "additionalProperties": false
+}

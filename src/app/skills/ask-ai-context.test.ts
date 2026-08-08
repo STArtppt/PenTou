@@ -9,7 +9,7 @@ function run(input: Record<string, unknown>, over: Partial<SkillDeps>) {
   const deps: SkillDeps = {
     apiBase: "",
     fetchImpl: (async () => ({ ok: true, json: async () => ({ hits: [] }) })) as unknown as typeof fetch,
-    callLLM: async () => "canned-answer",
+    callLLM: async () => ({ content: "canned-answer", toolCalls: [] }),
     llmConfig: {} as SkillDeps["llmConfig"],
     ...over,
   };
@@ -42,7 +42,7 @@ describe("ask-ai-context skill", () => {
           })) as unknown as typeof fetch,
           callLLM: async (_cfg, messages) => {
             capturedMessages = messages;
-            return "answer-with-context";
+            return { content: "answer-with-context", toolCalls: [] };
           },
         },
       ),
@@ -62,7 +62,7 @@ describe("ask-ai-context skill", () => {
           fetchImpl: (async () => ({ ok: true, json: async () => ({ hits: [] }) })) as unknown as typeof fetch,
           callLLM: async (_cfg, messages) => {
             capturedMessages = messages;
-            return "insufficient-context";
+            return { content: "insufficient-context", toolCalls: [] };
           },
         },
       ),

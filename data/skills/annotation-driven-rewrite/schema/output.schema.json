@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pentou://skills/annotation-driven-rewrite/output",
+  "title": "annotation-driven-rewrite output",
+  "type": "object",
+  "properties": {
+    "docId": { "type": "string" },
+    "proposedBody": { "type": "string", "description": "修订后的完整 Markdown 提案；技能本身不落盘" },
+    "annotationCount": { "type": "integer" },
+    "usedAnnotationIds": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["docId", "proposedBody", "annotationCount", "usedAnnotationIds"],
+  "additionalProperties": false
+}
