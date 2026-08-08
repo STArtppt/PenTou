@@ -326,15 +326,19 @@ function MessageHeader({
   content,
   onExcerpt,
   excerpting,
+  align = "left",
 }: {
   name: string;
   timestamp: string;
   content: string;
   onExcerpt: () => void;
   excerpting: boolean;
+  /** 用户消息右对齐时，名称贴近头像、操作按钮在左。 */
+  align?: "left" | "right";
 }) {
   const { t, language } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const isRight = align === "right";
 
   const handleCopy = async () => {
     if (await copyText(content)) {
@@ -344,9 +348,19 @@ function MessageHeader({
   };
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-3 group/header">
+    <div
+      className={clsx(
+        "flex min-w-0 flex-1 items-center gap-3 group/header",
+        isRight && "flex-row-reverse",
+      )}
+    >
       {/* 名称 + 时间戳：移动端分两行（窄屏时间戳不再被挤换行），桌面同一行。 */}
-      <div className="flex min-w-0 flex-col gap-0.5 md:flex-row md:items-center md:gap-3">
+      <div
+        className={clsx(
+          "flex min-w-0 flex-col gap-0.5 md:flex-row md:items-center md:gap-3",
+          isRight && "items-end md:flex-row-reverse",
+        )}
+      >
         <span className="truncate font-semibold text-sm text-zinc-900 dark:text-zinc-100">{name}</span>
         {timestamp && isValidDate(timestamp) && (
           <span className="whitespace-nowrap text-xs text-zinc-400 dark:text-zinc-500 font-medium">
@@ -440,8 +454,13 @@ function MessageBubble({
 
   return (
     <div id={`msg-${message.id}`} className="transition-all scroll-mt-24 group w-full">
-      {/* 角色头：头像 + 名称/时间 + 操作按钮同一行。移动端头像居中对齐两行文本，桌面顶端对齐。 */}
-      <div className="flex items-center gap-3 md:items-start md:gap-4">
+      {/* 角色头：AI 左对齐；用户右对齐（头像在右，名称贴近头像）。移动端头像居中对齐两行文本，桌面顶端对齐。 */}
+      <div
+        className={clsx(
+          "flex items-center gap-3 md:items-start md:gap-4",
+          isUser && "flex-row-reverse",
+        )}
+      >
         <div className="shrink-0 md:pt-1">
           {isUser ? (
             <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center border border-zinc-200 dark:border-white/10 text-zinc-500 dark:text-zinc-400">
@@ -459,14 +478,20 @@ function MessageBubble({
           content={message.content}
           onExcerpt={onExcerpt}
           excerpting={excerpting}
+          align={isUser ? "right" : "left"}
         />
       </div>
-      {/* 正文：移动端与头像左对齐铺满（消除长文左侧空隙）；桌面 pl-12 缩进对齐到名称下方。 */}
-      <div className="mt-2 md:mt-1 md:pl-12">
+      {/* 正文：AI 左对齐（桌面 pl-12 对齐名称下方）；用户右对齐（桌面 pr-12 + text-right 把 inline-block 气泡靠右，正文 text-left 保持可读）。 */}
+      <div
+        className={clsx(
+          "mt-2 md:mt-1",
+          isUser ? "text-right md:pr-12" : "md:pl-12",
+        )}
+      >
         <div className={clsx(
           "max-w-full text-[15px] leading-7 markdown-body break-words",
           isUser
-            ? "bg-zinc-50 dark:bg-white/5 inline-block px-5 py-4 border border-zinc-100 dark:border-white/10 rounded-2xl rounded-tl-sm text-zinc-800 dark:text-zinc-200 shadow-sm"
+            ? "bg-zinc-50 dark:bg-white/5 inline-block px-5 py-4 border border-zinc-100 dark:border-white/10 rounded-2xl rounded-tr-sm text-left text-zinc-800 dark:text-zinc-200 shadow-sm"
             : "text-zinc-800 dark:text-zinc-200",
         )}>
           <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]} urlTransform={imageUrlTransform}>

@@ -11,3 +11,15 @@ describe("message bubble width containment", () => {
     expect(chatBody).not.toContain("max-w-none");
   });
 });
+
+// 用户消息：头像与气泡右对齐；AI 保持左对齐。
+describe("user message right alignment", () => {
+  it("right-aligns user avatar/header and bubble, keeps AI on the left", () => {
+    const chatBody = readFileSync("src/app/components/ChatBody.tsx", "utf8");
+    expect(chatBody).toContain('isUser && "flex-row-reverse"');
+    expect(chatBody).toContain('align={isUser ? "right" : "left"}');
+    expect(chatBody).toContain('isUser ? "text-right md:pr-12" : "md:pl-12"');
+    expect(chatBody).toContain("rounded-tr-sm");
+    expect(chatBody).not.toContain("rounded-tl-sm");
+  });
+});
