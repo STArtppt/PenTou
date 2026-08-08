@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Bot, User, Copy, Check, Import, Loader2, FileText, Quote, History, EyeOff, MessageSquare, Globe, Terminal, PenLine, FolderKanban } from "lucide-react";
+import { Bot, User, Copy, Check, Import, Loader2, Quote, History, EyeOff, MessageSquare, Globe, Terminal, PenLine, FolderKanban } from "lucide-react";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +11,7 @@ import { useAppContext, Message, Platform } from "../data";
 import { RightNav } from "./RightNav";
 import { VersionPanel } from "./VersionPanel";
 import { useTranslation } from "../i18n";
-import { convertConversationToDocument, LLMError } from "../llm";
-import { excerptConversationToDoc, generateDocId, mergeRewriteWithExistingBody } from "../doc-utils";
+import { excerptConversationToDoc, generateDocId } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
 import { locateAndFlash } from "../utils/searchJump";
 import { BrandIcon } from "./BrandIcon";
@@ -30,14 +29,11 @@ export function ChatBody() {
     activeConversationId,
     setDrawerOpen,
     isLoading,
-    llmConfig,
     documents,
     addDocuments,
-    updateDocument,
     commitVersion,
     setActiveView,
     setActiveDocId,
-    setSettingsOpen,
     setVersionPanelOpen,
     versionsByConv,
     previewingVersionId,
@@ -70,7 +66,6 @@ export function ChatBody() {
     });
     return () => cancelAnimationFrame(raf);
   }, [searchJump, activeConversationId, conversation?.messages, setSearchJump]);
-  const [converting, setConverting] = useState(false);
   const [excerpting, setExcerpting] = useState(false);
   const [previewMessages, setPreviewMessages] = useState<Message[] | null>(null);
   const { isScrolling: isContentScrolling, markScrollActive: markContentScrollActive } = useScrollActivity();
@@ -88,63 +83,6 @@ export function ChatBody() {
       .catch(() => { if (!cancelled) setPreviewMessages(null); });
     return () => { cancelled = true; };
   }, [previewingVersionId, activeConversationId]);
-
-  const handleConvertToDoc = async () => {
-    if (!conversation) return;
-    const hasLLM = !!(llmConfig.apiKey && llmConfig.endpoint && llmConfig.model);
-    if (!hasLLM) {
-      setSettingsOpen(true);
-      return;
-    }
-    setConverting(true);
-    try {
-      const markdown = await convertConversationToDocument(conversation, llmConfig);
-      const now = new Date().toISOString();
-      const titleMatch = markdown.match(/^#\s+(.+)$/m);
-      const title = titleMatch ? titleMatch[1].trim() : conversation.title;
-      const existingDoc = documents.find((d) => d.sourceConversationId === conversation.id);
-
-      if (existingDoc) {
-        const nextBody = mergeRewriteWithExistingBody(existingDoc.body, markdown);
-        await commitVersion(existingDoc.id, nextBody, "llm-rewrite");
-        await updateDocument(existingDoc.id, {
-          title,
-          sourcePlatform: conversation.platform,
-          generatedBy: llmConfig.model,
-          generatedAt: now,
-        });
-        setActiveView("doc");
-        setActiveDocId(existingDoc.id);
-        return;
-      }
-
-      const docId = generateDocId();
-      await addDocuments([{
-        id: docId,
-        title,
-        folderId: null,
-        createdAt: now,
-        updatedAt: now,
-        body: markdown,
-        currentVersionId: "",
-        sourceConversationId: conversation.id,
-        sourcePlatform: conversation.platform,
-        generatedBy: llmConfig.model,
-        generatedAt: now,
-      }]);
-
-      setActiveView("doc");
-      setActiveDocId(docId);
-    } catch (e: any) {
-      const msg = e instanceof LLMError
-        ? `LLM Error ${e.context.status}: ${e.message} (model: ${e.context.model})`
-        : String(e);
-      console.error({ module: "ChatBody", op: "convertToDoc", err: msg });
-      alert(msg);
-    } finally {
-      setConverting(false);
-    }
-  };
 
   const handleExcerptMessage = async (message: Message) => {
     if (!conversation || excerpting) return;
@@ -287,16 +225,6 @@ export function ChatBody() {
             >
               <History size={14} />
               {t("toolbar.versionHistory")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleConvertToDoc}
-              disabled={converting}
-              className="h-auto gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground"
-            >
-              {converting ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-              {t("toolbar.convertToDoc", { defaultValue: "转为文档" })}
             </Button>
             <Button
               variant={aiSidebarOpen ? "primary" : "ghost"}

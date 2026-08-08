@@ -15,6 +15,7 @@ import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
 import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { useScrollActivity } from "../hooks/useScrollActivity";
+import { isImeComposing } from "../ime";
 
 interface Props {
   docId: string;
@@ -227,7 +228,7 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
                 placeholder={t("anno.commentPlaceholder")}
                 value={commentDraft}
                 onChange={(e) => setCommentDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSaveComment(); } }}
+                onKeyDown={(e) => { if (isImeComposing(e)) return; if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSaveComment(); } }}
               />
               <div className="flex justify-end gap-1.5 mt-2">
                 <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs text-muted-foreground" onClick={closePopup}>

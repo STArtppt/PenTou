@@ -1,7 +1,6 @@
-import React, { lazy, Suspense, useState } from "react";
+import React, { useState } from "react";
 import {
   FileText,
-  Sparkles,
   History,
   Send,
   Edit3,
@@ -12,6 +11,7 @@ import {
   Import,
   Paperclip,
   MessageCircle,
+  Sparkles,
   Terminal,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -31,121 +31,37 @@ import {
 } from "@/components/ui/dialog";
 import { useAppContext, type ObsidianConfig } from "../data";
 import { useTranslation } from "../i18n";
-import { convertConversationToDocument, LLMError } from "../llm";
 import { exportToObsidian } from "../obsidian";
-import { generateDocId, mergeRewriteWithExistingBody } from "../doc-utils";
 import { resolveDocumentOrigin } from "./topBarAttribution";
+import { isAiGenerated } from "../skills/agent-write-policy";
 import { formatDisplayDateTime } from "../utils/dateFormat";
+import { isImeComposing } from "../ime";
 
-const RewriteConfirmDialog = lazy(() =>
-  import("./RewriteConfirmDialog").then(m => ({ default: m.RewriteConfirmDialog }))
-);
 
 export function TopToolbar() {
   const {
     activeView,
     activeConversationId,
     activeDocId,
-    conversations,
     documents,
-    llmConfig,
     obsidianConfig,
     setObsidianConfig,
-    annotationsByDoc,
     editMode,
     setEditMode,
     previewingVersionId,
     setVersionPanelOpen,
-    setSettingsOpen,
-    addDocuments,
-    updateDocument,
-    setActiveView,
-    setActiveDocId,
-    commitVersion,
-    setAnnotationsForDoc,
     aiSidebarOpen,
     toggleAiSidebar,
   } = useAppContext();
   const { t, language } = useTranslation();
 
-  const [converting, setConverting] = useState(false);
-  const [showRewrite, setShowRewrite] = useState(false);
   const [vaultPromptOpen, setVaultPromptOpen] = useState(false);
   const [vaultInput, setVaultInput] = useState("");
   const [pendingObsidianExport, setPendingObsidianExport] = useState(false);
 
   const activeDoc = documents.find((d) => d.id === activeDocId);
-  const activeConv = conversations.find((c) => c.id === activeConversationId);
-  const docAnnotations = activeDocId ? (annotationsByDoc[activeDocId] ?? []) : [];
   const isPreviewMode = !!previewingVersionId;
 
-  const hasLLM = !!(llmConfig.apiKey && llmConfig.endpoint && llmConfig.model);
-  const hasCommentAnnotations = docAnnotations.some((a) => a.comment);
-
-  // ── Convert conversation to document ──────────────────────────────────────
-
-  const handleConvertToDoc = async () => {
-    if (!activeConv) return;
-    if (!hasLLM) {
-      setSettingsOpen(true);
-      return;
-    }
-    setConverting(true);
-    try {
-      const markdown = await convertConversationToDocument(activeConv, llmConfig);
-      const now = new Date().toISOString();
-      const titleMatch = markdown.match(/^#\s+(.+)$/m);
-      const title = titleMatch ? titleMatch[1].trim() : activeConv.title;
-      const existingDoc = documents.find((d) => d.sourceConversationId === activeConv.id);
-
-      if (existingDoc) {
-        const nextBody = mergeRewriteWithExistingBody(existingDoc.body, markdown);
-        await commitVersion(existingDoc.id, nextBody, "llm-rewrite");
-        await updateDocument(existingDoc.id, {
-          title,
-          sourcePlatform: activeConv.platform,
-          generatedBy: llmConfig.model,
-          generatedAt: now,
-        });
-        setActiveView("doc");
-        setActiveDocId(existingDoc.id);
-        return;
-      }
-
-      const docId = generateDocId();
-      await addDocuments([{
-        id: docId,
-        title,
-        folderId: null,
-        createdAt: now,
-        updatedAt: now,
-        body: markdown,
-        currentVersionId: "",
-        sourceConversationId: activeConv.id,
-        sourcePlatform: activeConv.platform,
-        generatedBy: llmConfig.model,
-        generatedAt: now,
-      }]);
-
-      setActiveView("doc");
-      setActiveDocId(docId);
-    } catch (e: any) {
-      const msg = e instanceof LLMError
-        ? `LLM Error ${e.context.status}: ${e.message} (model: ${e.context.model})`
-        : String(e);
-      console.error({ module: "TopToolbar", op: "convertToDoc", err: msg });
-      alert(msg);
-    } finally {
-      setConverting(false);
-    }
-  };
-
-  // ── AI Rewrite ─────────────────────────────────────────────────────────────
-
-  const handleRewrite = () => {
-    if (!activeDoc || !hasLLM || !hasCommentAnnotations) return;
-    setShowRewrite(true);
-  };
 
   // ── Obsidian Export ────────────────────────────────────────────────────────
 
@@ -195,14 +111,6 @@ export function TopToolbar() {
 
   // doc view
   const editActive = editMode !== "off";
-  const rewriteDisabledReason = !activeDocId
-    ? t("toolbar.noSelection")
-    : !hasLLM
-    ? t("rewrite.noLLM")
-    : !hasCommentAnnotations
-    ? t("rewrite.noAnnotations")
-    : undefined;
-
   const docOrigin = activeDoc ? resolveDocumentOrigin(activeDoc) : null;
   const originBadge =
     docOrigin === "conversation" ? (
@@ -224,6 +132,14 @@ export function TopToolbar() {
       </Badge>
     ) : null;
 
+  // AI 生成的可见标记（spec agent-write-policy 风险项缓解）：与来源徽章并列，
+  // 两者互补 —— 来源说「从哪来」，这个说「是 AI 写的，因此 AI 可以再改它」。
+  const aiBadge = activeDoc && isAiGenerated(activeDoc) ? (
+    <Badge variant="secondary" size="sm" icon={<Sparkles strokeWidth={2.5} />}>
+      {t("doc.aiGenerated")}
+    </Badge>
+  ) : null;
+
   return (
     <>
       <div className="z-10 hidden min-h-14 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white/80 px-4 backdrop-blur-md dark:border-white/10 dark:bg-[#1A1A1A]/80 md:flex">
@@ -240,6 +156,7 @@ export function TopToolbar() {
                 </span>
               )}
               {originBadge}
+              {aiBadge}
             </div>
           )}
         </div>
@@ -280,13 +197,6 @@ export function TopToolbar() {
         <div className="w-px h-5 bg-zinc-200 dark:bg-white/10 mx-1" />
 
         <ToolButton
-          icon={Sparkles}
-          label={t("toolbar.rewriteByAnnotations")}
-          disabled={!!rewriteDisabledReason || isPreviewMode}
-          onClick={handleRewrite}
-          tooltip={rewriteDisabledReason}
-        />
-        <ToolButton
           icon={History}
           label={t("toolbar.versionHistory")}
           disabled={!activeDocId}
@@ -308,17 +218,6 @@ export function TopToolbar() {
         />
 
       </div>
-
-      {showRewrite && activeDoc && (
-        <Suspense fallback={null}>
-          <RewriteConfirmDialog
-            doc={activeDoc}
-            annotations={docAnnotations.filter((a) => a.comment)}
-            onClose={() => setShowRewrite(false)}
-            onSuccess={() => setShowRewrite(false)}
-          />
-        </Suspense>
-      )}
 
       <Dialog
         open={vaultPromptOpen}
@@ -343,6 +242,7 @@ export function TopToolbar() {
                 value={vaultInput}
                 onChange={(e) => setVaultInput(e.target.value)}
                 onKeyDown={(e) => {
+                  if (isImeComposing(e)) return;
                   if (e.key === "Enter") handleVaultSave();
                 }}
                 placeholder={t("obsidian.vaultPlaceholder")}

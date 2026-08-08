@@ -51,6 +51,7 @@ import {
   ArrowUpNarrowWide,
   LogOut,
   Send,
+  Sparkles,
   Upload,
   X,
 } from "lucide-react";
@@ -67,6 +68,8 @@ import {
   uncategorizedInProject,
   type MoveTargetGroup,
 } from "../document-projects";
+import { isAiWorkspaceFolderId, sortAiWorkspaceFirst, sortMemoryFirst } from "@/shared/ai-workspace";
+import { isAiGenerated } from "../skills/agent-write-policy";
 import logoUrl from "../../../assets/images/logo.png";
 import logoDarkUrl from "../../../assets/images/logo_dark.png";
 import { useScrollActivity } from "../hooks/useScrollActivity";
@@ -75,6 +78,7 @@ import { useTranslation } from "../i18n";
 import { formatDisplayDate } from "../utils/dateFormat";
 import { copyText } from "../utils/clipboard";
 import { batchExportToVault, buildObsidianOpenUri } from "../obsidian";
+import { isImeComposing } from "../ime";
 
 const CONVERSATION_ITEM_TYPE = "CONVERSATION";
 const DOCUMENT_ITEM_TYPE = "DOCUMENT";
@@ -461,6 +465,7 @@ function RenameModal({
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => {
+                if (isImeComposing(e)) return;
                 if (e.key === "Enter") submitRename();
               }}
               placeholder={placeholder}
@@ -554,7 +559,7 @@ function ProjectEditModal({
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+                  onKeyDown={(e) => { if (isImeComposing(e)) return; if (e.key === "Enter") void submit(); }}
                   placeholder={t("sidebar.projectName")}
                   className={inputClass}
                 />
@@ -568,7 +573,7 @@ function ProjectEditModal({
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+                  onKeyDown={(e) => { if (isImeComposing(e)) return; if (e.key === "Enter") void submit(); }}
                   placeholder={t("sidebar.projectDescription")}
                   className={inputClass}
                 />
@@ -1253,6 +1258,7 @@ export function Sidebar() {
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 onKeyDown={(e) => {
+                  if (isImeComposing(e)) return;
                   if (e.key === "Enter") submitNewFolder();
                   if (e.key === "Escape") setIsNewFolderModalOpen(false);
                 }}
@@ -1399,6 +1405,7 @@ function FolderItem({
   const { moveConversation, renameFolder, deleteFolder } = useAppContext();
   const { mode: selectionMode, isMobile } = useSelection();
   const dndDisabled = selectionMode || isMobile;
+  const isAiWorkspace = isAiWorkspaceFolderId(folder.id);
 
   const [{ isOver }, drop] = useDrop(
     () => ({
@@ -1416,7 +1423,7 @@ function FolderItem({
   );
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    if (selectionMode || isMobile) return;
+    if (selectionMode || isMobile || isAiWorkspace) return;
     e.preventDefault();
     setMenuPosition({
       top: Math.max(8, Math.min(e.clientY, window.innerHeight - 240)),
@@ -1478,7 +1485,7 @@ function FolderItem({
             {conversations.length}
           </span>
         </button>
-        {!selectionMode && !isMobile && (
+        {!selectionMode && !isMobile && !isAiWorkspace && (
           <IconTooltip label={t("sidebar.moreActions")}>
             <button
               onClick={toggleMenu}
@@ -1779,7 +1786,7 @@ function DocumentList({
   const { t } = useTranslation();
   const { documentFolders, activeProjectId } = useAppContext();
   // 只看当前项目的文件夹：同名文件夹跨项目互不复用（spec §用户手动维护文件夹）
-  const projectFolders = filterFoldersByProject(documentFolders, activeProjectId);
+  const projectFolders = sortAiWorkspaceFirst(filterFoldersByProject(documentFolders, activeProjectId));
   const uncategorized = uncategorizedInProject(documents, documentFolders, activeProjectId);
   const areAllFoldersOpen = projectFolders.length > 0 && projectFolders.every((folder) => folderOpen[folder.id] ?? false);
 
@@ -2073,6 +2080,9 @@ function DocumentFolderItem({
   const { moveDocument, renameDocumentFolder, deleteDocumentFolder } = useAppContext();
   const { mode: selectionMode, isMobile } = useSelection();
   const dndDisabled = selectionMode || isMobile;
+  // AI 空间受保护：不提供改名 / 删除入口，记忆置顶于其首位（spec ai-workspace）
+  const isAiWorkspace = isAiWorkspaceFolderId(folder.id);
+  const orderedDocuments = isAiWorkspace ? sortMemoryFirst(documents) : documents;
 
   const [{ isOver }, drop] = useDrop(
     () => ({
@@ -2135,7 +2145,9 @@ function DocumentFolderItem({
           onClick={onToggleOpen}
           className="min-w-0 flex-1 flex items-center gap-2 truncate text-left"
         >
-          {isOpen ? (
+          {isAiWorkspace ? (
+            <Sparkles size={14} className={clsx("text-zinc-400", isOver && "text-primary")} />
+          ) : isOpen ? (
             <FolderOpen size={14} className={clsx("text-zinc-400", isOver && "text-primary")} />
           ) : (
             <FolderIcon size={14} className={clsx("text-zinc-400", isOver && "text-primary")} />
@@ -2196,10 +2208,10 @@ function DocumentFolderItem({
             transition={{ duration: 0.2 }}
             className="pl-2 mt-0.5 space-y-0.5 border-l border-zinc-200 dark:border-white/10 ml-3"
           >
-            {documents.length === 0 ? (
+            {orderedDocuments.length === 0 ? (
               <div className="px-4 py-2 text-xs text-zinc-400 italic">{t("sidebar.empty", { defaultValue: "空" })}</div>
             ) : (
-              documents.map((doc) => (
+              orderedDocuments.map((doc) => (
                 <DocumentItem key={doc.id} document={doc} />
               ))
             )}
@@ -2376,6 +2388,12 @@ function DocumentItem({ document: doc }: { document: Document }) {
           )}
           <FileText size={14} className="text-zinc-400 shrink-0" />
           <span className="truncate font-medium">{doc.title}</span>
+          {/* AI 生成的可见标记：权限按出身划，这个标记让「出身」重新看得见（spec agent-write-policy） */}
+          {isAiGenerated(doc) && (
+            <IconTooltip label={t("doc.aiGenerated")}>
+              <Sparkles size={12} className="shrink-0 text-primary" aria-label={t("doc.aiGenerated")} />
+            </IconTooltip>
+          )}
         </div>
         {!selectionMode && !isMobile && (
           <button

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/IconTooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Check, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, MessageSquare, Plus, Settings, Square, Trash2, X } from "lucide-react";
+import { Check, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, MessageSquare, Plus, Settings, Sparkles, Square, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAppContext } from "../data";
@@ -20,6 +20,14 @@ import {
 } from "../ai-chats";
 import { DEFAULT_PROMPT_AI_SIDEBAR, LLMError, chatCompletion, serializeConversation, ChatMessage } from "../llm";
 import { fetchRetrievalHits, formatContextBlock } from "../skills/ask-ai-context";
+import { buildContextHeader, sectionOf, wantsCurrentViewBody, type ViewContext } from "../ai-context";
+import { runWithTools, type SkillDeps } from "../skill-runtime";
+import { createToolExecutor } from "../skills/tool-executor";
+import { AGENT_TOOLS, toolsForLLM } from "@/shared/agent-tools";
+import { chipsForView, type IntentChip } from "../ai-chips";
+import { isImeComposing } from "../ime";
+import { runSkill } from "../skills";
+import { runPlanDoc } from "../skills/run-plan";
 import { generateDocId } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
 import { useTranslation } from "../i18n";
@@ -69,15 +77,10 @@ const aiMarkdownComponents = {
   td: ({ node, ...props }: any) => <td className="px-3 py-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300" {...props} />,
 };
 
-const CONTEXT_CHAR_LIMIT = 12000;
 const MESSAGE_CHAR_LIMIT = 18000;
 
-type ContextSnapshot = {
-  label: string;
-  content: string;
-  truncated: boolean;
-  savedBodyHint: boolean;
-};
+/** 侧栏只向模型声明 read_current_view —— 少而精，模型更稳（design D8）。 */
+const SIDEBAR_TOOLS = toolsForLLM(AGENT_TOOLS.filter((tool) => tool.name === "read_current_view"));
 
 export function AiSidebar() {
   const {
@@ -102,6 +105,10 @@ export function AiSidebar() {
     addDocuments,
     setActiveView,
     setActiveDocId,
+    activeProjectId,
+    annotationsByDoc,
+    setRewriteDialogOpen,
+    refreshDocuments,
   } = useAppContext();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -119,22 +126,35 @@ export function AiSidebar() {
   const selectingHistoryRef = useRef(false);
 
   const hasLLM = !!(llmConfig.endpoint && llmConfig.apiKey && llmConfig.model);
-  const context = useMemo(() => {
-    return buildContextSnapshot({
-      activeView,
-      activeConversationId,
-      activeDocId,
-      conversations,
-      documents,
-      editMode,
-    });
-  }, [activeView, activeConversationId, activeDocId, conversations, documents, editMode]);
+  // 当前视图的完整快照留在内存里；进提示词的只有轻量头，正文经工具按需取（spec ask-ai-context）
+  const view = useMemo(
+    () => buildViewContext({ activeView, activeConversationId, activeDocId, conversations, documents, editMode }),
+    [activeView, activeConversationId, activeDocId, conversations, documents, editMode],
+  );
+  const [contextEnabled, setContextEnabled] = useState(true);
+  const carriesContext = contextEnabled && !!view;
+  // chip 完全由本地状态算出：展示与视图切换零 LLM 调用（spec ai-intent-chips）
+  const [runningChip, setRunningChip] = useState<IntentChip | null>(null);
+  const [armedChip, setArmedChip] = useState<IntentChip | null>(null);
+  const chips = useMemo(
+    () =>
+      chipsForView({
+        activeView,
+        hasConversation: !!activeConversationId,
+        hasDocument: !!activeDocId,
+        hasCommentAnnotations: (annotationsByDoc[activeDocId ?? ""] ?? []).some((a: { comment?: string }) => a.comment),
+        isPlanDoc: !!documents.find((doc) => doc.id === activeDocId)?.aiPlan,
+        hasLLM,
+      }),
+    [activeView, activeConversationId, activeDocId, annotationsByDoc, documents, hasLLM],
+  );
 
   const isCurrentEmpty = currentAiSession.messages.length === 0;
   const canOpenHistory = aiSessions.length > 0;
   const contextKey = `${activeView}:${activeView === "chat" ? activeConversationId ?? "" : activeDocId ?? ""}`;
-  const contextDisplayLabel = context.label
-    ? `${t("aiSidebar.contextPrefix")}: ${context.label}`
+  // 标签如实反映本轮**实际携带**的上下文对象：关掉开关就不是「上下文：某文档」了
+  const contextDisplayLabel = carriesContext
+    ? `${t("aiSidebar.contextPrefix")}: ${view!.title}`
     : t("aiSidebar.noContext");
 
   // 移动端进入不自动聚焦（避免一进来就弹软键盘并顶起面板，调整批次 issue 1）；桌面维持自动聚焦。
@@ -181,7 +201,13 @@ export function AiSidebar() {
 
   const handleSend = async (text = input) => {
     const question = text.trim();
-    if (!question || streamingId) return;
+    if (!question || streamingId || runningChip) return;
+    // 待命中的 chip 把这次输入当作它的参数，而不是当作一轮提问
+    if (armedChip) {
+      setInput("");
+      await dispatchSkill(armedChip, question);
+      return;
+    }
     if (!hasLLM) {
       setSettingsOpen(true);
       toast.info(t("aiSidebar.configureModel"));
@@ -245,14 +271,31 @@ export function AiSidebar() {
     setCurrentAiSession(answeredBase);
 
     try {
-      const augmentedContext = retrievalBlock
-        ? `${context.content}\n\n# 检索到的相关片段\n\n${retrievalBlock}`.trim()
-        : context.content;
+      // eager 只给轻量头（约 200 字符）；正文经 read_current_view 按需取。
+      // 但「总结/翻译/重写本文」这类明确指向当前视图的措辞在这里直接预取正文，
+      // 不赌弱模型会调工具（design 风险项缓解）。
+      const header = carriesContext ? buildContextHeader(view) : "";
+      const eagerBody = carriesContext && wantsCurrentViewBody(question)
+        ? `\n\n# 当前视图正文\n\n${view!.text}`
+        : "";
+      const augmentedContext = [
+        header,
+        eagerBody,
+        retrievalBlock ? `\n\n# 检索到的相关片段\n\n${retrievalBlock}` : "",
+      ].join("").trim();
       const messages = buildLLMMessages(answeredBase.messages, question, augmentedContext);
-      partial = await chatCompletion(
+      const deps: SkillDeps = {
+        apiBase: "",
+        fetchImpl: fetch.bind(window),
+        callLLM: chatCompletion,
         llmConfig,
-        messages,
-        (chunk) => {
+        signal: controller.signal,
+        executeTool: createToolExecutor({ view: makeViewResolver(view) }),
+      };
+      await runWithTools(deps, messages, {
+        // 没有当前视图时不声明工具 —— 声明一个必然失败的工具只会诱导模型去撞墙
+        tools: view ? SIDEBAR_TOOLS : [],
+        onChunk: (chunk) => {
           partial += chunk;
           setCurrentAiSession((session) => ({
             ...session,
@@ -262,8 +305,7 @@ export function AiSidebar() {
             ),
           }));
         },
-        controller.signal,
-      );
+      });
       const doneSession = finishAssistantMessage(answeredBase, assistantMessage.id, partial, controller.signal.aborted ? "aborted" : "done");
       await persist(doneSession);
     } catch (e: any) {
@@ -288,6 +330,103 @@ export function AiSidebar() {
 
   const handleStop = () => {
     abortRef.current?.abort();
+  };
+
+  /**
+   * 点击 chip 即**确定性派发**到对应技能（spec ai-intent-chips）——
+   * 不经模型判断意图，也不为此多一轮 LLM。需要参数的 chip（主题汇总）先「待命」，
+   * 由下一次输入提供参数，仍然不涉及任何意图分类。
+   */
+  const handleChip = async (chip: IntentChip) => {
+    if (chip.disabled || runningChip) return;
+    if (chip.promptKey) {
+      setArmedChip(armedChip?.id === chip.id ? null : chip);
+      inputRef.current?.focus();
+      return;
+    }
+    if (chip.confirmation === "rewrite-dialog") {
+      setRewriteDialogOpen(true); // 复用既有确认框，不另生成计划文档（design D5）
+      return;
+    }
+    if (chip.confirmation === "execute-plan") {
+      await executeCurrentPlan(chip);
+      return;
+    }
+    await dispatchSkill(chip);
+  };
+
+  /**
+   * 执行当前这份计划。全程零 LLM —— 勾选状态与结构化绑定已经说清了要做什么。
+   * 快照 / 文件夹基底失配时抛错并中止，此时数据零变更。
+   */
+  const executeCurrentPlan = async (chip: IntentChip) => {
+    if (!activeDocId) return;
+    setRunningChip(chip);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    try {
+      const result = await runPlanDoc(
+        {
+          apiBase: "",
+          fetchImpl: fetch.bind(window),
+          callLLM: chatCompletion,
+          llmConfig,
+          signal: controller.signal,
+        },
+        activeDocId,
+      );
+      await refreshDocuments();
+      toast.success(t("aiSidebar.chipPlanDone", { done: result.approved, skipped: result.skipped }));
+    } catch (e: any) {
+      toast.error(String(e?.message ?? e));
+    } finally {
+      abortRef.current = null;
+      setRunningChip(null);
+    }
+  };
+
+  const dispatchSkill = async (chip: IntentChip, arg?: string) => {
+    setRunningChip(chip);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    try {
+      const input =
+        chip.id === "conversation-to-doc"
+          ? { conversationId: activeConversationId! }
+          : chip.id === "topic-digest"
+            ? { topic: arg!, ...(activeProjectId ? { projectId: activeProjectId } : {}) }
+            : { ...(activeProjectId ? { projectId: activeProjectId } : {}) };
+
+      let output: any;
+      let failure = "";
+      for await (const event of runSkill(chip.id, input, { llmConfig, signal: controller.signal })) {
+        if (event.type === "result") output = event.output;
+        if (event.type === "error") failure = event.error;
+      }
+      if (failure) throw new Error(failure);
+
+      await refreshDocuments();
+      const docId = output?.docId ?? output?.planDocId;
+      if (docId) {
+        setActiveView("doc");
+        setActiveDocId(docId);
+      }
+      toast.success(
+        t(
+          chip.confirmation === "plan-doc"
+            ? "aiSidebar.chipPlanReady"
+            : chip.id === "topic-digest"
+              ? "aiSidebar.chipDigestReady"
+              : "aiSidebar.chipDocReady",
+        ),
+      );
+    } catch (e: any) {
+      toast.error(String(e?.message ?? e));
+    } finally {
+      abortRef.current = null;
+      setRunningChip(null);
+      setArmedChip(null);
+    }
   };
 
   const handleNewSession = async () => {
@@ -394,7 +533,13 @@ export function AiSidebar() {
 
       {/* 固定区：上下文感知栏 + 未配置模型提醒。移动端全屏时与标题栏一起全程固定，不随键盘 / 消息滚动（issue 2）。 */}
       <div className="shrink-0 px-4">
-        <ContextPill context={context} label={contextDisplayLabel} />
+        <ContextPill
+          label={contextDisplayLabel}
+          enabled={contextEnabled}
+          available={!!view}
+          savedBodyHint={carriesContext && !!view?.hasUnsavedEdit}
+          onToggle={() => setContextEnabled((on) => !on)}
+        />
         {!hasLLM && (
           <div className="mb-4 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
             <p className="font-medium">{t("aiSidebar.configureModel")}</p>
@@ -409,6 +554,10 @@ export function AiSidebar() {
             </Button>
           </div>
         )}
+      </div>
+
+      <div className="shrink-0 px-4">
+        <ChipBar chips={chips} armedId={armedChip?.id ?? null} runningId={runningChip?.id ?? null} onPick={handleChip} />
       </div>
 
       <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-4 pt-1 custom-scrollbar">
@@ -460,13 +609,15 @@ export function AiSidebar() {
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
             onKeyDown={(e) => {
+              // 输入法组合期的 Enter 是「上屏候选词」，不是「发送」——放行给 IME。
+              if (isImeComposing(e)) return;
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
             }}
             rows={isMobile ? 2 : 3}
-            placeholder={t("aiSidebar.placeholder")}
+            placeholder={armedChip?.promptKey ? t(armedChip.promptKey) : t("aiSidebar.placeholder")}
             className="w-full resize-none bg-transparent text-sm leading-6 text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 dark:placeholder:text-zinc-500"
           />
           <div className="flex items-end gap-2">
@@ -552,20 +703,95 @@ export function AiSidebar() {
   );
 }
 
-function ContextPill({ context, label }: { context: ContextSnapshot; label: string }) {
+/**
+ * 上下文控件（spec ask-ai-context）：由被动显示升级为可开关。
+ * 知情权保留（标签如实反映本轮携带什么），控制权新增（用户可以关掉）。
+ * 关掉后模型仍可经 read_current_view 按需取用 —— 关的是 eager 注入，不是能力。
+ */
+function ContextPill({
+  label,
+  enabled,
+  available,
+  savedBodyHint,
+  onToggle,
+}: {
+  label: string;
+  enabled: boolean;
+  available: boolean;
+  savedBodyHint: boolean;
+  onToggle: () => void;
+}) {
   const { t } = useTranslation();
+  const on = enabled && available;
   return (
     <div className="mb-4">
-      <div className="flex min-h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-600 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:shadow-none">
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#35B86B]" aria-hidden="true" />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        disabled={!available}
+        onClick={onToggle}
+        title={t(on ? "aiSidebar.contextOn" : "aiSidebar.contextOff")}
+        className="flex min-h-10 w-full items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm text-zinc-600 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:bg-zinc-50 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:shadow-none dark:hover:bg-white/10 dark:disabled:hover:bg-white/5"
+      >
+        <span
+          className={clsx("h-2.5 w-2.5 shrink-0 rounded-full", on ? "bg-[#35B86B]" : "bg-zinc-300 dark:bg-zinc-600")}
+          aria-hidden="true"
+        />
         <span className="min-w-0 flex-1 truncate">{label}</span>
-      </div>
-      {context.truncated && (
-        <p className="mt-1 text-xs text-destructive">{t("aiSidebar.contextTruncated")}</p>
-      )}
-      {context.savedBodyHint && (
+        {available && (
+          <span className="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">
+            {t(on ? "aiSidebar.contextOn" : "aiSidebar.contextOff")}
+          </span>
+        )}
+      </button>
+      {savedBodyHint && (
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{t("aiSidebar.savedBodyHint")}</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * 意图 chip 区（spec ai-intent-chips）：让用户发现 AI 能做什么。
+ * 前置条件不满足时呈现为不可用并说明原因，而不是点了才失败。
+ */
+function ChipBar({
+  chips,
+  armedId,
+  runningId,
+  onPick,
+}: {
+  chips: IntentChip[];
+  armedId: string | null;
+  runningId: string | null;
+  onPick: (chip: IntentChip) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="mb-4 flex flex-wrap gap-1.5">
+      {chips.map((chip) => {
+        const running = runningId === chip.id;
+        return (
+          <button
+            key={chip.id}
+            type="button"
+            disabled={chip.disabled || !!runningId}
+            onClick={() => onPick(chip)}
+            title={chip.disabledReasonKey ? t(chip.disabledReasonKey) : undefined}
+            className={clsx(
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
+              "disabled:cursor-not-allowed disabled:opacity-45",
+              armedId === chip.id
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/10",
+            )}
+          >
+            {running ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            {running ? t("aiSidebar.chipRunning") : t(chip.labelKey)}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -744,33 +970,38 @@ function MessageBubble({
   );
 }
 
-function buildContextSnapshot(params: {
+function buildViewContext(params: {
   activeView: "chat" | "doc";
   activeConversationId: string | null;
   activeDocId: string | null;
   conversations: any[];
   documents: any[];
   editMode: string;
-}): ContextSnapshot {
+}): ViewContext | null {
   if (params.activeView === "chat") {
     const conv = params.conversations.find((item) => item.id === params.activeConversationId);
-    if (!conv) return { label: "", content: "", truncated: false, savedBodyHint: false };
-    const truncated = truncateMiddle(serializeConversation(conv), CONTEXT_CHAR_LIMIT);
-    return {
-      label: conv.title,
-      content: truncated.text,
-      truncated: truncated.truncated,
-      savedBodyHint: false,
-    };
+    if (!conv) return null;
+    return { kind: "chat", title: conv.title, text: serializeConversation(conv), hasUnsavedEdit: false };
   }
   const doc = params.documents.find((item) => item.id === params.activeDocId);
-  if (!doc) return { label: "", content: "", truncated: false, savedBodyHint: false };
-  const truncated = truncateMiddle(doc.body ?? "", CONTEXT_CHAR_LIMIT);
+  if (!doc) return null;
+  // 编辑模式下取的是**已保存**正文（与既有语义一致），因此明确告知模型有未保存的编辑
+  return { kind: "doc", title: doc.title, text: doc.body ?? "", hasUnsavedEdit: params.editMode === "edit" };
+}
+
+/**
+ * `read_current_view` 的执行体。按节取用返回该节**完整**文本，不做中段截断 ——
+ * 绕开中段腰斩正是把正文改成按需取用的顺带收益。
+ */
+function makeViewResolver(view: ViewContext | null) {
   return {
-    label: doc.title,
-    content: truncated.text,
-    truncated: truncated.truncated,
-    savedBodyHint: params.editMode === "edit",
+    read: async (section?: string) => {
+      if (!view) return null;
+      if (!section) return { kind: view.kind, title: view.title, text: view.text };
+      const found = sectionOf(view.text, section);
+      if (found === null) throw new Error(`《${view.title}》里没有名为「${section}」的一节`);
+      return { kind: view.kind, title: `${view.title} · ${section}`, text: found };
+    },
   };
 }
 
@@ -811,16 +1042,6 @@ function finishAssistantMessage(
     messages: session.messages.map((message) =>
       message.id === messageId ? { ...message, content, status } : message
     ),
-  };
-}
-
-function truncateMiddle(text: string, limit: number): { text: string; truncated: boolean } {
-  if (text.length <= limit) return { text, truncated: false };
-  const keep = Math.floor((limit - 40) / 2);
-  const removed = text.length - keep * 2;
-  return {
-    text: `${text.slice(0, keep)}\n\n...（已截断 ${removed} 字）...\n\n${text.slice(-keep)}`,
-    truncated: true,
   };
 }
 

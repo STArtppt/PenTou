@@ -17,6 +17,36 @@ const mocks = vi.hoisted(() => ({
     info: vi.fn(),
     success: vi.fn(),
   },
+  /** 记录每轮实际发给模型的 messages，并按队列回放模型响应（含工具调用）。 */
+  llm: {
+    seen: [] as any[][],
+    queue: [] as { content: string; toolCalls: any[] }[],
+  },
+  /** 记录 runSkill 的派发，验证「点击即确定性派发」而不经模型判断意图。 */
+  skills: {
+    dispatched: [] as { skillId: string; input: any }[],
+    result: {} as any,
+    fail: "" as string,
+  },
+}));
+
+vi.mock("../skills/run-plan", () => ({
+  runPlanDoc: async (_deps: unknown, docId: string) => {
+    mocks.skills.dispatched.push({ skillId: "run-plan", input: { docId } });
+    if (mocks.skills.fail) throw new Error(mocks.skills.fail);
+    return { approved: 5, skipped: 3, createdFolders: [], assigned: [] };
+  },
+}));
+
+vi.mock("../skills", () => ({
+  runSkill: (skillId: string, input: any) => {
+    mocks.skills.dispatched.push({ skillId, input });
+    const { result, fail } = mocks.skills;
+    return (async function* () {
+      if (fail) yield { type: "error", error: fail };
+      else yield { type: "result", output: result };
+    })();
+  },
 }));
 
 vi.mock("../data", () => ({
@@ -36,10 +66,12 @@ vi.mock("./ImageLightbox", () => ({
 vi.mock("../llm", () => ({
   DEFAULT_PROMPT_AI_SIDEBAR: "sys",
   LLMError: class LLMError extends Error {},
-  serializeConversation: () => "conv",
-  chatCompletion: async (_cfg: unknown, _messages: unknown, onChunk?: (c: string) => void) => {
-    onChunk?.("answer");
-    return "answer";
+  serializeConversation: (conv: any) => conv?.serialized ?? "conv",
+  chatCompletion: async (_cfg: unknown, messages: any[], opts?: { onChunk?: (c: string) => void }) => {
+    mocks.llm.seen.push(messages);
+    const next = mocks.llm.queue.shift() ?? { content: "answer", toolCalls: [] };
+    if (next.content) opts?.onChunk?.(next.content);
+    return next;
   },
 }));
 
@@ -108,6 +140,11 @@ describe("AiSidebar", () => {
     mocks.toast.error.mockClear();
     mocks.toast.info.mockClear();
     mocks.toast.success.mockClear();
+    mocks.llm.seen = [];
+    mocks.llm.queue = [];
+    mocks.skills.dispatched = [];
+    mocks.skills.result = { docId: "doc_new" };
+    mocks.skills.fail = "";
     mocks.appContext = {
       aiSidebarOpen: true,
       setAiSidebarOpen: vi.fn(),
@@ -132,6 +169,10 @@ describe("AiSidebar", () => {
       addDocuments: vi.fn().mockResolvedValue(undefined),
       setActiveView: vi.fn(),
       setActiveDocId: vi.fn(),
+      activeProjectId: null,
+      annotationsByDoc: {},
+      setRewriteDialogOpen: vi.fn(),
+      refreshDocuments: vi.fn().mockResolvedValue(undefined),
       language: "en",
     };
   });
@@ -226,6 +267,360 @@ describe("AiSidebar", () => {
     expect(paragraphs[0]?.className).toContain("mb-3");
     expect(orderedList?.className).toContain("space-y-1.5");
     expect(markdownRoot).not.toBeNull();
+    unmount();
+  });
+
+  // 中文输入法下敲英文单词，Enter 是「上屏候选」而不是「发送」。组合期的 keydown 必须整条放行，
+  // 否则用户每确认一次拼音就误发一条消息（半截草稿还留在输入框里）。
+  it("输入法组合期的 Enter 只上屏候选，不发送消息", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.setCurrentAiSession = (arg: unknown) => {
+      mocks.appContext.currentAiSession =
+        typeof arg === "function" ? (arg as (s: AiChatSession) => AiChatSession)(mocks.appContext.currentAiSession) : arg;
+    };
+    const { container, unmount } = await renderSidebar();
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea")!;
+
+    await act(async () => {
+      textarea.value = "hello";
+      Simulate.change(textarea);
+    });
+
+    // 组合期：标准的 isComposing（Chrome/Firefox）与老规范哨兵 keyCode 229（Safari/部分安卓）都要挡住。
+    await act(async () => {
+      Simulate.keyDown(textarea, { key: "Enter", isComposing: true } as never);
+      Simulate.keyDown(textarea, { key: "Enter", keyCode: 229 });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(mocks.llm.seen).toHaveLength(0);
+    expect(textarea.value).toBe("hello");
+
+    // 组合结束后的同一个键才是发送。
+    await act(async () => {
+      Simulate.keyDown(textarea, { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(mocks.llm.seen).toHaveLength(1);
+
+    unmount();
+  });
+
+  // ── 上下文按需加载（spec ask-ai-context）────────────────────────────────────
+
+  const LONG_DOC_BODY = ["# 设计稿", "", "## 背景", "", "背景独有词：翡翠。".repeat(200), "", "## 取舍", "", "取舍独有词：琥珀。"].join("\n");
+
+  function mountDocView() {
+    mocks.appContext.setCurrentAiSession = (arg: unknown) => {
+      mocks.appContext.currentAiSession =
+        typeof arg === "function" ? (arg as (s: AiChatSession) => AiChatSession)(mocks.appContext.currentAiSession) : arg;
+    };
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.currentAiSession = createEmptyAiChatSession();
+    mocks.appContext.activeView = "doc";
+    mocks.appContext.activeConversationId = null;
+    mocks.appContext.activeDocId = "doc_1";
+    mocks.appContext.documents = [{ id: "doc_1", title: "设计稿", body: LONG_DOC_BODY }];
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ hits: [] }) })) as unknown as typeof fetch);
+  }
+
+  async function ask(container: HTMLElement, question: string) {
+    const textarea = container.querySelector("textarea")!;
+    await act(async () => {
+      (textarea as HTMLTextAreaElement).value = question;
+      Simulate.change(textarea);
+    });
+    await act(async () => {
+      Simulate.keyDown(textarea, { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  }
+
+  const systemOf = (round: number) => mocks.llm.seen[round]?.[0]?.content ?? "";
+
+  it("无关提问不付整篇正文的代价，但仍能看到标题与大纲", async () => {
+    mountDocView();
+    const { container, unmount } = await renderSidebar();
+
+    await ask(container, "现在几点了？");
+
+    const system = systemOf(0);
+    expect(system).not.toContain("翡翠");
+    expect(system).toContain("文档《设计稿》");
+    expect(system).toContain("- 背景");
+    vi.unstubAllGlobals();
+    unmount();
+  });
+
+  it("模型可按需取正文，并能只取某一节（不腰斩、不串节）", async () => {
+    mountDocView();
+    mocks.llm.queue = [
+      { content: "", toolCalls: [{ id: "c1", name: "read_current_view", arguments: '{"section":"取舍"}' }] },
+      { content: "取舍那节讲的是……", toolCalls: [] },
+    ];
+    const { container, unmount } = await renderSidebar();
+
+    await ask(container, "第二节在讲什么");
+
+    const toolReply = mocks.llm.seen[1].at(-1);
+    expect(toolReply.role).toBe("tool");
+    expect(toolReply.content).toContain("琥珀");
+    expect(toolReply.content).not.toContain("翡翠");
+    expect(mocks.appContext.currentAiSession.messages.at(-1).content).toBe("取舍那节讲的是……");
+    vi.unstubAllGlobals();
+    unmount();
+  });
+
+  it("明确指向当前视图的措辞在派发层直接预取正文，不赌模型会调工具", async () => {
+    mountDocView();
+    const { container, unmount } = await renderSidebar();
+
+    await ask(container, "总结这篇文档");
+
+    expect(systemOf(0)).toContain("翡翠");
+    vi.unstubAllGlobals();
+    unmount();
+  });
+
+  it("关闭上下文开关后本轮不 eager 注入，连轻量头也不给", async () => {
+    mountDocView();
+    const { container, unmount } = await renderSidebar();
+
+    const toggle = container.querySelector<HTMLButtonElement>('button[role="switch"]')!;
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    await act(async () => { Simulate.click(toggle); });
+    expect(container.querySelector('button[role="switch"]')!.getAttribute("aria-checked")).toBe("false");
+
+    await ask(container, "总结这篇文档");
+
+    expect(systemOf(0)).not.toContain("翡翠");
+    expect(systemOf(0)).not.toContain("设计稿");
+    vi.unstubAllGlobals();
+    unmount();
+  });
+
+  it("上下文控件如实反映携带对象；没有视图时不可点", async () => {
+    mountDocView();
+    const { container, unmount } = await renderSidebar();
+    expect(container.textContent).toContain("设计稿");
+
+    await act(async () => { Simulate.click(container.querySelector<HTMLButtonElement>('button[role="switch"]')!); });
+    expect(container.querySelector<HTMLButtonElement>('button[role="switch"]')!.textContent).toContain("Context: none");
+
+    vi.unstubAllGlobals();
+    unmount();
+
+    mocks.appContext.activeDocId = null;
+    mocks.appContext.documents = [];
+    const empty = await renderSidebar();
+    expect(empty.container.querySelector<HTMLButtonElement>('button[role="switch"]')!.disabled).toBe(true);
+    empty.unmount();
+  });
+
+  it("检索失败时降级为仅用轻量头作答，不报错中断", async () => {
+    mountDocView();
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("network down"); }) as unknown as typeof fetch);
+    const { container, unmount } = await renderSidebar();
+
+    await ask(container, "这份文档大概在讲什么");
+
+    const last = mocks.appContext.currentAiSession.messages.at(-1);
+    expect(last.status).toBe("done");
+    expect(last.content).toBe("answer");
+    expect(systemOf(0)).toContain("文档《设计稿》");
+    vi.unstubAllGlobals();
+    unmount();
+  });
+
+  // ── 意图 chip（spec ai-intent-chips）────────────────────────────────────────
+
+  const chipButtons = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll("button")).filter((b) =>
+      /Turn into a document|Digest a topic|Organize this project|Rewrite from annotations/.test(b.textContent ?? ""),
+    );
+
+  it("会话视图展示两个 chip，且展示本身不产生任何 LLM 调用", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    const { container, unmount } = await renderSidebar();
+
+    expect(chipButtons(container).map((b) => b.textContent)).toEqual([
+      "Turn into a document",
+      "Digest a topic",
+    ]);
+    expect(mocks.llm.seen).toEqual([]);
+    expect(mocks.skills.dispatched).toEqual([]);
+    unmount();
+  });
+
+  it("文档视图展示另外两个 chip；无批注时重写 chip 不可用并说明原因", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.activeView = "doc";
+    mocks.appContext.activeDocId = "doc_1";
+    mocks.appContext.documents = [{ id: "doc_1", title: "设计稿", body: "# 稿" }];
+    const { container, unmount } = await renderSidebar();
+
+    const chips = chipButtons(container);
+    expect(chips.map((b) => b.textContent)).toEqual([
+      "Organize this project's folders",
+      "Rewrite from annotations",
+    ]);
+    expect(chips[1].disabled).toBe(true);
+    expect(chips[1].getAttribute("title")).toBe("This document has no annotations with comments yet");
+    expect(mocks.llm.seen).toEqual([]);
+    unmount();
+  });
+
+  it("点击 chip 确定性派发对应技能，不先问模型意图", async () => {
+    mocks.appContext.setCurrentAiSession = (arg: unknown) => {
+      mocks.appContext.currentAiSession =
+        typeof arg === "function" ? (arg as (s: AiChatSession) => AiChatSession)(mocks.appContext.currentAiSession) : arg;
+    };
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    const { container, unmount } = await renderSidebar();
+
+    await act(async () => {
+      Simulate.click(chipButtons(container)[0]);
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(mocks.skills.dispatched).toEqual([
+      { skillId: "conversation-to-doc", input: { conversationId: "conv_1" } },
+    ]);
+    expect(mocks.llm.seen).toEqual([]); // 全程零 LLM 调用
+    expect(mocks.appContext.setActiveDocId).toHaveBeenCalledWith("doc_new");
+    expect(mocks.appContext.refreshDocuments).toHaveBeenCalled();
+    unmount();
+  });
+
+  it("转文档 chip 一步出结果，不多插一层计划确认", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    const { container, unmount } = await renderSidebar();
+
+    await act(async () => {
+      Simulate.click(chipButtons(container)[0]);
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    // 一次点击 → 一次派发 → 直接跳到产物，中间没有任何额外确认步骤
+    expect(mocks.skills.dispatched).toHaveLength(1);
+    expect(mocks.appContext.setActiveView).toHaveBeenCalledWith("doc");
+    expect(mocks.toast.success).toHaveBeenCalledWith("Document created");
+    unmount();
+  });
+
+  it("主题汇总 chip 先待命，下一次输入作为主题派发（仍不经模型判断）", async () => {
+    mocks.appContext.setCurrentAiSession = (arg: unknown) => {
+      mocks.appContext.currentAiSession =
+        typeof arg === "function" ? (arg as (s: AiChatSession) => AiChatSession)(mocks.appContext.currentAiSession) : arg;
+    };
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    const { container, unmount } = await renderSidebar();
+
+    await act(async () => { Simulate.click(chipButtons(container)[1]); });
+    expect(mocks.skills.dispatched).toEqual([]);
+    expect(container.querySelector("textarea")!.getAttribute("placeholder")).toBe("Which topic should I gather?");
+
+    const textarea = container.querySelector("textarea")!;
+    await act(async () => {
+      (textarea as HTMLTextAreaElement).value = "检索方案";
+      Simulate.change(textarea);
+    });
+    await act(async () => {
+      Simulate.keyDown(textarea, { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(mocks.skills.dispatched).toEqual([{ skillId: "topic-digest", input: { topic: "检索方案" } }]);
+    expect(mocks.llm.seen).toEqual([]); // 这次输入没有被当成一轮提问
+    unmount();
+  });
+
+  it("「根据批注重写」复用既有确认框，不派发技能也不生成计划文档", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.activeView = "doc";
+    mocks.appContext.activeDocId = "doc_1";
+    mocks.appContext.documents = [{ id: "doc_1", title: "设计稿", body: "# 稿" }];
+    mocks.appContext.annotationsByDoc = { doc_1: [{ id: "a1", comment: "改这里" }] };
+    const { container, unmount } = await renderSidebar();
+
+    await act(async () => { Simulate.click(chipButtons(container)[1]); });
+
+    expect(mocks.appContext.setRewriteDialogOpen).toHaveBeenCalledWith(true);
+    expect(mocks.skills.dispatched).toEqual([]);
+    unmount();
+  });
+
+  it("整理目录 chip 派发后提示计划已生成，并跳到计划文档", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.activeView = "doc";
+    mocks.appContext.activeDocId = "doc_1";
+    mocks.appContext.documents = [{ id: "doc_1", title: "设计稿", body: "# 稿" }];
+    mocks.skills.result = { planDocId: "doc_plan" };
+    const { container, unmount } = await renderSidebar();
+
+    await act(async () => {
+      Simulate.click(chipButtons(container)[0]);
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(mocks.skills.dispatched[0].skillId).toBe("doc-folder-organize");
+    expect(mocks.appContext.setActiveDocId).toHaveBeenCalledWith("doc_plan");
+    expect(mocks.toast.success).toHaveBeenCalledWith("Plan ready — tick the items you want, then run it");
+    unmount();
+  });
+
+  it("技能失败时如实报错，不静默吞掉", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.skills.fail = "没有检索到与「x」相关的内容";
+    const { container, unmount } = await renderSidebar();
+
+    await act(async () => {
+      Simulate.click(chipButtons(container)[0]);
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(mocks.toast.error).toHaveBeenCalledWith("没有检索到与「x」相关的内容");
+    unmount();
+  });
+
+  it("打开计划文档时出现执行入口，点击后按勾选执行且全程零 LLM", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.activeView = "doc";
+    mocks.appContext.activeDocId = "doc_plan";
+    mocks.appContext.documents = [{ id: "doc_plan", title: "整理计划", body: "- [x] a", aiPlan: '{"items":[]}' }];
+    const { container, unmount } = await renderSidebar();
+
+    const runButton = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("Run the ticked items"),
+    )!;
+    expect(runButton).toBeDefined();
+
+    await act(async () => {
+      Simulate.click(runButton);
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(mocks.skills.dispatched).toEqual([{ skillId: "run-plan", input: { docId: "doc_plan" } }]);
+    expect(mocks.llm.seen).toEqual([]);
+    expect(mocks.toast.success).toHaveBeenCalledWith("Done: 5 applied, 3 left unticked");
+    unmount();
+  });
+
+  it("执行计划失败时如实报错（快照失配等）", async () => {
+    mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
+    mocks.appContext.activeView = "doc";
+    mocks.appContext.activeDocId = "doc_plan";
+    mocks.appContext.documents = [{ id: "doc_plan", title: "整理计划", body: "", aiPlan: '{"items":[]}' }];
+    mocks.skills.fail = "《A》在计划生成之后被改过，计划已过期。请让 AI 重新生成一份计划。";
+    const { container, unmount } = await renderSidebar();
+
+    await act(async () => {
+      Simulate.click(
+        Array.from(container.querySelectorAll("button")).find((b) => b.textContent?.includes("Run the ticked items"))!,
+      );
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(mocks.toast.error).toHaveBeenCalledWith(mocks.skills.fail);
     unmount();
   });
 });

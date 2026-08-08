@@ -17,6 +17,9 @@ const SettingsModal = lazy(() =>
 const SearchPalette = lazy(() =>
   import("./components/SearchPalette").then(m => ({ default: m.SearchPalette }))
 );
+const RewriteConfirmDialog = lazy(() =>
+  import("./components/RewriteConfirmDialog").then(m => ({ default: m.RewriteConfirmDialog }))
+);
 const AiSidebar = lazy(() =>
   import("./components/AiSidebar").then(m => ({ default: m.AiSidebar }))
 );
@@ -34,7 +37,13 @@ function AppContent() {
     setSettingsOpen,
     setAiSidebarOpen,
     setMobileNavOpen,
+    rewriteDialogOpen,
+    setRewriteDialogOpen,
+    documents,
+    activeDocId,
+    annotationsByDoc,
   } = useAppContext();
+  const activeDoc = documents.find((doc) => doc.id === activeDocId) ?? null;
   const isMobile = useIsMobile();
   const [drawerEverOpened, setDrawerEverOpened] = useState(false);
   const [settingsEverOpened, setSettingsEverOpened] = useState(false);
@@ -256,6 +265,15 @@ function AppContent() {
           {(primed || settingsEverOpened) && <SettingsModal />}
           {(primed || searchEverOpened) && <SearchPalette />}
           {(primed || aiSidebarEverOpened) && <AiSidebar />}
+          {/* 批注重写的确认框在应用层渲染，由 AI 侧栏的 chip 拉起（spec ai-intent-chips） */}
+          {rewriteDialogOpen && activeDoc && (
+            <RewriteConfirmDialog
+              doc={activeDoc}
+              annotations={(annotationsByDoc[activeDoc.id] ?? []).filter((a) => a.comment)}
+              onClose={() => setRewriteDialogOpen(false)}
+              onSuccess={() => setRewriteDialogOpen(false)}
+            />
+          )}
         </Suspense>
         {/* 统一 top-center（startist 默认）：顶部居中天然避开右下 Ask AI FAB（spec §5 I4） */}
         <Toaster position="top-center" />

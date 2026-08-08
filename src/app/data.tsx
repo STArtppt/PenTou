@@ -7,6 +7,7 @@ import {
 } from "./llm-settings";
 import { generateDocId, generateAnnotationId } from "./doc-utils";
 import { resolveMoveProjectId } from "./document-projects";
+import { isAiWorkspaceFolderId, sortAiWorkspaceFirst } from "../shared/ai-workspace";
 import {
   AiChatSession,
   createEmptyAiChatSession,
@@ -95,6 +96,8 @@ export interface Document {
   importedFrom?: string;
   importedAt?: string;
   versionType?: VersionType;
+  /** 行动计划的结构化绑定（单行 JSON）。只有 AI 空间里的计划文档才有（spec agent-write-policy）。 */
+  aiPlan?: string;
 }
 
 export interface DocumentFolder {
@@ -307,6 +310,14 @@ interface AppContextType {
   addDocumentFolder: (name: string) => Promise<void>;
   renameDocumentFolder: (id: string, name: string) => Promise<void>;
   deleteDocumentFolder: (id: string) => Promise<void>;
+  /**
+   * 「根据批注重写」的确认框开关（spec ai-intent-chips）。由 AI 侧栏的 chip 拉起，
+   * 在应用层渲染 —— 触发方与渲染方分离，收编顶栏按钮后不必把对话框留在它那里。
+   */
+  rewriteDialogOpen: boolean;
+  setRewriteDialogOpen: (open: boolean) => void;
+  /** 重新拉取文档与文档文件夹（技能直接打 `/api/*` 写盘后调用）。 */
+  refreshDocuments: () => Promise<void>;
   loadAnnotations: (docId: string) => Promise<void>;
   upsertAnnotation: (anno: Annotation) => Promise<void>;
   deleteAnnotation: (docId: string, annoId: string) => Promise<void>;
@@ -373,6 +384,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
   const [documents, setDocuments] = useState<Document[]>([]);
   const [documentFolders, setDocumentFolders] = useState<DocumentFolder[]>([]);
+  const [rewriteDialogOpen, setRewriteDialogOpen] = useState(false);
   const [documentProjects, setDocumentProjects] = useState<DocumentProject[]>([]);
   // 选中项目只存内存：切换视图再切回保持，刷新页面回默认目录（spec §项目切换选择器）
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -432,8 +444,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         resolveInitialConversationId(convs, localStorage.getItem("pentou-active-conversation")),
       );
       setDocuments(docsData as Document[]);
-      setDocumentFolders(docFoldersData as DocumentFolder[]);
-      setDocumentProjects(docProjectsData as DocumentProject[]);
+      setDocumentFolders(sortAiWorkspaceFirst(docFoldersData as DocumentFolder[]));
+      const projects = docProjectsData as DocumentProject[];
+      setDocumentProjects(projects);
+      setActiveProjectIdState(
+        resolveInitialProjectId(projects, localStorage.getItem("pentou-active-project")),
+      );
     }).finally(() => setIsLoading(false));
     // 嵌入后端配置：独立拉取（含 enabled/phase），供搜索浮层决定是否走 hybrid（spec §4.7）。
     apiFetch("/api/search/config")
@@ -880,8 +896,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [documentFolders, documents, updateDocument]);
 
   const saveDocumentFolders = useCallback(async (newFolders: DocumentFolder[]) => {
-    setDocumentFolders(newFolders);
-    await apiFetch("/api/document-folders", { method: "POST", body: JSON.stringify(newFolders) });
+    // AI 空间置顶于所属项目首位（spec ai-workspace）；服务端读时注入、写时剔除，
+    // 这里原样回传即可，它只需要在客户端状态里保持在前面。
+    const ordered = sortAiWorkspaceFirst(newFolders);
+    setDocumentFolders(ordered);
+    await apiFetch("/api/document-folders", { method: "POST", body: JSON.stringify(ordered) });
   }, []);
 
   const addDocumentFolder = useCallback(async (name: string) => {
@@ -891,6 +910,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [activeProjectId, documentFolders, saveDocumentFolders]);
 
   // ── Document project operations（spec document-projects）─────────────────────
+
+  /** 技能经 `/api/*` 直接写盘，客户端状态需要重新拉一次才看得见（spec ai-intent-chips）。 */
+  const refreshDocuments = useCallback(async () => {
+    try {
+      const [docsData, foldersData] = await Promise.all([
+        apiFetch("/api/documents?fields=meta"),
+        apiFetch("/api/document-folders"),
+      ]);
+      setDocuments(docsData as Document[]);
+      setDocumentFolders(sortAiWorkspaceFirst(foldersData as DocumentFolder[]));
+    } catch (e) {
+      console.error({ module: "data", op: "refreshDocuments", err: e });
+    }
+  }, []);
 
   const refreshDocumentProjects = useCallback(async () => {
     try {
@@ -939,10 +972,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [documentFolders]);
 
   const renameDocumentFolder = useCallback(async (id: string, name: string) => {
+    if (isAiWorkspaceFolderId(id)) return; // 受保护（spec ai-workspace）；UI 也不提供入口
     await saveDocumentFolders(documentFolders.map((f) => (f.id === id ? { ...f, name } : f)));
   }, [documentFolders, saveDocumentFolders]);
 
   const deleteDocumentFolder = useCallback(async (id: string) => {
+    if (isAiWorkspaceFolderId(id)) return; // 受保护（spec ai-workspace）
     const affectedDocs = documents.filter((d) => d.folderId === id);
     setDocuments((prev) => prev.map((d) => (d.folderId === id ? { ...d, folderId: null } : d)));
     for (const doc of affectedDocs) {
@@ -1114,6 +1149,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addDocumentFolder,
         renameDocumentFolder,
         deleteDocumentFolder,
+        rewriteDialogOpen,
+        setRewriteDialogOpen,
+        refreshDocuments,
         loadAnnotations,
         upsertAnnotation,
         deleteAnnotation,

@@ -14,6 +14,7 @@ import { useAppContext } from "../data";
 import { useTranslation } from "../i18n";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { formatDisplayMonthDay } from "../utils/dateFormat";
+import { isImeComposing } from "../ime";
 
 interface SnippetPart { text: string; matched: boolean; }
 interface SearchHit {
@@ -201,6 +202,9 @@ export function SearchPalette() {
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    // 输入法组合期整条快捷键链都让位：Enter 是上屏候选、上下键是翻候选页、Esc 是取消组合，
+    // 都不该被解读成「选中结果 / 移动高亮 / 关闭搜索」。
+    if (isImeComposing(e)) return;
     if (e.key === "Escape") { e.preventDefault(); close(); return; }
     if (hits.length === 0) return;
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => (i + 1) % hits.length); }
