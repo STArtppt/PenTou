@@ -5,12 +5,13 @@
  *   - `api`       调 Pentou `/api/*` 取数据
  *   - `llm`       在客户端调用 LLM（复用 src/app/llm.ts）
  *   - `transform` 纯变换（拼上下文 / 套 prompt）
+ *   - `tool`      向模型声明工具，模型请求的调用**由客户端执行并打 `/api/*`**
  * 逐步产出进度事件以便 UI 展示；执行前用输入 schema 校验入参。
  * 不依赖服务端 LLM 通道 —— LLM 由消费者自备（内部 runner=客户端 llm.ts；外部 agent=自带）。
  */
-import type { LLMConfig, ChatMessage } from "./llm";
+import type { LLMConfig, ChatMessage, ChatRequestOptions, LLMResult, ToolDef } from "./llm";
 
-export type StepKind = "api" | "llm" | "transform";
+export type StepKind = "api" | "llm" | "transform" | "tool";
 
 export interface RunStep {
   id: string;
@@ -43,11 +44,22 @@ export interface SkillDeps {
   callLLM: (
     cfg: LLMConfig,
     messages: ChatMessage[],
-    onChunk?: (c: string) => void,
-    signal?: AbortSignal,
-  ) => Promise<string>;
+    opts?: ChatRequestOptions,
+  ) => Promise<LLMResult>;
   llmConfig: LLMConfig;
   signal?: AbortSignal;
+  /**
+   * 执行一次模型请求的工具调用。实现方**必须**只经 `/api/*` 取数改数，
+   * 不得回落到任何服务端 LLM 通道。未注入时 `tool` 步骤会明确报错而非静默跳过。
+   */
+  executeTool?: (call: ExecutableToolCall, deps: SkillDeps) => Promise<unknown>;
+}
+
+/** 一次待执行的工具调用：`arguments` 已从模型的 JSON 字符串解析为对象。 */
+export interface ExecutableToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
 }
 
 export interface RunCtx {
@@ -116,6 +128,84 @@ export function validateInput(
     }
   }
   return { ok: true };
+}
+
+export interface ToolRoundOptions {
+  tools: ToolDef[];
+  /** 工具往返上限；到顶后再要工具就停手并返回已有文本，避免无界循环。 */
+  maxRounds?: number;
+  onChunk?: (chunk: string) => void;
+}
+
+export interface ToolRunResult {
+  content: string;
+  /** 本次执行过的工具调用与其结果，供技能落到 output / UI 展示。 */
+  calls: { name: string; arguments: Record<string, unknown>; result?: unknown; error?: string }[];
+}
+
+const DEFAULT_MAX_TOOL_ROUNDS = 4;
+
+/** 模型给的 arguments 是字符串；坏 JSON 不该炸掉整轮，退回空对象让工具自己校验。 */
+function parseToolArguments(raw: string): Record<string, unknown> {
+  if (!raw.trim()) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * 带工具的对话往返（spec skill-runtime「工具执行不经服务端 LLM」）。
+ * 模型请求工具 → `deps.executeTool` 在客户端执行并打 `/api/*` → 结果作为 role="tool" 回灌 → 继续，
+ * 直到模型不再要工具或触达 `maxRounds`。
+ */
+export async function runWithTools(
+  deps: SkillDeps,
+  messages: ChatMessage[],
+  opts: ToolRoundOptions,
+): Promise<ToolRunResult> {
+  const maxRounds = opts.maxRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
+  const conversation: ChatMessage[] = [...messages];
+  const calls: ToolRunResult["calls"] = [];
+
+  for (let round = 0; ; round++) {
+    const lastRound = round >= maxRounds;
+    const { content, toolCalls } = await deps.callLLM(deps.llmConfig, conversation, {
+      signal: deps.signal,
+      onChunk: opts.onChunk,
+      // 最后一轮撤掉工具声明：模型只能给文本，循环必然收敛。
+      ...(lastRound ? {} : { tools: opts.tools }),
+    });
+    if (lastRound || !toolCalls.length) return { content, calls };
+
+    if (!deps.executeTool) throw new Error("tool step requires deps.executeTool");
+
+    conversation.push({
+      role: "assistant",
+      content,
+      tool_calls: toolCalls.map((call) => ({
+        id: call.id,
+        type: "function" as const,
+        function: { name: call.name, arguments: call.arguments },
+      })),
+    });
+
+    for (const call of toolCalls) {
+      const parsed: ExecutableToolCall = { id: call.id, name: call.name, arguments: parseToolArguments(call.arguments) };
+      try {
+        const result = await deps.executeTool(parsed, deps);
+        calls.push({ name: parsed.name, arguments: parsed.arguments, result });
+        conversation.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result ?? null) });
+      } catch (e) {
+        // 工具失败回灌给模型而不是中止：模型可以改用别的工具或如实说明做不到。
+        const error = e instanceof Error ? e.message : String(e);
+        calls.push({ name: parsed.name, arguments: parsed.arguments, error });
+        conversation.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error }) });
+      }
+    }
+  }
 }
 
 /**

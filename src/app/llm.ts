@@ -36,10 +36,55 @@ export class LLMError extends Error {
   }
 }
 
-export type ChatRole = "system" | "user" | "assistant";
+export type ChatRole = "system" | "user" | "assistant" | "tool";
+
+/** OpenAI 兼容的工具调用回执（把 assistant 的 tool_calls 原样带回下一轮）。 */
+export interface ChatToolCallRef {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
+  /** role="tool" 时必填：对应的 tool call id。 */
+  tool_call_id?: string;
+  /** role="assistant" 且上一轮请求了工具时回带，供模型对齐自己的调用。 */
+  tool_calls?: ChatToolCallRef[];
+}
+
+/** 向模型声明的工具（OpenAI 兼容形状）。目录本身由 `/api/tools` 手工维护。 */
+export interface ToolDef {
+  type: "function";
+  function: {
+    name: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  };
+}
+
+export type ToolChoice = "auto" | "none" | "required" | { type: "function"; function: { name: string } };
+
+/** 模型请求的一次工具调用。`arguments` 保留模型原样输出的 JSON 字符串。 */
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+/** 对话请求的返回值：文本 + 模型请求的工具调用（无工具时 toolCalls 为空数组）。 */
+export interface LLMResult {
+  content: string;
+  toolCalls: ToolCall[];
+}
+
+export interface ChatRequestOptions {
+  onChunk?: (chunk: string) => void;
+  signal?: AbortSignal;
+  /** 非空时才会写进请求体 —— 不声明工具时请求与本次改动前逐字节一致。 */
+  tools?: ToolDef[];
+  toolChoice?: ToolChoice;
 }
 
 export function serializeConversation(conv: Conversation): string {
@@ -107,10 +152,9 @@ export async function testLLMConnection(cfg: LLMConfig): Promise<{ ok: boolean; 
 export async function chatCompletion(
   cfg: LLMConfig,
   messages: ChatMessage[],
-  onChunk?: (chunk: string) => void,
-  signal?: AbortSignal,
-): Promise<string> {
-  return requestChatCompletions(cfg, messages, onChunk, signal);
+  opts: ChatRequestOptions = {},
+): Promise<LLMResult> {
+  return requestChatCompletions(cfg, messages, opts);
 }
 
 async function callLLM(
@@ -119,18 +163,24 @@ async function callLLM(
   userContent: string,
   onChunk?: (chunk: string) => void,
 ): Promise<string> {
-  return requestChatCompletions(cfg, [
+  const { content } = await requestChatCompletions(cfg, [
     { role: "system", content: systemPrompt },
     { role: "user", content: userContent },
-  ], onChunk);
+  ], { onChunk });
+  return content;
 }
 
-async function requestChatCompletions(
+/**
+ * 客户端对话请求（spec skill-runtime「客户端 LLM 通道支持工具调用」）。
+ * 返回文本与模型请求的工具调用；`tools` 为空时请求体与返回行为与引入工具调用前一致。
+ * 工具的**执行**由调用方在客户端完成，此处不引入任何服务端 LLM 通道。
+ */
+export async function requestChatCompletions(
   cfg: LLMConfig,
   messages: ChatMessage[],
-  onChunk?: (chunk: string) => void,
-  signal?: AbortSignal,
-): Promise<string> {
+  opts: ChatRequestOptions = {},
+): Promise<LLMResult> {
+  const { onChunk, signal, tools, toolChoice } = opts;
   let res: Response;
   try {
     res = await fetch(`${cfg.endpoint}/chat/completions`, {
@@ -144,10 +194,11 @@ async function requestChatCompletions(
         model: cfg.model,
         messages,
         stream: !!onChunk,
+        ...(tools?.length ? { tools, ...(toolChoice ? { tool_choice: toolChoice } : {}) } : {}),
       }),
     });
   } catch (e: any) {
-    if (e?.name === "AbortError") return "";
+    if (e?.name === "AbortError") return { content: "", toolCalls: [] };
     throw e;
   }
 
@@ -163,27 +214,55 @@ async function requestChatCompletions(
 
   if (!onChunk) {
     const json = await res.json();
-    return json.choices[0].message.content as string;
+    const message = json.choices[0].message;
+    return {
+      content: (message.content as string | null) ?? "",
+      toolCalls: normalizeToolCalls(message.tool_calls),
+    };
   }
 
   return parseSSE(res.body!, onChunk);
 }
 
+/** 把 OpenAI 形状的 `tool_calls` 收敛为 runner 消费的扁平结构；缺字段的条目丢弃。 */
+function normalizeToolCalls(raw: unknown): ToolCall[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ToolCall[] = [];
+  for (const item of raw) {
+    const name = item?.function?.name;
+    if (typeof name !== "string" || !name) continue;
+    out.push({
+      id: typeof item.id === "string" ? item.id : `call_${out.length}`,
+      name,
+      arguments: typeof item.function?.arguments === "string" ? item.function.arguments : "",
+    });
+  }
+  return out;
+}
+
+/** 流式 tool_calls 按 `index` 分片下发，需按索引累加 name/arguments 后再收口。 */
+interface ToolCallAccumulator {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
 async function parseSSE(
   body: ReadableStream<Uint8Array>,
   onChunk: (chunk: string) => void,
-): Promise<string> {
+): Promise<LLMResult> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let fullText = "";
   let buffer = "";
+  const toolAcc: ToolCallAccumulator[] = [];
 
   while (true) {
     let chunk: ReadableStreamReadResult<Uint8Array>;
     try {
       chunk = await reader.read();
     } catch (e: any) {
-      if (e?.name === "AbortError") return fullText;
+      if (e?.name === "AbortError") return { content: fullText, toolCalls: collectToolCalls(toolAcc) };
       throw e;
     }
     const { done, value } = chunk;
@@ -199,15 +278,32 @@ async function parseSSE(
       if (data === "[DONE]") continue;
       try {
         const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta?.content;
-        if (delta) {
-          fullText += delta;
-          onChunk(delta);
+        const delta = json.choices?.[0]?.delta;
+        if (delta?.content) {
+          fullText += delta.content;
+          onChunk(delta.content);
         }
+        if (Array.isArray(delta?.tool_calls)) accumulateToolCalls(toolAcc, delta.tool_calls);
       } catch {
         // ignore malformed chunks
       }
     }
   }
-  return fullText;
+  return { content: fullText, toolCalls: collectToolCalls(toolAcc) };
+}
+
+function accumulateToolCalls(acc: ToolCallAccumulator[], deltas: any[]): void {
+  for (const delta of deltas) {
+    const index = typeof delta?.index === "number" ? delta.index : acc.length;
+    const slot = (acc[index] ??= { id: "", name: "", arguments: "" });
+    if (typeof delta?.id === "string" && delta.id) slot.id = delta.id;
+    if (typeof delta?.function?.name === "string") slot.name += delta.function.name;
+    if (typeof delta?.function?.arguments === "string") slot.arguments += delta.function.arguments;
+  }
+}
+
+function collectToolCalls(acc: ToolCallAccumulator[]): ToolCall[] {
+  return acc
+    .filter((item): item is ToolCallAccumulator => !!item?.name)
+    .map((item, i) => ({ id: item.id || `call_${i}`, name: item.name, arguments: item.arguments }));
 }
