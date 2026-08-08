@@ -3,7 +3,6 @@ import { Loader2, CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -144,7 +143,7 @@ export function LLMTab({
     if (!selected) return;
     setTestState("testing");
     setTestError("");
-    const cfg = providerToLLMConfig(selected, draft);
+    const cfg = providerToLLMConfig(selected);
     const result = await testLLMConnection(cfg);
     if (result.ok) {
       setTestState("ok");
@@ -313,35 +312,6 @@ export function LLMTab({
               : t("settings.llm.setActive")}
           </Button>
         </div>
-      </div>
-
-      <div className="space-y-4 border-t border-border pt-4">
-        <p className="text-xs font-medium text-muted-foreground">
-          {t("settings.llm.globalPrompts")}
-        </p>
-        <Field label={t("settings.llm.promptConvert")}>
-          <Textarea
-            className="font-mono text-xs leading-relaxed"
-            rows={4}
-            value={draft.systemPromptConvertConv}
-            onChange={(e) =>
-              setDraft((d) => ({ ...d, systemPromptConvertConv: e.target.value }))
-            }
-          />
-        </Field>
-        <Field label={t("settings.llm.promptRewrite")}>
-          <Textarea
-            className="font-mono text-xs leading-relaxed"
-            rows={4}
-            value={draft.systemPromptRewriteByAnnotations}
-            onChange={(e) =>
-              setDraft((d) => ({
-                ...d,
-                systemPromptRewriteByAnnotations: e.target.value,
-              }))
-            }
-          />
-        </Field>
       </div>
 
       <div className="flex items-center gap-3 pt-2">

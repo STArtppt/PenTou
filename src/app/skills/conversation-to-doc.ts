@@ -57,9 +57,8 @@ export const conversationToDoc: SkillDef = {
       kind: "transform",
       run: async (ctx: RunCtx): Promise<ChatMessage[]> => {
         const conv = ctx.results.load as ConversationPayload;
-        const system = ctx.deps.llmConfig.systemPromptConvertConv || DEFAULT_PROMPT_CONVERT;
         return [
-          { role: "system", content: system },
+          { role: "system", content: DEFAULT_PROMPT_CONVERT },
           { role: "user", content: serializeConversation(conv as never) },
         ];
       },

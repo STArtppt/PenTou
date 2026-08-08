@@ -21,7 +21,7 @@ description: 用户点「把这个会话转成文档」时使用。读会话原�
 | # | id | kind | 说明 |
 | --- | --- | --- | --- |
 | 1 | `load` | `api` | `GET /api/conversations/:id` → 会话原文 |
-| 2 | `prompt` | `transform` | 序列化会话，套 `systemPromptConvertConv`（promptRef: `DEFAULT_PROMPT_CONVERT`） |
+| 2 | `prompt` | `transform` | 序列化会话，套 `DEFAULT_PROMPT_CONVERT`（技能内置，非用户设置） |
 | 3 | `generate` | `llm` | 客户端调 LLM 产出 Markdown 全文 |
 | 4 | `persist` | `api` | 无既有产物 → `POST /api/documents`；有 → `POST /api/documents/:id/commit-version` 再 `PUT` 更新标题与血缘 |
 

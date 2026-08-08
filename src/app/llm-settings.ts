@@ -1,12 +1,11 @@
 /**
  * LLMSettings v2 types, migration, and active-config derivation
  * (feature llm-provider-config).
+ *
+ * System prompts for product skills live with the skills themselves
+ * (`DEFAULT_PROMPT_*` in llm.ts) — not as user-editable LLM settings.
  */
 
-import {
-  DEFAULT_PROMPT_CONVERT,
-  DEFAULT_PROMPT_REWRITE,
-} from "./llm";
 import {
   type BuiltinProviderId,
   type ProviderKind,
@@ -20,13 +19,11 @@ import {
   providerLabel,
 } from "./llm-providers";
 
-/** Runtime shape consumed by llm.ts call sites (legacy-compatible). */
+/** Runtime shape consumed by llm.ts call sites (provider connection only). */
 export interface LLMConfig {
   endpoint: string;
   apiKey: string;
   model: string;
-  systemPromptConvertConv: string;
-  systemPromptRewriteByAnnotations: string;
 }
 
 export interface ProviderConfig {
@@ -43,8 +40,6 @@ export interface LLMSettings {
   version: 2;
   providers: ProviderConfig[];
   activeProviderId: string;
-  systemPromptConvertConv: string;
-  systemPromptRewriteByAnnotations: string;
 }
 
 export function createDefaultProvider(provider: BuiltinProviderId = "deepseek"): ProviderConfig {
@@ -65,12 +60,10 @@ export function createDefaultLLMSettings(): LLMSettings {
     version: 2,
     providers: [slot0],
     activeProviderId: slot0.id,
-    systemPromptConvertConv: DEFAULT_PROMPT_CONVERT,
-    systemPromptRewriteByAnnotations: DEFAULT_PROMPT_REWRITE,
   };
 }
 
-/** v1 single-config → v2 (spec §4.3). */
+/** v1 single-config → v2 (spec §4.3). Legacy system-prompt fields are dropped. */
 export function migrateV1ToV2(old: Partial<LLMConfig> & Record<string, unknown>): LLMSettings {
   const endpoint =
     typeof old.endpoint === "string" ? old.endpoint : getPreset("deepseek").baseUrl;
@@ -93,14 +86,6 @@ export function migrateV1ToV2(old: Partial<LLMConfig> & Record<string, unknown>)
     version: 2,
     providers: [slot0],
     activeProviderId: slot0.id,
-    systemPromptConvertConv:
-      typeof old.systemPromptConvertConv === "string"
-        ? old.systemPromptConvertConv
-        : DEFAULT_PROMPT_CONVERT,
-    systemPromptRewriteByAnnotations:
-      typeof old.systemPromptRewriteByAnnotations === "string"
-        ? old.systemPromptRewriteByAnnotations
-        : DEFAULT_PROMPT_REWRITE,
   };
 }
 
@@ -115,18 +100,11 @@ export function parseLLMSettings(raw: unknown): LLMSettings {
       providers.some((p) => p.id === obj.activeProviderId)
         ? (obj.activeProviderId as string)
         : providers[0].id;
+    // Ignore legacy systemPrompt* keys if present in stored JSON.
     return {
       version: 2,
       providers,
       activeProviderId: active,
-      systemPromptConvertConv:
-        typeof obj.systemPromptConvertConv === "string"
-          ? obj.systemPromptConvertConv
-          : DEFAULT_PROMPT_CONVERT,
-      systemPromptRewriteByAnnotations:
-        typeof obj.systemPromptRewriteByAnnotations === "string"
-          ? obj.systemPromptRewriteByAnnotations
-          : DEFAULT_PROMPT_REWRITE,
     };
   }
 
@@ -152,22 +130,15 @@ export function getActiveLLMConfig(settings: LLMSettings): LLMConfig {
     endpoint: active?.endpoint ?? "",
     apiKey: active?.apiKey ?? "",
     model: active?.model ?? "",
-    systemPromptConvertConv: settings.systemPromptConvertConv,
-    systemPromptRewriteByAnnotations: settings.systemPromptRewriteByAnnotations,
   };
 }
 
 /** Derive a runtime LLMConfig for the currently edited tab (test connection). */
-export function providerToLLMConfig(
-  p: ProviderConfig,
-  settings: Pick<LLMSettings, "systemPromptConvertConv" | "systemPromptRewriteByAnnotations">,
-): LLMConfig {
+export function providerToLLMConfig(p: ProviderConfig): LLMConfig {
   return {
     endpoint: p.endpoint,
     apiKey: p.apiKey,
     model: p.model,
-    systemPromptConvertConv: settings.systemPromptConvertConv,
-    systemPromptRewriteByAnnotations: settings.systemPromptRewriteByAnnotations,
   };
 }
 

@@ -22,8 +22,6 @@ export const DEFAULT_LLM_CONFIG: LLMConfig = {
   endpoint: "https://api.deepseek.com/v1",
   apiKey: "",
   model: "deepseek-v4-flash",
-  systemPromptConvertConv: DEFAULT_PROMPT_CONVERT,
-  systemPromptRewriteByAnnotations: DEFAULT_PROMPT_REWRITE,
 };
 
 export class LLMError extends Error {
@@ -116,7 +114,7 @@ export async function convertConversationToDocument(
   onChunk?: (chunk: string) => void,
 ): Promise<string> {
   const userContent = serializeConversation(conv);
-  return callLLM(cfg, cfg.systemPromptConvertConv, userContent, onChunk);
+  return callLLM(cfg, DEFAULT_PROMPT_CONVERT, userContent, onChunk);
 }
 
 export async function rewriteByAnnotations(
@@ -126,7 +124,7 @@ export async function rewriteByAnnotations(
   onChunk?: (chunk: string) => void,
 ): Promise<string> {
   const userContent = buildRewritePrompt(doc, annotations);
-  return callLLM(cfg, cfg.systemPromptRewriteByAnnotations, userContent, onChunk);
+  return callLLM(cfg, DEFAULT_PROMPT_REWRITE, userContent, onChunk);
 }
 
 export async function testLLMConnection(cfg: LLMConfig): Promise<{ ok: boolean; status?: number; error?: string }> {

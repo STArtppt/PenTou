@@ -14,6 +14,7 @@ describe("llm-settings migration", () => {
       endpoint: "https://api.openai.com/v1",
       apiKey: "sk-test",
       model: "gpt-4o-mini",
+      // legacy prompt fields — ignored after skill-owned defaults
       systemPromptConvertConv: "convert",
       systemPromptRewriteByAnnotations: "rewrite",
     });
@@ -23,9 +24,9 @@ describe("llm-settings migration", () => {
     expect(v2.providers[0].endpoint).toBe("https://api.openai.com/v1");
     expect(v2.providers[0].apiKey).toBe("sk-test");
     expect(v2.providers[0].model).toBe("gpt-4o-mini");
-    expect(v2.systemPromptConvertConv).toBe("convert");
-    expect(v2.systemPromptRewriteByAnnotations).toBe("rewrite");
     expect(v2.activeProviderId).toBe(v2.providers[0].id);
+    expect(v2).not.toHaveProperty("systemPromptConvertConv");
+    expect(v2).not.toHaveProperty("systemPromptRewriteByAnnotations");
   });
 
   it("falls back to custom when endpoint unknown", () => {
@@ -39,7 +40,7 @@ describe("llm-settings migration", () => {
     expect(v2.providers[0].endpoint).toBe("https://example.com/v1");
   });
 
-  it("parses v2 payload as-is", () => {
+  it("parses v2 payload and drops legacy system prompts", () => {
     const raw = {
       version: 2,
       providers: [
@@ -58,11 +59,13 @@ describe("llm-settings migration", () => {
     const s = parseLLMSettings(raw);
     expect(s.version).toBe(2);
     expect(s.providers[0].id).toBe("a");
+    expect(s).not.toHaveProperty("systemPromptConvertConv");
+    expect(s).not.toHaveProperty("systemPromptRewriteByAnnotations");
   });
 });
 
 describe("getActiveLLMConfig", () => {
-  it("assembles active provider + global prompts", () => {
+  it("assembles active provider connection fields", () => {
     const settings = parseLLMSettings({
       version: 2,
       providers: [
@@ -82,14 +85,11 @@ describe("getActiveLLMConfig", () => {
         },
       ],
       activeProviderId: "b",
-      systemPromptConvertConv: "C",
-      systemPromptRewriteByAnnotations: "R",
     });
     const cfg = getActiveLLMConfig(settings);
     expect(cfg.endpoint).toBe("https://api.openai.com/v1");
     expect(cfg.apiKey).toBe("k2");
     expect(cfg.model).toBe("gpt-4o");
-    expect(cfg.systemPromptConvertConv).toBe("C");
   });
 });
 

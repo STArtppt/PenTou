@@ -22,7 +22,7 @@ description: 用户在文档上留了批注、点「根据批注重写」时使�
 | # | id | kind | 说明 |
 | --- | --- | --- | --- |
 | 1 | `load` | `api` | `GET /api/documents/:id` + `GET /api/documents/:id/annotations`；先过写权限校验 |
-| 2 | `prompt` | `transform` | 原文 + 批注列表（含定位上下文），套 `systemPromptRewriteByAnnotations`（promptRef: `DEFAULT_PROMPT_REWRITE`） |
+| 2 | `prompt` | `transform` | 原文 + 批注列表（含定位上下文），套 `DEFAULT_PROMPT_REWRITE`（技能内置，非用户设置） |
 | 3 | `rewrite` | `llm` | 客户端调 LLM 产出修订后的**完整** Markdown（不是 diff） |
 
 ## 只产出提案，不落盘

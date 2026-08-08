@@ -73,9 +73,8 @@ export const annotationDrivenRewrite: SkillDef = {
       kind: "transform",
       run: async (ctx: RunCtx): Promise<ChatMessage[]> => {
         const { doc, annotations } = ctx.results.load as { doc: DocPayload; annotations: AnnotationPayload[] };
-        const system = ctx.deps.llmConfig.systemPromptRewriteByAnnotations || DEFAULT_PROMPT_REWRITE;
         return [
-          { role: "system", content: system },
+          { role: "system", content: DEFAULT_PROMPT_REWRITE },
           { role: "user", content: buildRewritePrompt(doc as never, annotations as never) },
         ];
       },
