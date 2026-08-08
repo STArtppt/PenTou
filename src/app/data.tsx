@@ -15,6 +15,14 @@ import {
   listSessions as listAiChatSessions,
   saveSession as saveAiChatFile,
 } from "./ai-chats";
+import {
+  type AiSidebarSide,
+  readAiSidebarOpen,
+  readAiSidebarSide,
+  writeAiSidebarOpen,
+  writeAiSidebarSide,
+} from "./ai-sidebar-prefs";
+import { useIsMobile } from "./hooks/useIsMobile";
 
 // "Codex" 仅存量数据兼容：新解析一律输出 "ChatGPT"（spec collector-source-expansion 决策 2）
 export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode";
@@ -341,10 +349,12 @@ interface AppContextType {
   setSearchOpen: (open: boolean) => void;
   searchJump: SearchJump | null;
   setSearchJump: (jump: SearchJump | null) => void;
-  // ── AI sidebar (spec ai-sidebar Phase 1) ──
+  // ── AI sidebar (spec ai-sidebar-layout) ──
   aiSidebarOpen: boolean;
   setAiSidebarOpen: (open: boolean) => void;
   toggleAiSidebar: () => void;
+  aiSidebarSide: AiSidebarSide;
+  setAiSidebarSide: (side: AiSidebarSide) => void;
   aiSessions: AiChatSession[];
   currentAiSession: AiChatSession;
   setCurrentAiSession: (session: AiChatSession | ((session: AiChatSession) => AiChatSession)) => void;
@@ -416,7 +426,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchJump, setSearchJump] = useState<SearchJump | null>(null);
-  const [aiSidebarOpen, setAiSidebarOpen] = useState(false);
+  // 桌面偏好：仅 !isMobile 时写回 localStorage（design D7），避免 FAB 污染桌面展开态
+  const isMobile = useIsMobile();
+  const isMobileRef = useRef(isMobile);
+  isMobileRef.current = isMobile;
+  const [aiSidebarOpen, setAiSidebarOpenState] = useState(() => readAiSidebarOpen());
+  const [aiSidebarSide, setAiSidebarSideState] = useState<AiSidebarSide>(() => readAiSidebarSide());
   const [aiSessions, setAiSessions] = useState<AiChatSession[]>([]);
   const [currentAiSession, setCurrentAiSessionState] = useState<AiChatSession>(() => createEmptyAiChatSession());
   const [isLoading, setIsLoading] = useState(true);
@@ -516,8 +531,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem("pentou-active-conversation");
   }, []);
 
+  const setActiveProjectId = useCallback((id: string | null) => {
+    setActiveProjectIdState(id);
+    if (id) localStorage.setItem("pentou-active-project", id);
+    else localStorage.removeItem("pentou-active-project");
+  }, []);
+
+  const setAiSidebarOpen = useCallback((open: boolean) => {
+    setAiSidebarOpenState(open);
+    if (!isMobileRef.current) writeAiSidebarOpen(open);
+  }, []);
+
   const toggleAiSidebar = useCallback(() => {
-    setAiSidebarOpen((open) => !open);
+    setAiSidebarOpenState((prev) => {
+      const next = !prev;
+      if (!isMobileRef.current) writeAiSidebarOpen(next);
+      return next;
+    });
+  }, []);
+
+  const setAiSidebarSide = useCallback((side: AiSidebarSide) => {
+    setAiSidebarSideState(side);
+    if (!isMobileRef.current) writeAiSidebarSide(side);
   }, []);
 
   const setLlmSettings = useCallback((s: LLMSettings) => {
@@ -1175,6 +1210,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         aiSidebarOpen,
         setAiSidebarOpen,
         toggleAiSidebar,
+        aiSidebarSide,
+        setAiSidebarSide,
         aiSessions,
         currentAiSession,
         setCurrentAiSession,

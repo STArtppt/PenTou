@@ -1,14 +1,10 @@
 import React, { useState } from "react";
 import {
-  FileText,
   History,
   Send,
   Edit3,
   MessageSquare,
-  Settings,
   X,
-  Loader2,
-  Import,
   Paperclip,
   MessageCircle,
   Sparkles,
@@ -17,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { IconTooltip } from "@/components/IconTooltip";
 import {
   Dialog,
   DialogBackdrop,
@@ -50,8 +47,6 @@ export function TopToolbar() {
     setEditMode,
     previewingVersionId,
     setVersionPanelOpen,
-    aiSidebarOpen,
-    toggleAiSidebar,
   } = useAppContext();
   const { t, language } = useTranslation();
 
@@ -163,26 +158,20 @@ export function TopToolbar() {
 
         <div className="flex-1" />
 
-        {/* Action Buttons */}
-        {/* Edit Doc button with sub-mode toggle */}
+        {/* Action Buttons — 仅图标（spec ai-sidebar-layout） */}
         {editActive ? (
           <>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="gap-1.5"
+            <ToolButton
+              icon={editMode === "annotate" ? Edit3 : MessageSquare}
+              label={editMode === "annotate" ? t("doc.editMode") : t("doc.annotateMode")}
               onClick={() => setEditMode(editMode === "annotate" ? "edit" : "annotate")}
-            >
-              {editMode === "annotate" ? t("doc.annotateMode") : t("doc.editMode")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-muted-foreground"
+              active
+            />
+            <ToolButton
+              icon={X}
+              label={t("toolbar.exitEdit")}
               onClick={() => setEditMode("off")}
-            >
-              <X size={14} /> {t("toolbar.exitEdit")}
-            </Button>
+            />
           </>
         ) : (
           <ToolButton
@@ -209,12 +198,6 @@ export function TopToolbar() {
           disabled={!activeDocId || isPreviewMode}
           onClick={handleObsidian}
           tooltip={!activeDocId ? t("toolbar.noSelection") : undefined}
-        />
-        <ToolButton
-          icon={MessageSquare}
-          label={t("toolbar.askAi")}
-          active={aiSidebarOpen}
-          onClick={toggleAiSidebar}
         />
 
       </div>
@@ -281,19 +264,20 @@ function ToolButton({
   loading?: boolean;
   active?: boolean;
 }) {
+  const tip = tooltip ?? label;
   return (
-    <Button
-      // 选中态改 primary，避免 ghost 的 hover:bg-accent 与手写 primary 类在 CSS 源序中打架，
-      // 导致 hover 落到近背景的 accent（ai-sidebar 打开时「问问 AI」尤其明显）。
-      variant={active ? "primary" : "ghost"}
-      size="sm"
-      onClick={onClick}
-      disabled={disabled}
-      title={tooltip}
-      className="gap-1.5 px-2.5"
-    >
-      <Icon size={14} className={loading ? "animate-spin" : ""} />
-      {label}
-    </Button>
+    <IconTooltip label={tip}>
+      <Button
+        // 选中态改 primary，避免 ghost 的 hover:bg-accent 与手写 primary 类冲突。
+        variant={active ? "primary" : "ghost"}
+        size="icon"
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        className="size-8 shrink-0 text-muted-foreground"
+      >
+        <Icon size={16} className={loading ? "animate-spin" : ""} />
+      </Button>
+    </IconTooltip>
   );
 }

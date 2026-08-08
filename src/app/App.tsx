@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Sidebar } from "./components/Sidebar";
@@ -31,7 +31,7 @@ function AppContent() {
     settingsOpen,
     searchOpen,
     setSearchOpen,
-    aiSidebarOpen,
+    aiSidebarSide,
     toggleAiSidebar,
     setDrawerOpen,
     setSettingsOpen,
@@ -48,10 +48,9 @@ function AppContent() {
   const [drawerEverOpened, setDrawerEverOpened] = useState(false);
   const [settingsEverOpened, setSettingsEverOpened] = useState(false);
   const [searchEverOpened, setSearchEverOpened] = useState(false);
-  const [aiSidebarEverOpened, setAiSidebarEverOpened] = useState(false);
-  // 首开动画修复（通用/B 方案）：空闲后以「关闭态」预挂四个懒加载面板，
-  // 使首次打开有过渡起始帧（否则组件首挂载即打开态 → 闪现）。
+  // 首开动画修复（通用/B 方案）：空闲后以「关闭态」预挂懒加载面板。
   // 见 src/docs/debugging/2026-07-21-drawer-first-open-no-slide.md
+  // AI 侧栏桌面常驻挂载（spec ai-sidebar-layout），不再依赖 everOpened。
   const [primed, setPrimed] = useState(false);
 
   useEffect(() => {
@@ -74,14 +73,16 @@ function AppContent() {
     if (searchOpen) setSearchEverOpened(true);
   }, [searchOpen]);
 
+  // 断点临界映射（spec mobile-responsive §5 M5 + ai-sidebar-layout D8）：
+  // 仅在 isMobile **跨越**时归零；挂载首帧与同值回调不归零，避免清掉 localStorage 恢复的展开态。
+  const prevIsMobileRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (aiSidebarOpen) setAiSidebarEverOpened(true);
-  }, [aiSidebarOpen]);
-
-  // 断点临界映射（spec mobile-responsive §5 M5）：跨越 768px 时收起所有覆盖层，回到 Reading。
-  // `>= md → < md`：关闭桌面右侧栏（Ask AI 仅以 FAB 呈现，不自动展开）+ 导入/设置/搜索。
-  // `< md → >= md`：关闭 NavDrawer / 各底部抽屉 / 搜索，恢复桌面三栏。两向都归零，语义一致。
-  useEffect(() => {
+    if (prevIsMobileRef.current === null) {
+      prevIsMobileRef.current = isMobile;
+      return;
+    }
+    if (prevIsMobileRef.current === isMobile) return;
+    prevIsMobileRef.current = isMobile;
     setAiSidebarOpen(false);
     setDrawerOpen(false);
     setSettingsOpen(false);
@@ -258,13 +259,25 @@ function AppContent() {
             scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
           }
         `}} />
+        {/* 桌面 AI 侧栏：left = 最左；right = 主内容右侧（手验修订） */}
+        {!isMobile && aiSidebarSide === "left" && (
+          <Suspense fallback={null}>
+            <AiSidebar />
+          </Suspense>
+        )}
         <Sidebar />
         <MainContent />
+        {!isMobile && aiSidebarSide === "right" && (
+          <Suspense fallback={null}>
+            <AiSidebar />
+          </Suspense>
+        )}
         <Suspense fallback={null}>
           {(primed || drawerEverOpened) && <ImportDrawer />}
           {(primed || settingsEverOpened) && <SettingsModal />}
           {(primed || searchEverOpened) && <SearchPalette />}
-          {(primed || aiSidebarEverOpened) && <AiSidebar />}
+          {/* 移动端 FAB/全屏仍由 AiSidebar 内部 isMobile 分支渲染 */}
+          {isMobile && <AiSidebar />}
           {/* 批注重写的确认框在应用层渲染，由 AI 侧栏的 chip 拉起（spec ai-intent-chips） */}
           {rewriteDialogOpen && activeDoc && (
             <RewriteConfirmDialog

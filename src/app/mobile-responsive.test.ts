@@ -76,7 +76,8 @@ describe("mobile responsive layout contract", () => {
     expect(app).toContain("const isMobile = useIsMobile();");
     // 统一 top-center（含桌面）：顶部居中天然避开右下 Ask AI FAB（spec §5 I4）
     expect(app).toContain('position="top-center"');
-    // 断点映射：跨越时收起所有覆盖层
+    // 断点映射：仅跨断点归零（ai-sidebar-layout D8），首帧不归零
+    expect(app).toContain("prevIsMobileRef");
     expect(app).toContain("}, [isMobile, setAiSidebarOpen, setDrawerOpen, setSettingsOpen, setSearchOpen, setMobileNavOpen]);");
   });
 

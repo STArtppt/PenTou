@@ -5,12 +5,17 @@ import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/IconTooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Check, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, MessageSquare, Plus, Settings, Sparkles, Square, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, PanelLeft, PanelRight, Plus, Settings, Sparkles, Square, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAppContext } from "../data";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useVisualViewport } from "../hooks/useVisualViewport";
+import {
+  readShortcutTipDismissed,
+  writeShortcutTipDismissed,
+} from "../ai-sidebar-prefs";
+import { AskAiFab } from "./AskAiToggleButton";
 import {
   AiChatSession,
   AiSidebarMessage,
@@ -86,6 +91,8 @@ export function AiSidebar() {
   const {
     aiSidebarOpen,
     setAiSidebarOpen,
+    aiSidebarSide,
+    setAiSidebarSide,
     aiSessions,
     currentAiSession,
     setCurrentAiSession,
@@ -108,6 +115,7 @@ export function AiSidebar() {
     activeProjectId,
     annotationsByDoc,
     setRewriteDialogOpen,
+    rewriteDialogOpen,
     refreshDocuments,
   } = useAppContext();
   const { t } = useTranslation();
@@ -118,6 +126,8 @@ export function AiSidebar() {
   const [inputFocused, setInputFocused] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [shortcutTipDismissed, setShortcutTipDismissed] = useState(() => readShortcutTipDismissed());
+  const wasRewriteOpenRef = useRef(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -199,15 +209,52 @@ export function AiSidebar() {
     }
   };
 
+  const clearArmed = () => setArmedChip(null);
+
+  const handleStop = () => {
+    abortRef.current?.abort();
+    clearArmed();
+  };
+
+  // 批注重写对话框关闭后清除选中（本轮确认流结束）
+  useEffect(() => {
+    if (wasRewriteOpenRef.current && !rewriteDialogOpen && armedChip?.confirmation === "rewrite-dialog") {
+      clearArmed();
+    }
+    wasRewriteOpenRef.current = rewriteDialogOpen;
+  }, [rewriteDialogOpen, armedChip]);
+
   const handleSend = async (text = input) => {
-    const question = text.trim();
-    if (!question || streamingId || runningChip) return;
-    // 待命中的 chip 把这次输入当作它的参数，而不是当作一轮提问
-    if (armedChip) {
-      setInput("");
-      await dispatchSkill(armedChip, question);
+    // 流式中：回车/发送 = 停止（spec ai-intent-chips）
+    if (streamingId) {
+      handleStop();
       return;
     }
+    if (runningChip) return;
+
+    // 选中 chip：回车派发意图（与发送同义）
+    if (armedChip) {
+      const question = text.trim();
+      if (armedChip.requiresInput && !question) {
+        toast.info(t("aiSidebar.chipNeedsTopic"));
+        return;
+      }
+      setInput("");
+      if (armedChip.confirmation === "rewrite-dialog") {
+        setRewriteDialogOpen(true);
+        return;
+      }
+      if (armedChip.confirmation === "execute-plan") {
+        await executeCurrentPlan(armedChip);
+        return;
+      }
+      // 无参 chip 忽略输入文本，按意图派发
+      await dispatchSkill(armedChip, armedChip.requiresInput ? question : undefined);
+      return;
+    }
+
+    const question = text.trim();
+    if (!question) return;
     if (!hasLLM) {
       setSettingsOpen(true);
       toast.info(t("aiSidebar.configureModel"));
@@ -328,31 +375,20 @@ export function AiSidebar() {
     }
   };
 
-  const handleStop = () => {
-    abortRef.current?.abort();
-  };
-
   /**
-   * 点击 chip 即**确定性派发**到对应技能（spec ai-intent-chips）——
-   * 不经模型判断意图，也不为此多一轮 LLM。需要参数的 chip（主题汇总）先「待命」，
-   * 由下一次输入提供参数，仍然不涉及任何意图分类。
+   * 点击 chip 进入选中态（spec ai-intent-chips）：清空输入、换引导语；回车才派发。
+   * 流式中全禁用；技能执行中禁止切换选中。
    */
-  const handleChip = async (chip: IntentChip) => {
-    if (chip.disabled || runningChip) return;
-    if (chip.promptKey) {
-      setArmedChip(armedChip?.id === chip.id ? null : chip);
-      inputRef.current?.focus();
+  const handleChip = (chip: IntentChip) => {
+    if (chip.disabled || streamingId) return;
+    if (runningChip) return; // 技能执行中禁止切换
+    if (armedChip?.id === chip.id) {
+      clearArmed();
       return;
     }
-    if (chip.confirmation === "rewrite-dialog") {
-      setRewriteDialogOpen(true); // 复用既有确认框，不另生成计划文档（design D5）
-      return;
-    }
-    if (chip.confirmation === "execute-plan") {
-      await executeCurrentPlan(chip);
-      return;
-    }
-    await dispatchSkill(chip);
+    setArmedChip(chip);
+    setInput("");
+    inputRef.current?.focus();
   };
 
   /**
@@ -382,6 +418,7 @@ export function AiSidebar() {
     } finally {
       abortRef.current = null;
       setRunningChip(null);
+      clearArmed(); // 本轮运行终态清除选中
     }
   };
 
@@ -390,7 +427,7 @@ export function AiSidebar() {
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      const input =
+      const skillInput =
         chip.id === "conversation-to-doc"
           ? { conversationId: activeConversationId! }
           : chip.id === "topic-digest"
@@ -399,7 +436,7 @@ export function AiSidebar() {
 
       let output: any;
       let failure = "";
-      for await (const event of runSkill(chip.id, input, { llmConfig, signal: controller.signal })) {
+      for await (const event of runSkill(chip.id, skillInput, { llmConfig, signal: controller.signal })) {
         if (event.type === "result") output = event.output;
         if (event.type === "error") failure = event.error;
       }
@@ -425,7 +462,7 @@ export function AiSidebar() {
     } finally {
       abortRef.current = null;
       setRunningChip(null);
-      setArmedChip(null);
+      clearArmed(); // 成功或失败均清除选中
     }
   };
 
@@ -523,16 +560,41 @@ export function AiSidebar() {
               />
             )}
           </div>
+          {/* 桌面：切换停靠边（design D6，硬要求） */}
+          {!isMobile && (
+            <IconButton
+              title={t(aiSidebarSide === "right" ? "aiSidebar.dockLeft" : "aiSidebar.dockRight")}
+              onClick={() => setAiSidebarSide(aiSidebarSide === "right" ? "left" : "right")}
+              icon={aiSidebarSide === "right" ? <PanelLeft size={16} /> : <PanelRight size={16} />}
+            />
+          )}
           <IconButton
-            title={t("aiSidebar.close")}
+            title={t("aiSidebar.collapse")}
             onClick={() => setAiSidebarOpen(false)}
-            icon={isMobile ? <X size={18} /> : <ChevronRight size={17} />}
+            icon={isMobile ? <X size={18} /> : aiSidebarSide === "left" ? <ChevronLeft size={17} /> : <ChevronRight size={17} />}
           />
         </div>
       </header>
 
-      {/* 固定区：上下文感知栏 + 未配置模型提醒。移动端全屏时与标题栏一起全程固定，不随键盘 / 消息滚动（issue 2）。 */}
+      {/* 固定区：快捷键提示 → 上下文栏 → 未配置模型提醒（design D11） */}
       <div className="shrink-0 px-4">
+        {!isMobile && !shortcutTipDismissed && (
+          <div className="mb-3 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="min-w-0 flex-1">
+              {t("aiSidebar.shortcutTip")}{" "}
+              <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">⌘</kbd>{" "}
+              <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">I</kbd>
+            </span>
+            <IconButton
+              title={t("aiSidebar.shortcutTipDismiss")}
+              onClick={() => {
+                writeShortcutTipDismissed(true);
+                setShortcutTipDismissed(true);
+              }}
+              icon={<X size={14} />}
+            />
+          </div>
+        )}
         <ContextPill
           label={contextDisplayLabel}
           enabled={contextEnabled}
@@ -554,10 +616,6 @@ export function AiSidebar() {
             </Button>
           </div>
         )}
-      </div>
-
-      <div className="shrink-0 px-4">
-        <ChipBar chips={chips} armedId={armedChip?.id ?? null} runningId={runningChip?.id ?? null} onPick={handleChip} />
       </div>
 
       <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pb-4 pt-1 custom-scrollbar">
@@ -594,12 +652,6 @@ export function AiSidebar() {
             {t("aiSidebar.threadToDoc")}
           </Button>
         )}
-        {/* 快捷键提示：移动端不显示（无实体键盘，issue 2）。 */}
-        {!isMobile && (
-          <div className="mb-3 text-[13px] text-zinc-500 dark:text-zinc-400">
-            {t("aiSidebar.shortcutTip")} <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">⌘</kbd> <kbd className="rounded bg-zinc-100 px-1.5 py-0.5 dark:bg-white/10 dark:text-zinc-200">I</kbd>
-          </div>
-        )}
         <div className="rounded-md border border-zinc-200 bg-white p-3 transition-colors focus-within:border-zinc-400 dark:border-white/10 dark:bg-[#1A1A1A] dark:focus-within:border-white/30">
           <textarea
             ref={inputRef}
@@ -611,28 +663,55 @@ export function AiSidebar() {
             onKeyDown={(e) => {
               // 输入法组合期的 Enter 是「上屏候选词」，不是「发送」——放行给 IME。
               if (isImeComposing(e)) return;
+              if (e.key === "Escape") {
+                // Esc：运行中不清选中；空闲有选中 → 取消选中
+                if (!streamingId && !runningChip && armedChip) {
+                  e.preventDefault();
+                  clearArmed();
+                }
+                return;
+              }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
             }}
             rows={isMobile ? 2 : 3}
-            placeholder={armedChip?.promptKey ? t(armedChip.promptKey) : t("aiSidebar.placeholder")}
+            placeholder={armedChip ? t(armedChip.armedPromptKey) : t("aiSidebar.placeholder")}
             className="w-full resize-none bg-transparent text-sm leading-6 text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100 dark:placeholder:text-zinc-500"
           />
+          {/* chip 组 + 模型名 + 发送：同一底行，chip 横向滚动不换行（design D10） */}
           <div className="flex items-end gap-2">
-            <span className="min-w-0 flex-1 truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <ChipBar
+                chips={chips}
+                armedId={armedChip?.id ?? null}
+                runningId={runningChip?.id ?? null}
+                streaming={!!streamingId}
+                onPick={handleChip}
+              />
+            </div>
+            <span className="max-w-[7rem] shrink-0 truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
               {llmConfig.model || t("settings.llm.model")}
             </span>
-            <IconTooltip label={streamingId ? t("aiSidebar.stop") : t("aiSidebar.send")}>
+            <IconTooltip label={streamingId || runningChip ? t("aiSidebar.stop") : t("aiSidebar.send")}>
               <Button
                 variant="primary"
                 size="icon"
-                onClick={streamingId ? handleStop : () => handleSend()}
-                disabled={!streamingId && !input.trim()}
+                onClick={streamingId || runningChip ? handleStop : () => handleSend()}
+                disabled={
+                  !!runningChip
+                    ? false
+                    : !streamingId &&
+                      !(armedChip
+                        ? armedChip.requiresInput
+                          ? !!input.trim()
+                          : true
+                        : !!input.trim())
+                }
                 className="size-8 transition-[opacity,transform] hover:scale-[1.02] active:scale-95 disabled:opacity-30"
               >
-                {streamingId ? <Square size={14} fill="currentColor" /> : <CornerDownLeft size={16} />}
+                {streamingId || runningChip ? <Square size={14} fill="currentColor" /> : <CornerDownLeft size={16} />}
               </Button>
             </IconTooltip>
           </div>
@@ -649,15 +728,7 @@ export function AiSidebar() {
   if (isMobile) {
     return (
       <>
-        {!aiSidebarOpen && (
-          <button
-            onClick={() => setAiSidebarOpen(true)}
-            aria-label={t("aiSidebar.chat")}
-            className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 transition-transform active:scale-95 md:hidden"
-          >
-            <MessageSquare size={22} />
-          </button>
-        )}
+        {!aiSidebarOpen && <AskAiFab side="right" className="md:hidden" />}
         {createPortal(
           <AnimatePresence>
             {aiSidebarOpen && (
@@ -680,26 +751,46 @@ export function AiSidebar() {
     );
   }
 
+  const dockLeft = aiSidebarSide === "left";
   return (
-    <div
-      className={clsx(
-        "ai-sidebar-shell shrink-0 overflow-hidden border-l bg-white transition-[width,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#151515]",
-        aiSidebarOpen ? "w-[min(100vw,384px)] border-zinc-200 dark:border-white/10" : "w-0 border-transparent",
-      )}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") setAiSidebarOpen(false);
-      }}
-    >
-      <aside
+    <>
+      {/* 桌面收起：左下 / 右下 FAB（随停靠边），展开后隐藏 */}
+      {!aiSidebarOpen && <AskAiFab side={aiSidebarSide} className="hidden md:flex" />}
+      <div
         className={clsx(
-          "flex h-full w-[min(100vw,384px)] flex-col bg-white text-zinc-950 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#151515] dark:text-zinc-100",
-          aiSidebarOpen ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0",
+          "ai-sidebar-shell shrink-0 overflow-hidden bg-white transition-[width,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#151515]",
+          dockLeft ? "border-r" : "border-l",
+          aiSidebarOpen ? "w-[min(100vw,384px)] border-zinc-200 dark:border-white/10" : "w-0 border-transparent",
         )}
-        aria-hidden={!aiSidebarOpen}
+        // React 18：inert 经 spread 透传 DOM（design D9）
+        {...(!aiSidebarOpen ? ({ inert: "" } as React.HTMLAttributes<HTMLDivElement>) : {})}
+        onKeyDown={(e) => {
+          if (e.key !== "Escape" || isImeComposing(e as unknown as React.KeyboardEvent)) return;
+          // 运行中不清选中/不收起；空闲有选中 → 取消；无选中 → 收起
+          if (streamingId || runningChip) return;
+          if (armedChip) {
+            e.preventDefault();
+            clearArmed();
+            return;
+          }
+          setAiSidebarOpen(false);
+        }}
       >
-        {panelContent}
-      </aside>
-    </div>
+        <aside
+          className={clsx(
+            "flex h-full w-[min(100vw,384px)] flex-col bg-white text-zinc-950 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-[#151515] dark:text-zinc-100",
+            aiSidebarOpen
+              ? "translate-x-0 opacity-100"
+              : dockLeft
+                ? "-translate-x-3 opacity-0"
+                : "translate-x-3 opacity-0",
+          )}
+          aria-hidden={!aiSidebarOpen}
+        >
+          {panelContent}
+        </aside>
+      </div>
+    </>
   );
 }
 
@@ -760,34 +851,41 @@ function ChipBar({
   chips,
   armedId,
   runningId,
+  streaming,
   onPick,
 }: {
   chips: IntentChip[];
   armedId: string | null;
   runningId: string | null;
+  streaming: boolean;
   onPick: (chip: IntentChip) => void;
 }) {
   const { t } = useTranslation();
   return (
-    <div className="mb-4 flex flex-wrap gap-1.5">
+    <div className="flex flex-nowrap gap-1.5">
       {chips.map((chip) => {
         const running = runningId === chip.id;
+        // 流式：全部禁用；技能执行：禁止切换（全部 disabled，当前 running 显示 spinner）
+        const locked = streaming || !!runningId;
+        const a11y = t(chip.a11yLabelKey);
         return (
           <button
             key={chip.id}
             type="button"
-            disabled={chip.disabled || !!runningId}
+            disabled={chip.disabled || locked}
             onClick={() => onPick(chip)}
-            title={chip.disabledReasonKey ? t(chip.disabledReasonKey) : undefined}
+            title={chip.disabledReasonKey ? t(chip.disabledReasonKey) : a11y}
+            aria-label={a11y}
+            aria-pressed={armedId === chip.id}
             className={clsx(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
+              "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors",
               "disabled:cursor-not-allowed disabled:opacity-45",
               armedId === chip.id
                 ? "border-primary bg-primary/10 text-foreground"
                 : "border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/10",
             )}
           >
-            {running ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            {running ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
             {running ? t("aiSidebar.chipRunning") : t(chip.labelKey)}
           </button>
         );

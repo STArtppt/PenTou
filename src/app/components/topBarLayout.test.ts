@@ -27,5 +27,7 @@ describe("content topbar attribution layout", () => {
     expect(toolbar).not.toContain("setActiveConversationId");
     // 来源徽章不可点跳转
     expect(toolbar).not.toMatch(/onClick=\{\(\) => \{\s*setActiveConversationId/);
+    // 动作仅图标
+    expect(toolbar).toContain('size="icon"');
   });
 });

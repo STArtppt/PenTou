@@ -148,6 +148,8 @@ describe("AiSidebar", () => {
     mocks.appContext = {
       aiSidebarOpen: true,
       setAiSidebarOpen: vi.fn(),
+      aiSidebarSide: "right",
+      setAiSidebarSide: vi.fn(),
       aiSessions: [
         buildSession("chat_1", "Earlier chat", "2026-06-18T02:30:00.000Z"),
       ],
@@ -172,6 +174,7 @@ describe("AiSidebar", () => {
       activeProjectId: null,
       annotationsByDoc: {},
       setRewriteDialogOpen: vi.fn(),
+      rewriteDialogOpen: false,
       refreshDocuments: vi.fn().mockResolvedValue(undefined),
       language: "en",
     };
@@ -431,20 +434,38 @@ describe("AiSidebar", () => {
     unmount();
   });
 
-  // ── 意图 chip（spec ai-intent-chips）────────────────────────────────────────
+  // ── 意图 chip（spec ai-intent-chips：选中 → 回车）─────────────────────────
 
   const chipButtons = (container: HTMLElement) =>
     Array.from(container.querySelectorAll("button")).filter((b) =>
-      /Turn into a document|Digest a topic|Organize this project|Rewrite from annotations/.test(b.textContent ?? ""),
+      /To doc|Digest topic|Tidy folders|Rewrite|Run plan/.test(b.textContent ?? ""),
     );
+
+  /** 选中 chip 后回车执行（无参意图可空回车）。 */
+  async function armAndEnter(container: HTMLElement, chipIndex: number, text?: string) {
+    await act(async () => {
+      Simulate.click(chipButtons(container)[chipIndex]);
+    });
+    const textarea = container.querySelector("textarea")!;
+    if (text !== undefined) {
+      await act(async () => {
+        (textarea as HTMLTextAreaElement).value = text;
+        Simulate.change(textarea);
+      });
+    }
+    await act(async () => {
+      Simulate.keyDown(textarea, { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  }
 
   it("会话视图展示两个 chip，且展示本身不产生任何 LLM 调用", async () => {
     mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
     const { container, unmount } = await renderSidebar();
 
     expect(chipButtons(container).map((b) => b.textContent)).toEqual([
-      "Turn into a document",
-      "Digest a topic",
+      "To doc",
+      "Digest topic",
     ]);
     expect(mocks.llm.seen).toEqual([]);
     expect(mocks.skills.dispatched).toEqual([]);
@@ -460,8 +481,8 @@ describe("AiSidebar", () => {
 
     const chips = chipButtons(container);
     expect(chips.map((b) => b.textContent)).toEqual([
-      "Organize this project's folders",
-      "Rewrite from annotations",
+      "Tidy folders",
+      "Rewrite",
     ]);
     expect(chips[1].disabled).toBe(true);
     expect(chips[1].getAttribute("title")).toBe("This document has no annotations with comments yet");
@@ -469,7 +490,7 @@ describe("AiSidebar", () => {
     unmount();
   });
 
-  it("点击 chip 确定性派发对应技能，不先问模型意图", async () => {
+  it("选中 chip 后回车才确定性派发，不先问模型意图", async () => {
     mocks.appContext.setCurrentAiSession = (arg: unknown) => {
       mocks.appContext.currentAiSession =
         typeof arg === "function" ? (arg as (s: AiChatSession) => AiChatSession)(mocks.appContext.currentAiSession) : arg;
@@ -477,10 +498,7 @@ describe("AiSidebar", () => {
     mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
     const { container, unmount } = await renderSidebar();
 
-    await act(async () => {
-      Simulate.click(chipButtons(container)[0]);
-      await new Promise((r) => setTimeout(r, 0));
-    });
+    await armAndEnter(container, 0);
 
     expect(mocks.skills.dispatched).toEqual([
       { skillId: "conversation-to-doc", input: { conversationId: "conv_1" } },
@@ -491,23 +509,27 @@ describe("AiSidebar", () => {
     unmount();
   });
 
-  it("转文档 chip 一步出结果，不多插一层计划确认", async () => {
+  it("转文档 chip 选中后回车出结果，下游不多插一层计划确认", async () => {
     mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
     const { container, unmount } = await renderSidebar();
 
     await act(async () => {
       Simulate.click(chipButtons(container)[0]);
+    });
+    expect(mocks.skills.dispatched).toEqual([]);
+    // 已选中：直接回车执行（勿再点 chip，会取消选中）
+    await act(async () => {
+      Simulate.keyDown(container.querySelector("textarea")!, { key: "Enter" });
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    // 一次点击 → 一次派发 → 直接跳到产物，中间没有任何额外确认步骤
     expect(mocks.skills.dispatched).toHaveLength(1);
     expect(mocks.appContext.setActiveView).toHaveBeenCalledWith("doc");
     expect(mocks.toast.success).toHaveBeenCalledWith("Document created");
     unmount();
   });
 
-  it("主题汇总 chip 先待命，下一次输入作为主题派发（仍不经模型判断）", async () => {
+  it("主题汇总 chip 选中后清空输入、换引导语，回车以主题派发", async () => {
     mocks.appContext.setCurrentAiSession = (arg: unknown) => {
       mocks.appContext.currentAiSession =
         typeof arg === "function" ? (arg as (s: AiChatSession) => AiChatSession)(mocks.appContext.currentAiSession) : arg;
@@ -517,7 +539,8 @@ describe("AiSidebar", () => {
 
     await act(async () => { Simulate.click(chipButtons(container)[1]); });
     expect(mocks.skills.dispatched).toEqual([]);
-    expect(container.querySelector("textarea")!.getAttribute("placeholder")).toBe("Which topic should I gather?");
+    expect(container.querySelector("textarea")!.getAttribute("placeholder")).toBe("What topic should I gather?");
+    expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toBe("");
 
     const textarea = container.querySelector("textarea")!;
     await act(async () => {
@@ -534,7 +557,7 @@ describe("AiSidebar", () => {
     unmount();
   });
 
-  it("「根据批注重写」复用既有确认框，不派发技能也不生成计划文档", async () => {
+  it("「批注重写」选中后回车打开既有确认框，不派发技能也不生成计划文档", async () => {
     mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
     mocks.appContext.activeView = "doc";
     mocks.appContext.activeDocId = "doc_1";
@@ -542,14 +565,14 @@ describe("AiSidebar", () => {
     mocks.appContext.annotationsByDoc = { doc_1: [{ id: "a1", comment: "改这里" }] };
     const { container, unmount } = await renderSidebar();
 
-    await act(async () => { Simulate.click(chipButtons(container)[1]); });
+    await armAndEnter(container, 1);
 
     expect(mocks.appContext.setRewriteDialogOpen).toHaveBeenCalledWith(true);
     expect(mocks.skills.dispatched).toEqual([]);
     unmount();
   });
 
-  it("整理目录 chip 派发后提示计划已生成，并跳到计划文档", async () => {
+  it("整理目录 chip 选中回车后提示计划已生成，并跳到计划文档", async () => {
     mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
     mocks.appContext.activeView = "doc";
     mocks.appContext.activeDocId = "doc_1";
@@ -557,10 +580,7 @@ describe("AiSidebar", () => {
     mocks.skills.result = { planDocId: "doc_plan" };
     const { container, unmount } = await renderSidebar();
 
-    await act(async () => {
-      Simulate.click(chipButtons(container)[0]);
-      await new Promise((r) => setTimeout(r, 0));
-    });
+    await armAndEnter(container, 0);
 
     expect(mocks.skills.dispatched[0].skillId).toBe("doc-folder-organize");
     expect(mocks.appContext.setActiveDocId).toHaveBeenCalledWith("doc_plan");
@@ -573,16 +593,13 @@ describe("AiSidebar", () => {
     mocks.skills.fail = "没有检索到与「x」相关的内容";
     const { container, unmount } = await renderSidebar();
 
-    await act(async () => {
-      Simulate.click(chipButtons(container)[0]);
-      await new Promise((r) => setTimeout(r, 0));
-    });
+    await armAndEnter(container, 0);
 
     expect(mocks.toast.error).toHaveBeenCalledWith("没有检索到与「x」相关的内容");
     unmount();
   });
 
-  it("打开计划文档时出现执行入口，点击后按勾选执行且全程零 LLM", async () => {
+  it("打开计划文档时出现执行入口，选中回车后按勾选执行且全程零 LLM", async () => {
     mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
     mocks.appContext.activeView = "doc";
     mocks.appContext.activeDocId = "doc_plan";
@@ -590,12 +607,15 @@ describe("AiSidebar", () => {
     const { container, unmount } = await renderSidebar();
 
     const runButton = Array.from(container.querySelectorAll("button")).find((b) =>
-      b.textContent?.includes("Run the ticked items"),
+      b.textContent?.includes("Run plan"),
     )!;
     expect(runButton).toBeDefined();
 
     await act(async () => {
       Simulate.click(runButton);
+    });
+    await act(async () => {
+      Simulate.keyDown(container.querySelector("textarea")!, { key: "Enter" });
       await new Promise((r) => setTimeout(r, 0));
     });
 
@@ -613,10 +633,14 @@ describe("AiSidebar", () => {
     mocks.skills.fail = "《A》在计划生成之后被改过，计划已过期。请让 AI 重新生成一份计划。";
     const { container, unmount } = await renderSidebar();
 
+    const runButton = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("Run plan"),
+    )!;
     await act(async () => {
-      Simulate.click(
-        Array.from(container.querySelectorAll("button")).find((b) => b.textContent?.includes("Run the ticked items"))!,
-      );
+      Simulate.click(runButton);
+    });
+    await act(async () => {
+      Simulate.keyDown(container.querySelector("textarea")!, { key: "Enter" });
       await new Promise((r) => setTimeout(r, 0));
     });
 

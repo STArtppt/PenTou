@@ -2,10 +2,10 @@
  * ai-chips.ts — AI 侧边栏的意图 chip（spec ai-intent-chips）。
  *
  * chip 是**UI affordance**，不是意图分类：展示它、切换视图、算它可不可用，全程零 LLM 调用。
- * 点击即确定性派发到对应技能 —— tool calling 本身就是意图层，再加一层前置分类器只会
+ * 点击进入选中态，回车/发送才确定性派发 —— tool calling 本身就是意图层，再加一层前置分类器只会
  * +1 轮延迟、+1 处会错，而且可能与下游模型的判断打架。
  *
- * chip 统一的是**入口**，不是**流程**：每个 chip 走与其风险相称的确认形态（见 `confirmation`）。
+ * chip 统一的是**入口与触发方式**，不是**流程**：每个 chip 走与其风险相称的确认形态（见 `confirmation`）。
  */
 
 export type ChipId =
@@ -20,11 +20,15 @@ export type ChipConfirmation = "plan-doc" | "artifact-preview" | "rewrite-dialog
 
 export interface IntentChip {
   id: ChipId;
-  /** i18n key。 */
+  /** 可见文案 i18n key（中文四字 / 英文短标签）。 */
   labelKey: string;
+  /** 完整语义，用于 title / aria-label。 */
+  a11yLabelKey: string;
   confirmation: ChipConfirmation;
-  /** 需要用户先补一个参数（如主题）时给出输入框 placeholder 的 i18n key。 */
-  promptKey?: string;
+  /** 选中态输入框 placeholder 引导语。 */
+  armedPromptKey: string;
+  /** true 时回车必须有非空输入（主题等）。 */
+  requiresInput: boolean;
   disabled: boolean;
   /** 不可用的原因 i18n key —— 呈现为不可用并说明原因，而不是点了才失败。 */
   disabledReasonKey?: string;
@@ -49,17 +53,21 @@ export function chipsForView(state: ChipState): IntentChip[] {
   const chip = (
     id: ChipId,
     labelKey: string,
+    a11yLabelKey: string,
     confirmation: ChipConfirmation,
+    armedPromptKey: string,
+    requiresInput: boolean,
     blocked: string | null,
-    promptKey?: string,
   ): IntentChip => {
     // 执行计划不需要模型 —— 计划已经写死了要做什么，执行阶段不该再问模型
     const noLLM = !state.hasLLM && confirmation !== "execute-plan";
     return {
       id,
       labelKey,
+      a11yLabelKey,
       confirmation,
-      promptKey,
+      armedPromptKey,
+      requiresInput,
       disabled: noLLM || !!blocked,
       disabledReasonKey: noLLM ? "aiSidebar.chipNeedsModel" : blocked ?? undefined,
     };
@@ -70,23 +78,55 @@ export function chipsForView(state: ChipState): IntentChip[] {
       chip(
         "conversation-to-doc",
         "aiSidebar.chipConvertToDoc",
+        "aiSidebar.chipConvertToDocA11y",
         "artifact-preview",
+        "aiSidebar.chipConvertToDocArmed",
+        false,
         state.hasConversation ? null : "aiSidebar.chipNeedsConversation",
       ),
-      chip("topic-digest", "aiSidebar.chipTopicDigest", "artifact-preview", null, "aiSidebar.chipTopicPrompt"),
+      chip(
+        "topic-digest",
+        "aiSidebar.chipTopicDigest",
+        "aiSidebar.chipTopicDigestA11y",
+        "artifact-preview",
+        "aiSidebar.chipTopicPrompt",
+        true,
+        null,
+      ),
     ];
   }
 
   return [
     // 计划文档本身在场时，执行入口排第一 —— 用户刚勾完复选框，下一步就是执行
     ...(state.isPlanDoc
-      ? [chip("run-plan", "aiSidebar.chipRunPlan", "execute-plan", null)]
+      ? [
+          chip(
+            "run-plan",
+            "aiSidebar.chipRunPlan",
+            "aiSidebar.chipRunPlanA11y",
+            "execute-plan",
+            "aiSidebar.chipRunPlanArmed",
+            false,
+            null,
+          ),
+        ]
       : []),
-    chip("doc-folder-organize", "aiSidebar.chipOrganizeFolders", "plan-doc", null),
+    chip(
+      "doc-folder-organize",
+      "aiSidebar.chipOrganizeFolders",
+      "aiSidebar.chipOrganizeFoldersA11y",
+      "plan-doc",
+      "aiSidebar.chipOrganizeFoldersArmed",
+      false,
+      null,
+    ),
     chip(
       "annotation-driven-rewrite",
       "aiSidebar.chipRewriteByAnnotations",
+      "aiSidebar.chipRewriteByAnnotationsA11y",
       "rewrite-dialog",
+      "aiSidebar.chipRewriteByAnnotationsArmed",
+      false,
       !state.hasDocument
         ? "aiSidebar.chipNeedsDocument"
         : !state.hasCommentAnnotations

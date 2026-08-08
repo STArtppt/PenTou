@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Bot, User, Copy, Check, Import, Loader2, Quote, History, EyeOff, MessageSquare, Globe, Terminal, PenLine, FolderKanban } from "lucide-react";
+import { Bot, User, Copy, Check, Import, Loader2, Quote, History, EyeOff, Globe, Terminal, PenLine, FolderKanban } from "lucide-react";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,6 @@ export function ChatBody() {
     searchJump,
     setSearchJump,
     aiSidebarOpen,
-    toggleAiSidebar,
   } = useAppContext();
   const { t, language } = useTranslation();
 
@@ -216,28 +215,18 @@ export function ChatBody() {
               ) : null}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setVersionPanelOpen(true)}
-              className="h-auto gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground"
-            >
-              <History size={14} />
-              {t("toolbar.versionHistory")}
-            </Button>
-            <Button
-              variant={aiSidebarOpen ? "primary" : "ghost"}
-              size="sm"
-              onClick={toggleAiSidebar}
-              className={clsx(
-                "h-auto gap-1.5 rounded-md px-3 py-1.5 text-xs",
-                !aiSidebarOpen && "text-muted-foreground",
-              )}
-            >
-              <MessageSquare size={14} />
-              {t("toolbar.askAi")}
-            </Button>
+          <div className="flex shrink-0 items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <IconTooltip label={t("toolbar.versionHistory")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setVersionPanelOpen(true)}
+                aria-label={t("toolbar.versionHistory")}
+                className="size-8 text-muted-foreground"
+              >
+                <History size={16} />
+              </Button>
+            </IconTooltip>
           </div>
         </header>
 

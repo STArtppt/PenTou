@@ -75,6 +75,7 @@ import logoDarkUrl from "../../../assets/images/logo_dark.png";
 import { useScrollActivity } from "../hooks/useScrollActivity";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useTranslation } from "../i18n";
+
 import { formatDisplayDate } from "../utils/dateFormat";
 import { copyText } from "../utils/clipboard";
 import { batchExportToVault, buildObsidianOpenUri } from "../obsidian";

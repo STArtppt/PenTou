@@ -85,7 +85,19 @@ describe("各 chip 走各自的确认形态（design D5）", () => {
 
   it("只有主题汇总需要用户先补一个参数", () => {
     const all = [...chipsForView(base), ...chipsForView({ ...base, activeView: "doc", hasDocument: true })];
-    expect(all.filter((c) => c.promptKey).map((c) => c.id)).toEqual(["topic-digest"]);
+    expect(all.filter((c) => c.requiresInput).map((c) => c.id)).toEqual(["topic-digest"]);
+  });
+
+  it("每个 chip 都有选中态引导语与完整 a11y 文案 key", () => {
+    const all = [
+      ...chipsForView(base),
+      ...chipsForView({ ...base, activeView: "doc", hasDocument: true, isPlanDoc: true }),
+    ];
+    for (const chip of all) {
+      expect(chip.armedPromptKey).toBeTruthy();
+      expect(chip.a11yLabelKey).toBeTruthy();
+      expect(chip.a11yLabelKey).not.toBe(chip.labelKey);
+    }
   });
 });
 
