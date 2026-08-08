@@ -777,6 +777,7 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
                   variant="ghost"
                   size="sm"
                   className="h-auto gap-1 p-0 text-xs font-medium text-foreground underline underline-offset-2 hover:bg-transparent"
+                  nativeButton={false}
                   render={<a href="https://mineru.net" target="_blank" rel="noreferrer" />}
                 >
                   mineru.net

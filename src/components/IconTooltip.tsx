@@ -27,6 +27,9 @@ type IconTooltipProps = {
  * - native <button> and startist Button both work without caller-side Provider
  *
  * Mount a single <TooltipProvider> near the app root (see App.tsx).
+ *
+ * Note: do NOT pass `nativeButton` here — Tooltip.Trigger does not consume it
+ * (unlike Button / Dialog.Close); it would leak onto the DOM <span>.
  */
 export function IconTooltip({
   label,
