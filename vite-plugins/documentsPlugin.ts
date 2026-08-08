@@ -1111,6 +1111,17 @@ export async function documentsApiHandler(
 
 // ── Document Import (multipart) ───────────────────────────────────────────────
 
+/** 从 multipart 字段里取出可选的 projectId；无效或未知项目时回落 undefined（默认目录）。 */
+function resolveImportProjectId(formFields: formidable.Fields): string | undefined {
+  const raw = formFields.projectId;
+  const candidate = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof candidate !== "string") return undefined;
+  const projectId = candidate.trim();
+  if (!projectId || projectId === DEFAULT_PROJECT_ID || !PROJECT_ID_RE.test(projectId)) return undefined;
+  const exists = readDocumentProjects().some((project) => project.id === projectId);
+  return exists ? projectId : undefined;
+}
+
 async function handleDocumentImport(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const form = formidable({
     maxFileSize: DOC_IMPORT_MAX_FILE_SIZE,
@@ -1120,9 +1131,11 @@ async function handleDocumentImport(req: IncomingMessage, res: ServerResponse): 
   });
 
   let files: formidable.File[];
+  let importProjectId: string | undefined;
   try {
-    const [, formFiles] = await form.parse(req);
+    const [formFields, formFiles] = await form.parse(req);
     files = Object.values(formFiles).flat().filter(Boolean) as formidable.File[];
+    importProjectId = resolveImportProjectId(formFields);
   } catch (e: any) {
     if (e.message?.includes("maxFiles")) {
       json(res, 413, { error: `Too many files. Maximum ${DOC_IMPORT_MAX_FILE_COUNT} files per import.` });
@@ -1170,6 +1183,8 @@ async function handleDocumentImport(req: IncomingMessage, res: ServerResponse): 
       importedFrom: params.originalName,
       importedAt: now,
       versionType: "import",
+      // 前端在当前项目目录导入时传入；合并既有文档时归属仍按 shouldAdoptProject 规则
+      ...(importProjectId ? { projectId: importProjectId } : {}),
     });
 
     results[params.index] = {

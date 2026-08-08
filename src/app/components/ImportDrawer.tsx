@@ -181,7 +181,7 @@ async function parseChatGPTZip(file: File, t: TFunction): Promise<any[]> {
 }
 
 export function ImportDrawer() {
-  const { isDrawerOpen, setDrawerOpen, addConversations, addDocuments, folders, activeView, setActiveView, setActiveDocId, setActiveConversationId } = useAppContext();
+  const { isDrawerOpen, setDrawerOpen, addConversations, addDocuments, folders, activeView, setActiveView, setActiveDocId, setActiveConversationId, activeProjectId } = useAppContext();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { isScrolling: isDrawerScrolling, markScrollActive: markDrawerScrollActive } = useScrollActivity();
@@ -372,6 +372,7 @@ export function ImportDrawer() {
               addDocuments={addDocuments}
               setActiveDocId={setActiveDocId}
               setActiveView={setActiveView}
+              activeProjectId={activeProjectId}
               t={t}
             />
           </div>
@@ -454,7 +455,7 @@ export function ImportDrawer() {
               onScroll={markDrawerScrollActive}
             >
               {isDocMode ? (
-                <DocumentImportPanel setDrawerOpen={setDrawerOpen} addDocuments={addDocuments} setActiveDocId={setActiveDocId} setActiveView={setActiveView} t={t} />
+                <DocumentImportPanel setDrawerOpen={setDrawerOpen} addDocuments={addDocuments} setActiveDocId={setActiveDocId} setActiveView={setActiveView} activeProjectId={activeProjectId} t={t} />
               ) : (
               <>
               {/* Smart Upload Zone */}
@@ -674,7 +675,7 @@ const SUPPORTED_DOC_EXTS = [
   ".png", ".jpg", ".jpeg", ".jp2", ".webp", ".gif", ".bmp",
 ];
 
-function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setActiveView, t, mobile }: any) {
+function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setActiveView, activeProjectId, t, mobile }: any) {
   const [status, setStatus] = useState<any>(null);
   const [tokenInput, setTokenInput] = useState("");
   const [savingToken, setSavingToken] = useState(false);
@@ -743,6 +744,8 @@ function DocumentImportPanel({ setDrawerOpen, addDocuments, setActiveDocId, setA
     try {
       const formData = new FormData();
       for (let i = 0; i < files.length; i++) formData.append("files", files[i]);
+      // 在当前项目目录导入时自动归属该项目（默认目录不传，落盘无 projectId）
+      if (activeProjectId) formData.append("projectId", activeProjectId);
       const r = await fetch("/api/import/document", { method: "POST", body: formData });
       const data = await r.json();
       setResults(data.results ?? []);

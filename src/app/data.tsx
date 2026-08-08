@@ -289,7 +289,7 @@ interface AppContextType {
   documentFolders: DocumentFolder[];
   // ── 文档项目（spec document-projects）──
   documentProjects: DocumentProject[];
-  /** 当前选中的项目；null = 默认目录。会话内保持，切换视图再切回不重置。 */
+  /** 当前选中的项目；null = 默认目录。跨刷新持久化（localStorage），切换视图再切回不重置。 */
   activeProjectId: string | null;
   setActiveProjectId: (id: string | null) => void;
   refreshDocumentProjects: () => Promise<void>;
@@ -1367,7 +1367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // 新建即切过去：用户刚起的项目是空的，留在原目录看不出发生了什么
     setActiveProjectId(project.id);
     return project;
-  }, []);
+  }, [setActiveProjectId]);
 
   const updateDocumentProject = useCallback(async (
     id: string,
@@ -1390,8 +1390,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? { ...doc, projectId: null, folderId: null }
         : doc,
     ));
-    setActiveProjectId((current) => (current === id ? null : current));
-  }, [documentFolders]);
+    if (activeProjectId === id) setActiveProjectId(null);
+  }, [documentFolders, activeProjectId, setActiveProjectId]);
 
   const renameDocumentFolder = useCallback(async (id: string, name: string) => {
     if (isAiWorkspaceFolderId(id)) return; // 受保护（spec ai-workspace）；UI 也不提供入口

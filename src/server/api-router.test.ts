@@ -75,9 +75,17 @@ async function callApi(params: {
   return { status, body: responseBody ? JSON.parse(responseBody) : undefined };
 }
 
-function multipartFiles(files: Array<{ name: string; content: string; type?: string }>): { rawBody: Buffer; headers: Record<string, string> } {
+function multipartFiles(
+  files: Array<{ name: string; content: string; type?: string }>,
+  fields: Record<string, string> = {},
+): { rawBody: Buffer; headers: Record<string, string> } {
   const boundary = "----pentouApiRouterBoundary";
   const parts: Buffer[] = [];
+  for (const [name, value] of Object.entries(fields)) {
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+    ));
+  }
   for (const file of files) {
     parts.push(Buffer.from(
       `--${boundary}\r\nContent-Disposition: form-data; name="files"; filename="${file.name}"\r\nContent-Type: ${file.type ?? "text/plain"}\r\n\r\n`,
@@ -225,6 +233,52 @@ describe("MinerU document import config and local converters", () => {
     expect(byName.get("notes.md")).toMatchObject({ originalName: "notes.md", success: true });
     expect(byName.get("scan.pdf")).toMatchObject({ originalName: "scan.pdf", success: false });
     expect(byName.get("scan.pdf").error).toContain("需配置 MinerU Token");
+  });
+
+  it("assigns imported documents to the projectId field when the project exists", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    const projectId = "dp_pentou_import";
+    fs.mkdirSync(path.join(abs, "documents"), { recursive: true });
+    fs.writeFileSync(
+      path.join(abs, "document-projects.json"),
+      JSON.stringify([{
+        id: projectId,
+        name: "Pentou",
+        description: "",
+        sourceKey: "Pentou",
+        createdAt: "2026-08-01T00:00:00.000Z",
+      }]),
+      "utf-8",
+    );
+
+    const mp = multipartFiles(
+      [{ name: "guide.md", content: "# Guide\n\nbody" }],
+      { projectId },
+    );
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/import/document", ...mp });
+
+    expect(res.status).toBe(200);
+    expect(res.body.successCount).toBe(1);
+    expect(res.body.results[0].document.projectId).toBe(projectId);
+
+    const saved = fs.readFileSync(
+      path.join(abs, "documents", `${res.body.results[0].document.id}.md`),
+      "utf-8",
+    );
+    expect(saved).toContain(`projectId: ${projectId}`);
+  });
+
+  it("ignores unknown projectId and keeps the document in the default directory", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const mp = multipartFiles(
+      [{ name: "loose.md", content: "# Loose\n\nbody" }],
+      { projectId: "dp_does_not_exist" },
+    );
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/import/document", ...mp });
+
+    expect(res.status).toBe(200);
+    expect(res.body.successCount).toBe(1);
+    expect(res.body.results[0].document.projectId).toBeUndefined();
   });
 });
 
