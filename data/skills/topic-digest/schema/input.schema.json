@@ -5,8 +5,9 @@
   "type": "object",
   "properties": {
     "topic": { "type": "string", "description": "用户点名的主题" },
-    "topK": { "type": "integer", "description": "可选：检索片段数，默认 12" },
-    "projectId": { "type": "string", "description": "可选：汇总落进哪个项目的 AI 空间；省略则落默认目录" }
+    "topK": { "type": "integer", "description": "可选：检索条数，默认 50（服务端上限亦为 50）" },
+    "projectId": { "type": "string", "description": "可选：汇总落进哪个项目的 AI 空间；省略则落默认目录" },
+    "lang": { "type": "string", "enum": ["zh", "en"], "description": "可选：产物正文语言，默认 zh" }
   },
   "required": ["topic"],
   "additionalProperties": false

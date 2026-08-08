@@ -6,14 +6,20 @@
   "properties": {
     "planDocId": { "type": "string", "description": "行动计划文档 id" },
     "folderId": { "type": "string", "description": "计划所在 AI 空间的文件夹 id" },
-    "itemCount": { "type": "integer", "description": "计划里的待办条目数" },
+    "itemCount": { "type": "integer", "description": "计划里的归类条目数（数量约束裁剪之后）" },
+    "cleanupCount": { "type": "integer", "description": "计划里的「建议清理」条目数" },
+    "projectType": {
+      "type": "string",
+      "enum": ["dev", "knowledge"],
+      "description": "判定出的项目类型；决定用哪套典型目录结构"
+    },
     "candidateCount": { "type": "integer", "description": "参与判断的候选文档数（不含记忆与 AI 空间内文档）" },
     "notes": {
       "type": "array",
-      "description": "只报告不处置的数据异常（孤儿 / 重名文件夹等）",
+      "description": "只报告不处置的数据异常（孤儿 / 重名文件夹等），以及数量约束的裁剪说明",
       "items": { "type": "string" }
     }
   },
-  "required": ["planDocId", "folderId", "itemCount", "candidateCount", "notes"],
+  "required": ["planDocId", "folderId", "itemCount", "cleanupCount", "projectType", "candidateCount", "notes"],
   "additionalProperties": false
 }

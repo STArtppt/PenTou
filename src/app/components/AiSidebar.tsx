@@ -133,7 +133,7 @@ export function AiSidebar() {
     rewriteDialogOpen,
     refreshDocuments,
   } = useAppContext();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const isMobile = useIsMobile();
   // 全屏面板贴合软键盘：键盘弹出时容器收缩到键盘之上，标题栏顶端不动（仅移动端 + 打开时生效）。
   const viewport = useVisualViewport(isMobile && aiSidebarOpen);
@@ -456,21 +456,30 @@ export function AiSidebar() {
       return;
     }
     if (assistant?.status === "aborted") return;
-    const result = output as { approved?: number; skipped?: number } | undefined;
-    notifyRunFinished(session, "aiSidebar.chipPlanDone", {
-      done: result?.approved ?? 0,
-      skipped: result?.skipped ?? 0,
-    });
+    const result = output as { approved?: number; skipped?: number; cleaned?: number } | undefined;
+    // 有清理条目时点明「归入待清理、一篇都没删」—— 否则「已执行」很容易被读成「已删除」
+    notifyRunFinished(
+      session,
+      result?.cleaned ? "aiSidebar.chipPlanDoneCleaned" : "aiSidebar.chipPlanDone",
+      {
+        done: result?.approved ?? 0,
+        skipped: result?.skipped ?? 0,
+        cleaned: result?.cleaned ?? 0,
+      },
+    );
   };
 
   const dispatchSkill = async (chip: IntentChip, arg?: string) => {
     clearArmed();
+    // 产出物正文的语言跟随界面语言（技能是纯逻辑，拿不到 i18n hook，只能由派发方带上）
     const skillInput: Record<string, unknown> =
       chip.id === "conversation-to-doc"
         ? { conversationId: activeConversationId! }
         : chip.id === "topic-digest"
-          ? { topic: arg!, ...(activeProjectId ? { projectId: activeProjectId } : {}) }
-          : { ...(activeProjectId ? { projectId: activeProjectId } : {}) };
+          ? { topic: arg!, lang: language, ...(activeProjectId ? { projectId: activeProjectId } : {}) }
+          : chip.id === "doc-folder-organize"
+            ? { lang: language, ...(activeProjectId ? { projectId: activeProjectId } : {}) }
+            : { ...(activeProjectId ? { projectId: activeProjectId } : {}) };
 
     const titleParts = [t(chip.labelKey)];
     if (arg) titleParts.push(arg);

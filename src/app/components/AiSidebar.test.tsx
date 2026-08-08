@@ -569,7 +569,10 @@ describe("AiSidebar", () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(mocks.skills.dispatched).toEqual([{ skillId: "topic-digest", input: { topic: "检索方案" } }]);
+    // 产出物正文语言跟随界面语言（技能拿不到 i18n hook，由派发方带上）
+    expect(mocks.skills.dispatched).toEqual([
+      { skillId: "topic-digest", input: { topic: "检索方案", lang: "en" } },
+    ]);
     expect(mocks.llm.seen).toEqual([]); // 这次输入没有被当成一轮提问
     unmount();
   });

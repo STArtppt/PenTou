@@ -192,6 +192,8 @@ export const translations = {
     "doc.toc": "Table of Contents",
     "doc.previewBanner": "Previewing v{n} — not current version",
     "doc.stopPreview": "Stop Preview",
+    // 应用内链接（spec in-app-links）：目标不存在时明确提示，绝不静默无反应
+    "doc.inAppLinkMissing": "That conversation or document no longer exists — the link was left untouched.",
     "doc.annotateMode": "Annotate",
     "doc.editMode": "Edit",
     "doc.fromConversation": "From Chat",
@@ -421,6 +423,7 @@ export const translations = {
     "aiSidebar.chipRunPlanA11y": "Run the ticked items in the current plan document",
     "aiSidebar.chipRunPlanArmed": "Press Enter to run the ticked plan items",
     "aiSidebar.chipPlanDone": "Done: {done} applied, {skipped} left unticked",
+    "aiSidebar.chipPlanDoneCleaned": "Done: {done} applied ({cleaned} moved to the pending-cleanup folder, none deleted), {skipped} left unticked",
     "aiSidebar.chipRewriteByAnnotations": "Rewrite",
     "aiSidebar.chipRewriteByAnnotationsA11y": "Rewrite this document from annotations",
     "aiSidebar.chipRewriteByAnnotationsArmed": "Press Enter to open the annotation rewrite dialog",
@@ -670,6 +673,8 @@ export const translations = {
     "doc.toc": "目录",
     "doc.previewBanner": "正在预览 v{n}，非当前版本",
     "doc.stopPreview": "停止预览",
+    // 应用内链接（spec in-app-links）：目标不存在时明确提示，绝不静默无反应
+    "doc.inAppLinkMissing": "这个会话或文档已不存在 —— 链接原样保留，未改动文档。",
     "doc.annotateMode": "批注",
     "doc.editMode": "编辑",
     "doc.fromConversation": "来自对话",
@@ -898,6 +903,7 @@ export const translations = {
     "aiSidebar.chipRunPlanA11y": "执行当前计划文档中已勾选的条目",
     "aiSidebar.chipRunPlanArmed": "按回车执行已勾选的计划条目",
     "aiSidebar.chipPlanDone": "已执行 {done} 条，{skipped} 条未勾选",
+    "aiSidebar.chipPlanDoneCleaned": "已执行 {done} 条（其中 {cleaned} 条归入「_待清理」，一篇都没删），{skipped} 条未勾选",
     "aiSidebar.chipRewriteByAnnotations": "批注重写",
     "aiSidebar.chipRewriteByAnnotationsA11y": "根据批注重写本文档",
     "aiSidebar.chipRewriteByAnnotationsArmed": "按回车打开批注重写确认",

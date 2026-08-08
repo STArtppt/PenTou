@@ -3,14 +3,40 @@
   "$id": "pentou://skills/topic-digest/output",
   "title": "topic-digest output",
   "type": "object",
+  "definitions": {
+    "bucket": {
+      "type": "array",
+      "description": "分桶计数：[取值, 条数]，按条数降序",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": [{ "type": "string" }, { "type": "integer" }]
+      }
+    }
+  },
   "properties": {
     "docId": { "type": "string", "description": "汇总文档 id" },
     "folderId": { "type": "string", "description": "所在 AI 空间的文件夹 id" },
     "topic": { "type": "string" },
-    "sourceCount": { "type": "integer", "description": "汇总所依据的片段数" },
+    "sourceCount": { "type": "integer", "description": "本次检索的命中数（统计口径，上限 50）" },
+    "deepReadCount": { "type": "integer", "description": "实际深读的条数（不足 3 条时按实际给出）" },
+    "stats": {
+      "type": "object",
+      "description": "客户端确定性计算的多维统计，MUST NOT 来自模型输出",
+      "properties": {
+        "total": { "type": "integer", "description": "统计所依据的命中数" },
+        "platform": { "$ref": "#/definitions/bucket" },
+        "ingestSource": { "$ref": "#/definitions/bucket" },
+        "project": { "$ref": "#/definitions/bucket" },
+        "month": { "$ref": "#/definitions/bucket" }
+      },
+      "required": ["total", "platform", "ingestSource", "project", "month"],
+      "additionalProperties": false
+    },
     "citations": {
       "type": "array",
-      "description": "汇总所引用的来源",
+      "description": "来源清单（相关度前 10，不足则按实际）。链接目标取自检索结果的真实 id",
       "items": {
         "type": "object",
         "properties": {
@@ -23,6 +49,6 @@
       }
     }
   },
-  "required": ["docId", "folderId", "topic", "sourceCount", "citations"],
+  "required": ["docId", "folderId", "topic", "sourceCount", "deepReadCount", "stats", "citations"],
   "additionalProperties": false
 }

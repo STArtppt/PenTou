@@ -13,6 +13,9 @@ export interface RetrievalHit {
   id: string;
   title: string;
   snippetText: string;
+  /** 命中时间与相关度评分（topic-digest 的统计与排序要用；侧栏问答不消费）。 */
+  date?: string;
+  score?: number;
 }
 
 const DEFAULT_TOP_K_INTERNAL = 6;

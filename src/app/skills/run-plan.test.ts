@@ -61,8 +61,10 @@ function harness(over: { body?: string; aiPlan?: string; docs?: Record<string, a
   return { deps, calls };
 }
 
-const allChecked = renderPlanBody(PLAN).replace(/- \[ \]/g, "- [x]");
-const firstOnly = renderPlanBody(PLAN).replace("- [ ] 把《A》", "- [x] 把《A》");
+// 条目默认全部勾选（design D8）：取消勾选才是「不采纳」
+const allChecked = renderPlanBody(PLAN);
+const firstOnly = allChecked.replace("- [x] 把《B》", "- [ ] 把《B》");
+const noneChecked = allChecked.replace(/- \[x\]/g, "- [ ]");
 
 describe("执行计划（spec agent-write-policy）", () => {
   it("按勾选执行：补建缺失文件夹（只增），再逐条改归属", async () => {
@@ -137,7 +139,7 @@ describe("执行计划（spec agent-write-policy）", () => {
   });
 
   it("一条都没勾时零写入", async () => {
-    const { deps, calls } = harness({ body: renderPlanBody(PLAN) });
+    const { deps, calls } = harness({ body: noneChecked });
     const result = await runPlanDoc(deps, "doc_plan");
     expect(result).toMatchObject({ approved: 0, skipped: 2 });
     expect(calls.filter((c) => c.method !== "GET")).toEqual([]);

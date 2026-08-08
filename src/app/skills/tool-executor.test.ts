@@ -223,7 +223,7 @@ describe("写工具走 /api/* 并受写权限约束", () => {
 
     const post = calls.find((c) => c.method === "POST")!;
     expect(post.body.folderId).toBe("df_ai_dp_default");
-    expect(post.body.body).toContain("- [ ] 把《我的笔记》归入「开发指南」");
+    expect(post.body.body).toContain("- [x] 把《我的笔记》归入「开发指南」");
     const plan = JSON.parse(post.body.aiPlan);
     expect(plan.snapshot).toEqual([{ docId: "doc_user", updatedAt: "t1" }]);
     // 基底不含 AI 空间与别的项目的文件夹

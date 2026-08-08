@@ -6,6 +6,8 @@ import {
   loadLLMSettingsFromLocalStorage,
 } from "./llm-settings";
 import { generateDocId, generateAnnotationId } from "./doc-utils";
+import { toggleTaskLine } from "./task-checkbox";
+import type { InAppLink } from "./in-app-links";
 import { resolveMoveProjectId } from "./document-projects";
 import { isAiWorkspaceFolderId, sortAiWorkspaceFirst } from "../shared/ai-workspace";
 import {
@@ -306,7 +308,7 @@ interface AppContextType {
   setVersionPanelOpen: (open: boolean) => void;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
-  /** Derived from active provider + global prompts (read-only convenience). */
+  /** Derived from active provider (read-only convenience). */
   llmConfig: LLMConfig;
   llmSettings: LLMSettings;
   setLlmSettings: (s: LLMSettings) => void;
@@ -320,6 +322,16 @@ interface AppContextType {
   addDocuments: (docs: Document[]) => Promise<void>;
   updateDocument: (id: string, patch: Partial<Document>) => Promise<void>;
   saveDocumentBody: (id: string, newBody: string) => Promise<DocumentVersion>;
+  /**
+   * 预览界面里勾选任务复选框（spec interactive-task-checkbox）：翻转第 `line` 行并保存，
+   * **不产生新版本**。勾选是浏览动作，不是编辑动作。
+   */
+  toggleDocumentTask: (docId: string, line: number) => void;
+  /**
+   * 点击文档正文里的应用内链接（spec in-app-links）：跳到对应会话 / 文档。
+   * 目标非法或已不存在时返回 `false` 由调用方提示；无论如何 MUST NOT 改写正文。
+   */
+  openInAppLink: (link: InAppLink | null) => boolean;
   uploadDocumentUpdate: (id: string, file: File) => Promise<"merged" | "skipped">;
   deleteDocument: (id: string) => Promise<void>;
   renameDocument: (id: string, title: string) => Promise<void>;
@@ -487,6 +499,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // synchronously — important under React 18 strict-mode double-invocation.
   const hydratedConvRef = useRef<Set<string>>(new Set());
   const hydratedDocRef = useRef<Set<string>>(new Set());
+
+  // 最新列表的镜像 ref：供 useCallback([]) 内读当前正文 / 校验跳转目标，
+  // 不把 documents / conversations 拉进依赖（否则每次列表变动都重建回调，
+  // 进而让 DocViewer 的 mdComponents useMemo 白白失效）。
+  const documentsRef = useRef<Document[]>([]);
+  documentsRef.current = documents;
+  const conversationsRef = useRef<Conversation[]>([]);
+  conversationsRef.current = conversations;
+
+  // 复选框写回的合并队列（design D9）：同一 tick 内多次翻转只发一次保存。
+  const pendingTaskBodyRef = useRef<Map<string, string>>(new Map());
+  const taskSaveTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Load from server on mount — lists use ?fields=meta to keep first paint cheap
   // on 1C1G hosts (PRD US-05). Full message bodies are hydrated on demand below.
@@ -1126,6 +1150,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return data.version as DocumentVersion;
   }, []);
 
+  /**
+   * 预览界面勾选任务复选框（spec interactive-task-checkbox / design D9）。
+   *
+   * 两处刻意的取舍：
+   * - `versionType: "none"` —— 勾一下就建一个版本会让版本历史彻底不可用。**只有这条路径**
+   *   传该字段；编辑器保存与 AI 写入路径都不传（design D9 安全边界）。
+   * - 同一 tick 内的多次翻转合并成一次保存 —— 连点十几个不该发十几个写请求。
+   */
+  const toggleDocumentTask = useCallback((docId: string, line: number) => {
+    const current = pendingTaskBodyRef.current.get(docId) ?? documentsRef.current.find((d) => d.id === docId)?.body;
+    if (current === undefined) return;
+    const next = toggleTaskLine(current, line);
+    if (next === current) return; // 不是任务行：不写盘，也不动正文
+
+    pendingTaskBodyRef.current.set(docId, next);
+    setDocuments((prev) => prev.map((d) => (d.id === docId ? { ...d, body: next } : d)));
+
+    if (taskSaveTimerRef.current.has(docId)) return; // 已排队，本次翻转并进同一次保存
+    const timer = setTimeout(() => {
+      taskSaveTimerRef.current.delete(docId);
+      const body = pendingTaskBodyRef.current.get(docId);
+      pendingTaskBodyRef.current.delete(docId);
+      if (body === undefined) return;
+      apiFetch(`/api/documents/${docId}`, {
+        method: "PUT",
+        body: JSON.stringify({ body, versionType: "none" }),
+      }).catch((e) => console.error({ module: "data", op: "toggleDocumentTask", err: e, context: { docId } }));
+    }, 0);
+    taskSaveTimerRef.current.set(docId, timer);
+  }, []);
+
+  /** 应用内链接跳转（spec in-app-links）。目标不存在返回 false，由调用方提示。 */
+  const openInAppLink = useCallback((link: InAppLink | null): boolean => {
+    if (!link) return false;
+    if (link.kind === "conversation") {
+      if (!conversationsRef.current.some((c) => c.id === link.id)) return false;
+      setActiveView("chat");
+      setActiveConversationId(link.id);
+      return true;
+    }
+    if (!documentsRef.current.some((d) => d.id === link.id)) return false;
+    setActiveView("doc");
+    setActiveDocId(link.id);
+    return true;
+  }, []);
+
   // 上传 .md 覆盖更新指定文档（spec doc-upload-update US-01）
   const uploadDocumentUpdate = useCallback(async (id: string, file: File): Promise<"merged" | "skipped"> => {
     const formData = new FormData();
@@ -1421,6 +1491,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addDocuments,
         updateDocument,
         saveDocumentBody,
+        toggleDocumentTask,
+        openInAppLink,
         uploadDocumentUpdate,
         deleteDocument,
         renameDocument,

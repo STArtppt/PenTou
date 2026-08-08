@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, useContext, createContext } from "react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { MessageSquare, Highlighter, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import clsx from "clsx";
 import { useAppContext, Annotation } from "../data";
 import { captureAnnotationFromSelection } from "../annotations";
@@ -13,15 +14,19 @@ import { useTranslation } from "../i18n";
 import { locateAndFlash } from "../utils/searchJump";
 import { MermaidBlock } from "./MermaidBlock";
 import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
-import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
+import { ImageGalleryProvider, MarkdownImage } from "./ImageLightbox";
 import { useScrollActivity } from "../hooks/useScrollActivity";
 import { isImeComposing } from "../ime";
+import { docUrlTransform } from "../markdown-url";
+import { parseInAppLink, isInAppHref } from "../in-app-links";
 
 interface Props {
   docId: string;
   body: string;
   annotations: Annotation[];
   annotateMode: boolean;
+  /** 预览历史版本时正文不是当前正文，复选框 MUST 不可点 —— 勾了会把旧版本写回去。 */
+  bodyReadOnly?: boolean;
 }
 
 type PopupState =
@@ -32,8 +37,15 @@ type PopupState =
 const HIGHLIGHT_COLOR = "#fde68a";
 const COMMENT_COLOR = "#fed7aa";
 
-export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
-  const { upsertAnnotation, deleteAnnotation, searchJump, setSearchJump } = useAppContext();
+export function DocViewer({ docId, body, annotations, annotateMode, bodyReadOnly = false }: Props) {
+  const {
+    upsertAnnotation,
+    deleteAnnotation,
+    searchJump,
+    setSearchJump,
+    toggleDocumentTask,
+    openInAppLink,
+  } = useAppContext();
   const { t } = useTranslation();
 
   // 搜索跳转：打开文档后用 snippetText 在正文块中定位、滚动并临时高亮（spec hybrid-search US-03）。
@@ -63,6 +75,33 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
   );
 
   const orphanedCount = annotations.filter((a) => a.orphanedAt).length;
+
+  // 勾选是**浏览动作**：立即写回正文并保存，但不建版本、不要求进编辑模式
+  const handleToggleTask = useCallback(
+    (line: number) => {
+      if (bodyReadOnly) return;
+      toggleDocumentTask(docId, line);
+    },
+    [bodyReadOnly, docId, toggleDocumentTask],
+  );
+
+  const handleInAppLink = useCallback(
+    (href: string) => {
+      // 目标非法或已不存在时明确提示，MUST NOT 静默无反应；正文一个字都不改（design D4）
+      if (!openInAppLink(parseInAppLink(href))) toast.error(t("doc.inAppLinkMissing"));
+    },
+    [openInAppLink, t],
+  );
+
+  const components = useMemo(
+    () =>
+      makeMdComponents({
+        annotateMode: annotateMode || bodyReadOnly,
+        onToggleTask: handleToggleTask,
+        onInAppLink: handleInAppLink,
+      }),
+    [annotateMode, bodyReadOnly, handleToggleTask, handleInAppLink],
+  );
 
   const closePopup = () => {
     setPopup(null);
@@ -180,7 +219,7 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
             onClick={handleMarkClick}
           >
             <ImageGalleryProvider>
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={mdComponents} urlTransform={imageUrlTransform}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={components} urlTransform={docUrlTransform}>
                 {body}
               </ReactMarkdown>
             </ImageGalleryProvider>
@@ -270,13 +309,32 @@ export function DocViewer({ docId, body, annotations, annotateMode }: Props) {
   );
 }
 
-// 在默认白名单上放行合并单元格属性（minerU 表格降级为 HTML 的主要原因就是 colspan/rowspan）
+/**
+ * 在默认白名单上放行三处：
+ *
+ * 1. 合并单元格属性（minerU 表格降级为 HTML 的主要原因就是 colspan/rowspan）；
+ * 2. `input` 的 `checked` —— 默认 schema 只允许 `disabled=true` 与 `type=checkbox`，
+ *    并在 `required` 里把 `disabled` **强制**设回 true。不解开这两条，任务复选框既读不到
+ *    勾选状态、也永远是禁用的（spec interactive-task-checkbox）；
+ * 3. `href` 的 `pentou:` 协议 —— sanitize 与 react-markdown 的 `urlTransform` 是**两道**独立的
+ *    净化，只放行一边链接照样会被清空（design D4 标注的最易漏点）。
+ */
 const htmlSanitizeSchema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
     td: [...(defaultSchema.attributes?.td ?? []), "colSpan", "rowSpan"],
     th: [...(defaultSchema.attributes?.th ?? []), "colSpan", "rowSpan"],
+    // type 仍锁死为 checkbox：放行的是勾选态，不是任意表单控件
+    input: [["type", "checkbox"], "checked", "disabled"],
+  },
+  required: {
+    ...defaultSchema.required,
+    input: { type: "checkbox" },
+  },
+  protocols: {
+    ...defaultSchema.protocols,
+    href: [...(defaultSchema.protocols?.href ?? []), "pentou"],
   },
 };
 
@@ -371,6 +429,101 @@ function splitTextNodeByAnnotations(
   }
 
   return nodes;
+}
+
+/**
+ * 任务项所在的**原始 Markdown 行号**。
+ *
+ * remark-gfm 生成的 `<input type="checkbox">` 节点**没有 position**（它是 to-hast 阶段凭空插进
+ * 列表项里的），因此行号只能从 `li` 拿。也刻意不用「页面上第 N 个 checkbox」去数 ——
+ * 嵌套列表下渲染顺序与原文顺序并不总是一致（design D9）。
+ */
+const TaskLineContext = createContext<number | null>(null);
+
+/** 可点选的任务复选框（spec interactive-task-checkbox）。 */
+function TaskCheckbox({
+  checked,
+  disabled,
+  onToggle,
+}: {
+  checked: boolean;
+  disabled: boolean;
+  onToggle: (line: number) => void;
+}) {
+  const line = useContext(TaskLineContext);
+  return (
+    <input
+      type="checkbox"
+      className="mr-1.5 align-middle accent-primary disabled:opacity-60"
+      checked={checked}
+      disabled={disabled || line === null}
+      readOnly={disabled}
+      // 冒泡到容器上的 handleMouseUp / handleMarkClick 会触发空选区与批注逻辑（design D10）
+      onMouseUp={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => {
+        e.stopPropagation();
+        if (line !== null) onToggle(line);
+      }}
+    />
+  );
+}
+
+interface MdComponentOptions {
+  annotateMode: boolean;
+  onToggleTask: (line: number) => void;
+  onInAppLink: (href: string) => void;
+}
+
+/**
+ * 组件表由**工厂**产出而不是模块级常量：可点链接与可勾选框都要拿到回调
+ * （design D4 第 2 点）。调用侧用 `useMemo` + `useCallback` 保持引用稳定，
+ * 避免长文档每次渲染重建整棵树。
+ */
+function makeMdComponents({ annotateMode, onToggleTask, onInAppLink }: MdComponentOptions) {
+  return {
+    ...mdComponents,
+    li: ({ node, ...props }: any) => {
+      const line = node?.position?.start?.line;
+      const el = <li className="pl-1" {...props} />;
+      return typeof line === "number" ? (
+        <TaskLineContext.Provider value={line}>{el}</TaskLineContext.Provider>
+      ) : (
+        el
+      );
+    },
+    input: ({ node, type, checked, disabled, ...props }: any) => {
+      if (type !== "checkbox") return <input type={type} disabled={disabled} {...props} />;
+      // 批注模式下用户的意图是划词而不是勾选，两种模式抢同一次鼠标事件必然出怪（design D10）
+      return <TaskCheckbox checked={!!checked} disabled={annotateMode} onToggle={onToggleTask} />;
+    },
+    a: ({ node, href, ...props }: any) => {
+      if (isInAppHref(href)) {
+        return (
+          <a
+            className="text-blue-600 dark:text-blue-400 hover:text-foreground underline transition-colors cursor-pointer"
+            href={href}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onInAppLink(href);
+            }}
+            {...props}
+          />
+        );
+      }
+      // 其余链接行为完全不变
+      return (
+        <a
+          className="text-blue-600 dark:text-blue-400 hover:text-foreground underline transition-colors"
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          {...props}
+        />
+      );
+    },
+  };
 }
 
 const mdComponents = {

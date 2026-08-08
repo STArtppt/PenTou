@@ -89,6 +89,8 @@ export function DocBody() {
             body={displayBody}
             annotations={docAnnotations}
             annotateMode={editMode === "annotate" && !previewingVersionId}
+            // 预览历史版本时正文不是当前正文：勾选会把旧版本整体写回去
+            bodyReadOnly={!!previewingVersionId}
           />
         )}
       </div>

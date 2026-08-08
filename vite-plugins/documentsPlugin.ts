@@ -901,7 +901,11 @@ export async function documentsApiHandler(
       // 媒体本地化（spec media-assets §4.4：编辑保存不下载远程图片，决策 9）
       if (typeof body.body === "string") body.body = await localizeMedia(body.body, { downloadRemote: false });
 
-      if (body.body !== undefined && body.body !== existing.body) {
+      // `versionType: "none"` 是**可选** opt-out（design D9）：正文照常写盘、updatedAt 照常更新，
+      // 只跳过建版本。为复选框勾选这类「浏览动作」而设 —— 每点一下建一个版本会让版本历史不可用。
+      // 不传时行为与既往逐字节一致；AI 写入路径 MUST NOT 传（调用方纪律，spec agent-write-policy）。
+      const skipVersion = body.versionType === "none";
+      if (body.body !== undefined && body.body !== existing.body && !skipVersion) {
         const v = appendVersion({ docId, body: body.body, type: "manual-edit" });
         updateCurrentVersionPointer(docId, v.id);
         body.currentVersionId = v.id;

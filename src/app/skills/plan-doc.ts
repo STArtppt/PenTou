@@ -10,11 +10,13 @@
  */
 import { aiWorkspaceFolderId, projectKey } from "@/shared/ai-workspace";
 import { WritePolicyError } from "./agent-write-policy";
+import { cleanupFolderName } from "./project-taxonomy";
+import { normalizeSkillLang, skillStrings, type SkillLang } from "./skill-i18n";
 
 export const PLAN_FORMAT_VERSION = 1;
 
-export interface PlanItem {
-  /** 本期只有一种可执行条目；预留 kind 是为了后续加「改名文件夹」时不必改格式。 */
+/** 归类条目：改 `folderId`，正文一个字不动。 */
+export interface AssignFolderItem {
   kind: "assign-folder";
   docId: string;
   docTitle: string;
@@ -23,6 +25,21 @@ export interface PlanItem {
   folderId?: string | null;
   reason?: string;
 }
+
+/**
+ * 清理提议（design D7）：可勾选、可执行，但执行语义是**归入待清理文件夹**，
+ * MUST NOT 调任何删除。AI 把该清的挑出来堆到一起，「删不删」这个不可逆决定仍在用户手上。
+ */
+export interface SuggestCleanupItem {
+  kind: "suggest-cleanup";
+  docId: string;
+  docTitle: string;
+  reason?: string;
+}
+
+export type PlanItem = AssignFolderItem | SuggestCleanupItem;
+
+const KNOWN_KINDS = new Set(["assign-folder", "suggest-cleanup"]);
 
 export interface AgentPlan {
   version: number;
@@ -35,25 +52,72 @@ export interface AgentPlan {
   folderBaseline: { id: string; name: string }[];
   /** 只报告不处置的数据异常（孤儿 / 重名文件夹等）。 */
   notes: string[];
+  /** 项目类型判定与依据（spec project-type-taxonomy），写进正文供用户核对与推翻。 */
+  projectType?: "dev" | "knowledge";
+  typeReason?: string;
+  /** 产出该计划时的界面语言，决定正文与待清理文件夹名。 */
+  lang?: SkillLang;
 }
 
 const CHECKBOX_RE = /^\s*-\s*\[([ xX])\]/;
 
-/** 计划正文：条目 + 只报告不处置的异常。文字随便改，执行看的是复选框与 frontmatter。 */
-export function renderPlanBody(plan: AgentPlan): string {
-  const lines = [
-    "勾选你要执行的条目，然后回到 AI 侧栏点「执行计划」。",
-    "只有勾上的会被执行；条目的文字你可以随便改写或补注解，不影响执行结果。",
-    "",
-    "## 待办",
-    "",
+/**
+ * 条目的渲染顺序：归类在前、清理在后（后果不同类必须分节，spec agent-write-policy）。
+ * 渲染与执行**共用这一个顺序**，复选框与条目的对齐才不依赖生产端怎么排数组。
+ */
+export function orderedItems(plan: AgentPlan): PlanItem[] {
+  return [
+    ...plan.items.filter((i) => i.kind === "assign-folder"),
+    ...plan.items.filter((i) => i.kind === "suggest-cleanup"),
   ];
-  for (const item of plan.items) {
-    const reason = item.reason ? ` —— ${item.reason}` : "";
-    lines.push(`- [ ] 把《${item.docTitle}》归入「${item.folderName}」${reason}`);
+}
+
+/** 清理条目的落脚目录名。 */
+export function targetFolderName(item: PlanItem, lang: SkillLang = "zh"): string {
+  return item.kind === "suggest-cleanup" ? cleanupFolderName(lang) : item.folderName;
+}
+
+/**
+ * 计划正文：条目 + 只报告不处置的异常。文字随便改，执行看的是复选框与 frontmatter。
+ * 条目**默认全部勾选**（design D8）—— 语义是「AI 已给出建议，取消勾选表示不采纳」，
+ * 因此开头的说明文字必须把这层反转讲清楚，否则用户会以为需要自己逐条勾。
+ */
+export function renderPlanBody(plan: AgentPlan): string {
+  const lang = normalizeSkillLang(plan.lang);
+  const s = skillStrings(lang).plan;
+  const assigns = plan.items.filter((i): i is AssignFolderItem => i.kind === "assign-folder");
+  const cleanups = plan.items.filter((i): i is SuggestCleanupItem => i.kind === "suggest-cleanup");
+
+  const lines = [...s.preamble, ""];
+
+  if (plan.projectType) {
+    lines.push(
+      s.projectTypeHeading,
+      "",
+      s.projectTypeLine(
+        plan.projectType === "dev" ? s.projectTypeDev : s.projectTypeKnowledge,
+        plan.typeReason,
+      ),
+      "",
+    );
   }
+
+  if (assigns.length) {
+    lines.push(s.todoHeading, "");
+    for (const item of assigns) {
+      lines.push(`- [x] ${s.assignItem(item.docTitle, item.folderName, item.reason)}`);
+    }
+  }
+
+  if (cleanups.length) {
+    lines.push("", s.cleanupHeading, "", s.cleanupHint(cleanupFolderName(lang)), "");
+    for (const item of cleanups) {
+      lines.push(`- [x] ${s.cleanupItem(item.docTitle, item.reason)}`);
+    }
+  }
+
   if (plan.notes.length) {
-    lines.push("", "## 只报告，不处置", "");
+    lines.push("", s.notesHeading, "");
     for (const note of plan.notes) lines.push(`- ${note}`);
   }
   return lines.join("\n") + "\n";
@@ -63,12 +127,18 @@ export function serializePlan(plan: AgentPlan): string {
   return JSON.stringify(plan);
 }
 
+/**
+ * 未知 `kind` 的条目 MUST 跳过而非抛错（design Migration 1）：
+ * 新客户端写的计划可能带旧客户端不认识的条目类型，此时执行已认识的那部分，
+ * 而不是让整份计划变成一块砖。条数因此可能与正文复选框对不上 —— 那由
+ * `selectApprovedItems` 报出并要求重新生成，仍然不会误执行。
+ */
 export function parsePlan(raw: string | undefined): AgentPlan | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as AgentPlan;
     if (!Array.isArray(parsed?.items)) return null;
-    return parsed;
+    return { ...parsed, items: parsed.items.filter((item) => KNOWN_KINDS.has((item as PlanItem)?.kind)) };
   } catch {
     return null;
   }
@@ -93,13 +163,14 @@ export function readCheckedFlags(body: string): boolean[] {
  */
 export function selectApprovedItems(plan: AgentPlan, body: string): PlanItem[] {
   const flags = readCheckedFlags(body);
-  if (flags.length !== plan.items.length) {
+  const items = orderedItems(plan);
+  if (flags.length !== items.length) {
     throw new WritePolicyError(
-      `计划正文里有 ${flags.length} 个复选框，但记录的条目是 ${plan.items.length} 条 —— ` +
+      `计划正文里有 ${flags.length} 个复选框，但记录的条目是 ${items.length} 条 —— ` +
         `条目被增删过，无法安全对齐。请让 AI 重新生成一份计划。`,
     );
   }
-  return plan.items.filter((_, i) => flags[i]);
+  return items.filter((_, i) => flags[i]);
 }
 
 export interface DocSnapshotProbe {
@@ -162,6 +233,8 @@ export interface PlanExecutionResult {
   skipped: number;
   createdFolders: { id: string; name: string }[];
   assigned: { docId: string; folderId: string }[];
+  /** 被归入待清理文件夹的文档数（design D7）。执行结果提示要点明「没删」。 */
+  cleaned: number;
 }
 
 /**
@@ -174,11 +247,13 @@ export async function executePlan(
   api: PlanExecutorApi,
 ): Promise<PlanExecutionResult> {
   const approved = selectApprovedItems(plan, body);
+  const lang = normalizeSkillLang(plan.lang);
   const result: PlanExecutionResult = {
     approved: approved.length,
     skipped: plan.items.length - approved.length,
     createdFolders: [],
     assigned: [],
+    cleaned: 0,
   };
   if (!approved.length) return result;
 
@@ -193,22 +268,27 @@ export async function executePlan(
   assertFolderBaselineIntact(plan, scoped.map((f) => ({ id: f.id, name: f.name })));
 
   // 只增不改删：以重读到的最新版本为基底追加，绝不改动或移除既有条目。
+  // 清理条目走的也是这条路：「归入 `_待清理`」就是一次普通的改归属（design D7）。
+  // 这里没有、也永远不会有任何删除调用。
   const appended = [...stored];
   const idByName = new Map(scoped.map((f) => [f.name, f.id]));
   for (const item of approved) {
-    if (item.folderId || idByName.has(item.folderName)) continue;
+    const folderName = targetFolderName(item, lang);
+    if ((item.kind === "assign-folder" && item.folderId) || idByName.has(folderName)) continue;
     const id = api.newFolderId();
-    appended.push({ id, name: item.folderName, projectId });
-    idByName.set(item.folderName, id);
-    result.createdFolders.push({ id, name: item.folderName });
+    appended.push({ id, name: folderName, projectId });
+    idByName.set(folderName, id);
+    result.createdFolders.push({ id, name: folderName });
   }
   if (result.createdFolders.length) await api.saveFolders(appended);
 
   for (const item of approved) {
-    const folderId = item.folderId || idByName.get(item.folderName);
+    const folderName = targetFolderName(item, lang);
+    const folderId = (item.kind === "assign-folder" ? item.folderId : null) || idByName.get(folderName);
     if (!folderId) continue;
     await api.assignFolder(item.docId, folderId, projectId);
     result.assigned.push({ docId: item.docId, folderId });
+    if (item.kind === "suggest-cleanup") result.cleaned++;
   }
   return result;
 }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-03T06:53:34.659Z",
+  "generatedAt": "2026-08-03T07:28:30.966Z",
   "count": 78,
   "violations": [
     {
@@ -17,43 +17,43 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 697,
+      "line": 706,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 709,
+      "line": 718,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 789,
+      "line": 798,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 813,
+      "line": 822,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 833,
+      "line": 842,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 881,
+      "line": 890,
       "match": "\"bg-[#35B86B]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 979,
+      "line": 988,
       "match": "dark:bg-[#202020]"
     },
     {
@@ -131,43 +131,43 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 176,
+      "line": 215,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 202,
+      "line": 241,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 223,
+      "line": 262,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 251,
+      "line": 290,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 411,
+      "line": 564,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 178,
+      "line": 217,
       "match": "text-[15px]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 497,
+      "line": 650,
       "match": "text-[13px]"
     },
     {

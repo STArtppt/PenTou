@@ -16,11 +16,18 @@ const mocks = vi.hoisted(() => ({
     deleteAnnotation: vi.fn(),
     searchJump: null,
     setSearchJump: vi.fn(),
+    toggleDocumentTask: vi.fn(),
+    openInAppLink: vi.fn(() => true),
   } as any,
+  toastError: vi.fn(),
 }));
 
 vi.mock("../data", () => ({
   useAppContext: () => mocks.appContext,
+}));
+
+vi.mock("sonner", () => ({
+  toast: { error: mocks.toastError, success: vi.fn() },
 }));
 
 vi.mock("./ImageLightbox", () => ({
@@ -47,9 +54,21 @@ afterEach(() => {
   container.remove();
 });
 
-function renderDoc(body: string, annotations: Annotation[] = []) {
+function renderDoc(
+  body: string,
+  annotations: Annotation[] = [],
+  opts: { annotateMode?: boolean; bodyReadOnly?: boolean } = {},
+) {
   act(() => {
-    root.render(<DocViewer docId="doc_test" body={body} annotations={annotations} annotateMode={false} />);
+    root.render(
+      <DocViewer
+        docId="doc_test"
+        body={body}
+        annotations={annotations}
+        annotateMode={opts.annotateMode ?? false}
+        bodyReadOnly={opts.bodyReadOnly ?? false}
+      />,
+    );
   });
 }
 
@@ -116,5 +135,128 @@ describe("DocViewer 内嵌 HTML 渲染", () => {
     const mark = markdownBody.querySelector('mark[data-anno-id="anno_1"]');
     expect(mark).not.toBeNull();
     expect(mark!.textContent).toBe("CECW 技术体系");
+  });
+});
+
+// 计划文档的形状：嵌套一条，用来验证「按原文行号定位」而不是「数第几个 checkbox」
+const TASK_BODY = [
+  "# 整理计划",          // 1
+  "",                    // 2
+  "## 待办",             // 3
+  "",                    // 4
+  "- [x] 甲",            // 5
+  "- [ ] 乙",            // 6
+  "  - [x] 乙的子项",     // 7
+].join("\n");
+
+function checkboxes(): HTMLInputElement[] {
+  return Array.from(container.querySelectorAll('input[type="checkbox"]'));
+}
+
+describe("DocViewer 任务复选框（spec interactive-task-checkbox）", () => {
+  beforeEach(() => {
+    mocks.appContext.toggleDocumentTask.mockClear();
+    mocks.appContext.openInAppLink.mockClear();
+    mocks.toastError.mockClear();
+  });
+
+  it("预览界面直接渲染出可交互的复选框，且勾选状态取自正文", () => {
+    renderDoc(TASK_BODY);
+    const boxes = checkboxes();
+    expect(boxes).toHaveLength(3);
+    expect(boxes.map((b) => b.checked)).toEqual([true, false, true]);
+    expect(boxes.every((b) => b.disabled)).toBe(false);
+  });
+
+  it("点击只改该行：回调拿到的是原文行号", () => {
+    renderDoc(TASK_BODY);
+    act(() => {
+      checkboxes()[1].click();
+    });
+    expect(mocks.appContext.toggleDocumentTask).toHaveBeenCalledTimes(1);
+    expect(mocks.appContext.toggleDocumentTask).toHaveBeenCalledWith("doc_test", 6);
+  });
+
+  it("嵌套列表里的那条定位到它自己的行", () => {
+    renderDoc(TASK_BODY);
+    act(() => {
+      checkboxes()[2].click();
+    });
+    expect(mocks.appContext.toggleDocumentTask).toHaveBeenCalledWith("doc_test", 7);
+  });
+
+  it("点击复选框不触发批注浮层", () => {
+    renderDoc(TASK_BODY);
+    act(() => {
+      checkboxes()[0].click();
+    });
+    expect(container.querySelector("#annotation-popup")).toBeNull();
+    expect(mocks.appContext.upsertAnnotation).not.toHaveBeenCalled();
+  });
+
+  it("批注模式下复选框不可点，文档不被修改", () => {
+    renderDoc(TASK_BODY, [], { annotateMode: true });
+    const boxes = checkboxes();
+    expect(boxes.every((b) => b.disabled)).toBe(true);
+    act(() => {
+      boxes[1].click();
+    });
+    expect(mocks.appContext.toggleDocumentTask).not.toHaveBeenCalled();
+  });
+
+  it("预览历史版本时复选框不可点（勾了会把旧版本写回去）", () => {
+    renderDoc(TASK_BODY, [], { bodyReadOnly: true });
+    expect(checkboxes().every((b) => b.disabled)).toBe(true);
+  });
+});
+
+describe("DocViewer 应用内链接（spec in-app-links）", () => {
+  beforeEach(() => {
+    mocks.appContext.openInAppLink.mockClear();
+    mocks.toastError.mockClear();
+  });
+
+  it("pentou:// 链接被保留渲染，不被 sanitize / urlTransform 清空", () => {
+    renderDoc("见 [选型讨论](pentou://conversation/conv_abc)。");
+    const a = container.querySelector("a")!;
+    expect(a.getAttribute("href")).toBe("pentou://conversation/conv_abc");
+    expect(a.getAttribute("target")).toBeNull(); // 不开新标签页
+  });
+
+  it("点击应用内链接走应用内跳转", () => {
+    mocks.appContext.openInAppLink.mockReturnValue(true);
+    renderDoc("见 [选型讨论](pentou://conversation/conv_abc)。");
+    act(() => {
+      container.querySelector("a")!.click();
+    });
+    expect(mocks.appContext.openInAppLink).toHaveBeenCalledWith({ kind: "conversation", id: "conv_abc" });
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("目标不存在时提示，且正文原样保留", () => {
+    mocks.appContext.openInAppLink.mockReturnValue(false);
+    renderDoc("见 [已删除的](pentou://conversation/conv_gone)。");
+    act(() => {
+      container.querySelector("a")!.click();
+    });
+    expect(mocks.toastError).toHaveBeenCalled();
+    expect(container.querySelector("a")!.getAttribute("href")).toBe("pentou://conversation/conv_gone");
+  });
+
+  it("非法标识不抛错，仍走提示分支", () => {
+    mocks.appContext.openInAppLink.mockReturnValue(false);
+    renderDoc("见 [坏链接](pentou://folder/df_1)。");
+    act(() => {
+      container.querySelector("a")!.click();
+    });
+    expect(mocks.appContext.openInAppLink).toHaveBeenCalledWith(null);
+    expect(mocks.toastError).toHaveBeenCalled();
+  });
+
+  it("普通外链仍在新标签页打开（不回归）", () => {
+    renderDoc("见 [官网](https://example.com)。");
+    const a = container.querySelector("a")!;
+    expect(a.getAttribute("target")).toBe("_blank");
+    expect(a.getAttribute("rel")).toContain("noopener");
   });
 });

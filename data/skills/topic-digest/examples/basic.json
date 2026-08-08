@@ -1,14 +1,22 @@
 {
-  "input": { "topic": "检索方案的取舍", "topK": 8 },
+  "input": { "topic": "检索方案的取舍" },
   "output": {
     "docId": "doc_1770000001_cd34",
     "folderId": "df_ai_dp_default",
     "topic": "检索方案的取舍",
-    "sourceCount": 8,
+    "sourceCount": 23,
+    "deepReadCount": 3,
+    "stats": {
+      "total": 23,
+      "platform": [["Claude", 12], ["ChatGPT", 8], ["DeepSeek", 3]],
+      "ingestSource": [["cli:claude-code", 15], ["未标注", 8]],
+      "project": [["pentou", 19], ["未标注", 4]],
+      "month": [["2026-06", 14], ["2026-05", 9]]
+    },
     "citations": [
       { "type": "conversation", "id": "conv_a", "title": "BM25 还是向量" },
       { "type": "document", "id": "doc_b", "title": "hybrid-search 设计" }
     ]
   },
-  "note": "零命中时技能失败并提示换个说法，不产出空汇总。"
+  "note": "零命中时技能失败并提示换个说法，不产出空汇总；命中不足 3 / 10 条时按实际数量给出，不补空位。"
 }
