@@ -36,6 +36,14 @@ vi.mock("../data", () => ({
   useAppContext: () => mocks.appContext,
 }));
 
+// 预检：失败时不建会话；测试用 skills.fail 模拟校验不过
+vi.mock("../skills/run-plan", () => ({
+  preflightPlanDoc: vi.fn(async () => {
+    if (mocks.skills.fail) return { ok: false as const, error: mocks.skills.fail };
+    return { ok: true as const, noop: false };
+  }),
+}));
+
 vi.mock("sonner", () => ({
   toast: mocks.toast,
 }));
@@ -649,7 +657,7 @@ describe("AiSidebar", () => {
     unmount();
   });
 
-  it("执行计划失败时如实报错（快照失配等）", async () => {
+  it("执行计划预检失败：toast 报错、刷新文档状态、不建 AI 会话", async () => {
     mocks.appContext.llmConfig = { endpoint: "http://x", apiKey: "k", model: "m" };
     mocks.appContext.activeView = "doc";
     mocks.appContext.activeDocId = "doc_plan";
@@ -663,6 +671,9 @@ describe("AiSidebar", () => {
     });
 
     expect(mocks.toast.error).toHaveBeenCalledWith(mocks.skills.fail);
+    expect(mocks.appContext.refreshDocuments).toHaveBeenCalled();
+    // 预检失败不得 startSkillRun —— 下方不应出现执行意图气泡 / 错误消息
+    expect(mocks.skills.dispatched).toEqual([]);
     unmount();
   });
 

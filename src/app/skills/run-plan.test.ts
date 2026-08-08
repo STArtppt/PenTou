@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runPlanDoc } from "./run-plan";
+import { preflightPlanDoc, runPlanDoc } from "./run-plan";
 import { parsePlanRun, renderPlanBody, serializePlan, type AgentPlan } from "./plan-doc";
 import type { SkillDeps } from "../skill-runtime";
 
@@ -116,11 +116,14 @@ describe("执行计划（spec agent-write-policy）", () => {
     expect(calls.some((c) => c.url === "/api/document-folders" && c.method === "POST")).toBe(false);
   });
 
-  it("快照失配时中止，且此前零写入", async () => {
+  it("快照失配时中止：目标文档零写入，只回写 failed 终态", async () => {
     const { deps, calls } = harness({ body: allChecked, docs: { doc_b: { id: "doc_b", updatedAt: "改过了" } } });
 
     await expect(runPlanDoc(deps, "doc_plan")).rejects.toThrow(/被改过.*重新生成/s);
-    expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
+    // 目标文档 / 文件夹表不得被改；仅允许回写计划自身的 failed 终态
+    expect(targetPuts(calls)).toEqual([]);
+    expect(calls.some((c) => c.url === "/api/document-folders" && c.method === "POST")).toBe(false);
+    expect(parsePlanRun(runWriteback(calls)!.body.aiPlanRun)!.status).toBe("failed");
   });
 
   it("执行期间用户新建了文件夹 → 中止，用户的文件夹不会丢", async () => {
@@ -130,7 +133,9 @@ describe("执行计划（spec agent-write-policy）", () => {
     });
 
     await expect(runPlanDoc(deps, "doc_plan")).rejects.toThrow(/避免覆盖你的改动/);
-    expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
+    expect(targetPuts(calls)).toEqual([]);
+    expect(calls.some((c) => c.url === "/api/document-folders" && c.method === "POST")).toBe(false);
+    expect(parsePlanRun(runWriteback(calls)!.body.aiPlanRun)!.status).toBe("failed");
   });
 
   it("用户改写条目文字不影响执行结果", async () => {
@@ -221,22 +226,73 @@ describe("执行终态回写 aiPlanRun（spec plan-run-status）", () => {
     expect(parsePlanRun(runWriteback(calls)!.body.aiPlanRun)).not.toHaveProperty("error");
   });
 
-  it("校验阶段失败（快照失配）不留终态 —— 零改动就是未执行", async () => {
-    const { deps, calls } = harness({ body: allChecked, docs: { doc_b: { id: "doc_b", updatedAt: "改过了" } } });
-    await expect(runPlanDoc(deps, "doc_plan")).rejects.toThrow(/被改过/);
+  it("预检：快照失配写 failed、不要求会话，ok=false", async () => {
+    const { deps, calls } = harness({
+      body: allChecked,
+      docs: { doc_b: { id: "doc_b", updatedAt: "改过了" } },
+    });
+    const pre = await preflightPlanDoc(deps, "doc_plan");
+    expect(pre).toMatchObject({ ok: false });
+    if (pre.ok) throw new Error("expected fail");
+    expect(pre.error).toMatch(/被改过/);
+    const run = parsePlanRun(runWriteback(calls)!.body.aiPlanRun)!;
+    expect(run.status).toBe("failed");
+    expect(run).not.toHaveProperty("sessionId");
+    expect(targetPuts(calls)).toEqual([]);
+  });
+
+  it("预检：全部勾选且新鲜 → ok，不写终态", async () => {
+    const { deps, calls } = harness({ body: allChecked });
+    await expect(preflightPlanDoc(deps, "doc_plan")).resolves.toEqual({ ok: true, noop: false });
     expect(runWriteback(calls)).toBeUndefined();
   });
 
-  it("文件夹基底变动不留终态", async () => {
+  it("预检：零勾选 → noop，不写终态", async () => {
+    const { deps, calls } = harness({ body: noneChecked });
+    await expect(preflightPlanDoc(deps, "doc_plan")).resolves.toEqual({ ok: true, noop: true });
+    expect(runWriteback(calls)).toBeUndefined();
+  });
+
+  it("校验阶段失败（快照失配）记 failed 终态 + 原因，零改动", async () => {
+    const { deps, calls } = harness({
+      body: allChecked,
+      docs: { doc_b: { id: "doc_b", updatedAt: "改过了" } },
+    });
+    await expect(runPlanDoc(deps, "doc_plan", "ai_sess_fail")).rejects.toThrow(/被改过/);
+    const run = parsePlanRun(runWriteback(calls)!.body.aiPlanRun)!;
+    expect(run.status).toBe("failed");
+    expect(run.assigned).toEqual([]);
+    expect(run.approved).toBe(0);
+    expect(run.sessionId).toBe("ai_sess_fail");
+    expect(run.error).toMatch(/被改过/);
+    // 目标文档归属未被改写
+    expect(targetPuts(calls)).toEqual([]);
+  });
+
+  it("文件夹基底变动记 failed 终态", async () => {
     const { deps, calls } = harness({
       body: allChecked,
       folders: [...FOLDERS, { id: "df_user", name: "用户刚建的", projectId: null }],
     });
     await expect(runPlanDoc(deps, "doc_plan")).rejects.toThrow(/避免覆盖你的改动/);
-    expect(runWriteback(calls)).toBeUndefined();
+    const run = parsePlanRun(runWriteback(calls)!.body.aiPlanRun)!;
+    expect(run.status).toBe("failed");
+    expect(run.error).toMatch(/避免覆盖你的改动/);
   });
 
-  it("一条都没勾时不留终态 —— 没产生任何改动", async () => {
+  it("目标文档已删除（计划过期）记 failed 终态", async () => {
+    // harness 默认带 doc_a/doc_b；置 null 使 GET 走 404 → readDocMeta 返回 null → 过期
+    const { deps, calls } = harness({
+      body: allChecked,
+      docs: { doc_a: null, doc_b: null },
+    });
+    await expect(runPlanDoc(deps, "doc_plan")).rejects.toThrow(/已不存在|过期/);
+    const run = parsePlanRun(runWriteback(calls)!.body.aiPlanRun)!;
+    expect(run.status).toBe("failed");
+    expect(run.error).toMatch(/已不存在|过期/);
+  });
+
+  it("一条都没勾时不留终态 —— 没产生任何改动也不是失败", async () => {
     const { deps, calls } = harness({ body: noneChecked });
     await runPlanDoc(deps, "doc_plan");
     expect(runWriteback(calls)).toBeUndefined();

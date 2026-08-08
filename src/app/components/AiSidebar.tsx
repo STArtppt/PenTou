@@ -36,6 +36,7 @@ import { copyText } from "../utils/clipboard";
 import { useTranslation } from "../i18n";
 import { formatDisplayDate, formatDisplayDateTime } from "../utils/dateFormat";
 import { parsePlanRun } from "../skills/plan-doc";
+import { preflightPlanDoc } from "../skills/run-plan";
 import { PlanRunBanner } from "./PlanRunBanner";
 import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { RunTrace } from "./RunTrace";
@@ -437,9 +438,32 @@ export function AiSidebar() {
    * 执行当前这份计划。经 registry 起会话，全程零 LLM。
    * 由状态条上的「执行」按钮直接调用 —— 不经 chip 的选中态，**计划文档本身就是批准形态**
    * （spec agent-write-policy 批准协议 / plan-run-status D6），再要求点一下回车是多余的一跳。
+   *
+   * 先预检：校验失败只更新状态条为「执行失败」+ toast，**不建** AI 会话，
+   * 下方不出现「执行意图」气泡与错误消息（原因在状态条「详情」）。
    */
   const executeCurrentPlan = async () => {
     if (!activeDocId) return;
+    const deps: SkillDeps = {
+      apiBase: "",
+      fetchImpl: fetch.bind(globalThis),
+      callLLM: async () => {
+        throw new Error("run-plan must not call LLM");
+      },
+      llmConfig,
+    };
+    const preflight = await preflightPlanDoc(deps, activeDocId);
+    if (!preflight.ok) {
+      await refreshDocuments();
+      toast.error(preflight.error);
+      return;
+    }
+    if (preflight.noop) {
+      // 零勾选：无事可做，不建会话、不写终态
+      toast.info(t("planRun.noopNoneChecked"));
+      return;
+    }
+
     const seed = {
       title: `${t("planRun.runSessionTitle")} · ${documents.find((d) => d.id === activeDocId)?.title ?? activeDocId}`,
       userContent: t("planRun.runSessionIntent"),
@@ -1162,13 +1186,23 @@ function MessageBubble({
       <div className={clsx(
         "max-w-full text-sm leading-6",
         isUser
-          ? "inline-block rounded-lg bg-zinc-950 px-3 py-2 text-white dark:bg-zinc-100 dark:text-zinc-950"
+          // 用户气泡反色（亮：深底白字 / 暗：浅底深字）。App 根上 selection:bg-foreground/* 会生成
+          // `.selection\\:… ::selection` 后代选择器，与气泡规则同优先级且 CSS 源序更靠后 → 盖掉
+          // 普通 selection: 覆盖。必须用 ! 提高优先级，才能在反色底上框选可读。
+          ? "inline-block rounded-lg bg-zinc-950 px-3 py-2 text-white selection:!bg-white/40 selection:!text-white dark:bg-zinc-100 dark:text-zinc-950 dark:selection:!bg-zinc-950/30 dark:selection:!text-zinc-950"
           : "ai-sidebar-markdown block break-words px-0 py-0 text-zinc-800 dark:text-zinc-200",
       )}>
         {message.status === "error" ? (
           <div>
             <p className="text-red-700 dark:text-red-400">{message.error || t("aiSidebar.error")}</p>
-            <button onClick={onRetry} className="mt-1 text-xs font-medium underline">{t("aiSidebar.retry")}</button>
+            {/*
+              执行类消息（runSkillId，含 run-plan）不给重试：
+              - run-plan：计划已失败/中断后重试无意义（快照脏或校验必再撞墙），入口在状态条详情
+              - 其它技能：retry 只是把上一条用户文案当问答再 send，并不会重跑 startSkillRun
+            */}
+            {!message.runSkillId ? (
+              <button onClick={onRetry} className="mt-1 text-xs font-medium underline">{t("aiSidebar.retry")}</button>
+            ) : null}
           </div>
         ) : (
           <ReactMarkdown remarkPlugins={remarkPlugins} components={aiMarkdownComponents} urlTransform={imageUrlTransform}>{message.content || (streaming ? "..." : "")}</ReactMarkdown>

@@ -424,6 +424,46 @@ export function resolveInitialConversationId(
   return convs[0]?.id ?? null;
 }
 
+// 文档项目选中恢复：存储 id 仍存在则用之，否则回退默认目录（null）。
+// 默认目录不落盘为可写条目，故 projects 列表里找不到时统一 null。
+export function resolveInitialProjectId(
+  projects: Array<{ id: string }>,
+  storedId: string | null,
+): string | null {
+  if (storedId && projects.some((p) => p.id === storedId)) return storedId;
+  return null;
+}
+
+// 文档选中恢复：存储 id 仍存在则用之，否则保持未选中（null）。
+// 与会话不同——文档页默认允许空选中态（侧栏/主区 empty state），不强制打开列表第一条。
+export function resolveInitialDocumentId(
+  docs: Array<{ id: string }>,
+  storedId: string | null,
+): string | null {
+  if (storedId && docs.some((d) => d.id === storedId)) return storedId;
+  return null;
+}
+
+/**
+ * 把 `?fields=meta` 列表合并进已有文档状态。
+ * meta 接口把 body 置成空串；若整表替换，已 hydrate 的正文会丢光，而 hydratedDocRef
+ * 仍记着「已加载」→ 主区空白且不会重拉（执行计划后的典型症状）。
+ * 规则：meta 无正文时保留旧 body；其余字段（folderId / aiPlanRun 等）以 meta 为准。
+ */
+export function mergeDocumentMetaList<T extends { id: string; body?: string }>(
+  prev: T[],
+  metaDocs: T[],
+): T[] {
+  const prevById = new Map(prev.map((d) => [d.id, d]));
+  return metaDocs.map((meta) => {
+    const old = prevById.get(meta.id);
+    if (old?.body && !meta.body) {
+      return { ...old, ...meta, body: old.body };
+    }
+    return meta;
+  });
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   // ── Conversation state ──
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -438,9 +478,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [documentFolders, setDocumentFolders] = useState<DocumentFolder[]>([]);
   const [rewriteDialogOpen, setRewriteDialogOpen] = useState(false);
   const [documentProjects, setDocumentProjects] = useState<DocumentProject[]>([]);
-  // 选中项目只存内存：切换视图再切回保持，刷新页面回默认目录（spec §项目切换选择器）
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [activeDocId, setActiveDocId] = useState<string | null>(null);
+  // 选中项目跨刷新持久化（pentou-active-project）；挂载后用 resolveInitialProjectId 校验
+  const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
+  // 选中文档跨刷新持久化（pentou-active-document）；挂载后用 resolveInitialDocumentId 校验
+  const [activeDocId, setActiveDocIdState] = useState<string | null>(null);
   const [annotationsByDoc, setAnnotationsByDoc] = useState<Record<string, Annotation[]>>({});
   const [versionsByDoc, setVersionsByDoc] = useState<Record<string, DocumentVersion[]>>({});
   const [versionsByConv, setVersionsByConv] = useState<Record<string, ConversationVersion[]>>({});
@@ -534,12 +575,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setActiveConversationIdState(
         resolveInitialConversationId(convs, localStorage.getItem("pentou-active-conversation")),
       );
-      setDocuments(docsData as Document[]);
+      const docs = docsData as Document[];
+      setDocuments(docs);
       setDocumentFolders(sortAiWorkspaceFirst(docFoldersData as DocumentFolder[]));
       const projects = docProjectsData as DocumentProject[];
       setDocumentProjects(projects);
       setActiveProjectIdState(
         resolveInitialProjectId(projects, localStorage.getItem("pentou-active-project")),
+      );
+      setActiveDocIdState(
+        resolveInitialDocumentId(docs, localStorage.getItem("pentou-active-document")),
       );
     }).finally(() => setIsLoading(false));
     // 嵌入后端配置：独立拉取（含 enabled/phase），供搜索浮层决定是否走 hybrid（spec §4.7）。
@@ -621,6 +666,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActiveProjectIdState(id);
     if (id) localStorage.setItem("pentou-active-project", id);
     else localStorage.removeItem("pentou-active-project");
+  }, []);
+
+  const setActiveDocId = useCallback((id: string | null) => {
+    setActiveDocIdState(id);
+    if (id) localStorage.setItem("pentou-active-document", id);
+    else localStorage.removeItem("pentou-active-document");
   }, []);
 
   const setAiSidebarOpen = useCallback((open: boolean) => {
@@ -1274,12 +1325,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         apiFetch("/api/documents?fields=meta"),
         apiFetch("/api/document-folders"),
       ]);
-      setDocuments(docsData as Document[]);
+      const metaDocs = docsData as Document[];
+      // 不可整表替换 meta：会把已打开文档的 body 冲成 "" 且不会触发 hydrate。
+      setDocuments((prev) => mergeDocumentMetaList(prev, metaDocs));
       setDocumentFolders(sortAiWorkspaceFirst(foldersData as DocumentFolder[]));
+
+      // 当前打开的文档再拉全文：拿到技能可能改过的 body / 最新 frontmatter；
+      // 同步 merge 已保证中间帧不空白。
+      const id = activeDocId;
+      if (id) {
+        try {
+          const full = (await apiFetch(`/api/documents/${id}`)) as Document;
+          hydratedDocRef.current.add(id);
+          setDocuments((prev) => prev.map((d) => (d.id === id ? full : d)));
+        } catch (e) {
+          console.error({ module: "data", op: "rehydrateAfterRefresh", err: e, context: { id } });
+        }
+      }
     } catch (e) {
       console.error({ module: "data", op: "refreshDocuments", err: e });
     }
-  }, []);
+  }, [activeDocId]);
 
   const refreshDocumentProjects = useCallback(async () => {
     try {

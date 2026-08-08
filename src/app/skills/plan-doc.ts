@@ -246,8 +246,13 @@ export interface PlanExecutionResult {
  */
 export interface AgentPlanRun {
   version: number;
-  /** `done` = 已勾选条目全部执行完；`partial` = 写入中途失败，已有部分改动落地。 */
-  status: "done" | "partial";
+  /**
+   * `done` = 已勾选条目全部执行完；
+   * `partial` = 写入中途失败，已有部分改动落地；
+   * `failed` = 执行尝试失败且零改动（校验失败 / 计划过期等）。
+   * 后两者都是终态：状态条不再给「执行」入口，原因走「详情」。
+   */
+  status: "done" | "partial" | "failed";
   ranAt: string;
   approved: number;
   skipped: number;
@@ -257,7 +262,7 @@ export interface AgentPlanRun {
   /** 产生该次执行的 AI 会话 id；明细只在那次 run 会话里，文档侧不复制一份（design D5）。 */
   sessionId?: string;
   /**
-   * `partial` 的中断原因（design D8）。只存这一句，不存步骤轨迹。
+   * `partial` / `failed` 的原因。只存这一句，不存步骤轨迹。
    * 它是用户判断「接下来怎么办」的唯一依据，而 run 会话可被删除 —— 不随终态一起存下来就会丢。
    */
   error?: string;
@@ -267,12 +272,14 @@ export function serializePlanRun(run: AgentPlanRun): string {
   return JSON.stringify(run);
 }
 
+const PLAN_RUN_STATUSES = new Set<AgentPlanRun["status"]>(["done", "partial", "failed"]);
+
 /** 坏数据一律当「未执行」处理：状态条宁可少显示，也不能显示一个编造的终态。 */
 export function parsePlanRun(raw: string | undefined): AgentPlanRun | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as AgentPlanRun;
-    if (parsed?.status !== "done" && parsed?.status !== "partial") return null;
+    if (!PLAN_RUN_STATUSES.has(parsed?.status)) return null;
     return {
       ...parsed,
       createdFolders: Array.isArray(parsed.createdFolders) ? parsed.createdFolders : [],
@@ -284,9 +291,9 @@ export function parsePlanRun(raw: string | undefined): AgentPlanRun | null {
 }
 
 /**
- * 写入阶段中途失败（spec plan-run-status「三态语义」）：携带**实际已完成**的清单一起抛出，
+ * 写入阶段中途失败（spec plan-run-status）：携带**实际已完成**的清单一起抛出，
  * 好让调用方把 `partial` 终态记下来 —— 数据已经变了却显示「未执行」是最危险的错误状态。
- * 校验阶段（快照 / 基底）的抛错不经这里：那时零改动，仍是未执行。
+ * 校验阶段（快照 / 基底）的抛错不经这里：由 `runPlanDoc` 记为 `failed`（零改动的执行失败）。
  */
 export class PlanWriteInterrupted extends Error {
   readonly reason: unknown;
@@ -300,16 +307,15 @@ export class PlanWriteInterrupted extends Error {
 }
 
 /**
- * 执行一份被批准的计划。顺序刻意如此：先校验（快照 → 基底），再建文件夹，最后改归属。
- * 任何一步抛错都在**写入之前**，因此中止时数据零变更。
+ * 写入前校验（勾选对齐 + 快照 + 文件夹基底）。
+ * 供 `executePlan` 与 UI 预检共用：预检失败可直接记 `failed`、不建 run 会话。
  */
-export async function executePlan(
+export async function validatePlanBeforeWrite(
   plan: AgentPlan,
   body: string,
-  api: PlanExecutorApi,
-): Promise<PlanExecutionResult> {
+  api: Pick<PlanExecutorApi, "listFolders" | "readDocMeta">,
+): Promise<{ approved: PlanItem[]; result: PlanExecutionResult; projectId: string | null; stored: Awaited<ReturnType<PlanExecutorApi["listFolders"]>>; scoped: Awaited<ReturnType<PlanExecutorApi["listFolders"]>> }> {
   const approved = selectApprovedItems(plan, body);
-  const lang = normalizeSkillLang(plan.lang);
   const result: PlanExecutionResult = {
     approved: approved.length,
     skipped: plan.items.length - approved.length,
@@ -317,7 +323,9 @@ export async function executePlan(
     assigned: [],
     cleaned: 0,
   };
-  if (!approved.length) return result;
+  if (!approved.length) {
+    return { approved, result, projectId: null, stored: [], scoped: [] };
+  }
 
   await assertSnapshotFresh(plan, approved, api.readDocMeta);
 
@@ -328,6 +336,21 @@ export async function executePlan(
     (f) => (f.projectId ?? projectKey(null)) === plan.projectId && f.id !== aiWorkspaceFolderId(projectId),
   );
   assertFolderBaselineIntact(plan, scoped.map((f) => ({ id: f.id, name: f.name })));
+  return { approved, result, projectId, stored, scoped };
+}
+
+/**
+ * 执行一份被批准的计划。顺序刻意如此：先校验（快照 → 基底），再建文件夹，最后改归属。
+ * 任何校验抛错都在**写入之前**，因此中止时数据零变更。
+ */
+export async function executePlan(
+  plan: AgentPlan,
+  body: string,
+  api: PlanExecutorApi,
+): Promise<PlanExecutionResult> {
+  const lang = normalizeSkillLang(plan.lang);
+  const { approved, result, projectId, stored, scoped } = await validatePlanBeforeWrite(plan, body, api);
+  if (!approved.length) return result;
 
   // 只增不改删：以重读到的最新版本为基底追加，绝不改动或移除既有条目。
   // 清理条目走的也是这条路：「归入 `_待清理`」就是一次普通的改归属（design D7）。
