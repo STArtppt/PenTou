@@ -27,6 +27,11 @@ interface Props {
   annotateMode: boolean;
   /** 预览历史版本时正文不是当前正文，复选框 MUST 不可点 —— 勾了会把旧版本写回去。 */
   bodyReadOnly?: boolean;
+  /**
+   * 滚动区内、`.markdown-body` 之外的页眉槽（元数据面板等）。
+   * 必须在标注根之外，避免选中面板文本触发标注浮层。
+   */
+  headerSlot?: React.ReactNode;
 }
 
 type PopupState =
@@ -37,7 +42,14 @@ type PopupState =
 const HIGHLIGHT_COLOR = "#fde68a";
 const COMMENT_COLOR = "#fed7aa";
 
-export function DocViewer({ docId, body, annotations, annotateMode, bodyReadOnly = false }: Props) {
+export function DocViewer({
+  docId,
+  body,
+  annotations,
+  annotateMode,
+  bodyReadOnly = false,
+  headerSlot,
+}: Props) {
   const {
     upsertAnnotation,
     deleteAnnotation,
@@ -213,8 +225,13 @@ export function DocViewer({ docId, body, annotations, annotateMode, bodyReadOnly
       <div className="flex justify-center w-full max-w-[1166px] mx-auto mt-6 mb-24 relative">
         {/* Paper Container */}
         <div className="w-full min-w-0 max-w-4xl bg-white dark:bg-[#1A1A1A] shadow-sm ring-1 ring-zinc-200 dark:ring-white/10 rounded-xl min-h-[800px] relative">
+          {headerSlot}
           <div
-            className="px-8 sm:px-16 py-12 sm:py-16 text-[15px] leading-7 text-zinc-800 dark:text-zinc-200 markdown-body"
+            className={clsx(
+              "px-8 text-[15px] leading-7 text-zinc-800 dark:text-zinc-200 sm:px-16 markdown-body",
+              // 有元数据面板时收紧顶部留白，与对话页面板下间距（mb-8）对齐；无面板时保持原文纸面边距
+              headerSlot ? "pb-12 pt-8 sm:pb-16" : "py-12 sm:py-16",
+            )}
             onMouseUp={handleMouseUp}
             onClick={handleMarkClick}
           >

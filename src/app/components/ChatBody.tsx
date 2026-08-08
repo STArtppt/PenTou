@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Bot, User, Copy, Check, Import, Loader2, Quote, History, EyeOff, Globe, Terminal, PenLine, FolderKanban } from "lucide-react";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useAppContext, Message, Platform } from "../data";
 import { RightNav } from "./RightNav";
 import { VersionPanel } from "./VersionPanel";
+import { MetadataPanel } from "./MetadataPanel";
 import { useTranslation } from "../i18n";
 import { excerptConversationToDoc, generateDocId } from "../doc-utils";
 import { copyText } from "../utils/clipboard";
@@ -22,10 +23,15 @@ import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
 import { ImageGalleryProvider, MarkdownImage, imageUrlTransform } from "./ImageLightbox";
 import { formatDisplayDateTime } from "../utils/dateFormat";
 import { useScrollActivity } from "../hooks/useScrollActivity";
+import {
+  conversationMetaFields,
+  technicalDetailFields,
+} from "../metadata-fields";
 
 export function ChatBody() {
   const {
     conversations,
+    folders,
     activeConversationId,
     setDrawerOpen,
     isLoading,
@@ -135,6 +141,28 @@ export function ChatBody() {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
     setPreviewingVersionId(null); // 切换会话时退出版本预览
   }, [activeConversationId, setPreviewingVersionId]);
+
+  // Hooks must run unconditionally (before any early return).
+  const metaFields = useMemo(
+    () =>
+      conversation
+        ? conversationMetaFields(conversation, folders, {
+            formatDateTime: (iso) => formatDisplayDateTime(iso, language),
+          })
+        : [],
+    [conversation, folders, language],
+  );
+  const techFields = useMemo(
+    () =>
+      conversation
+        ? technicalDetailFields({
+            id: conversation.id,
+            currentVersionId: conversation.currentVersionId,
+            ingestSource: conversation.ingestSource,
+          })
+        : [],
+    [conversation],
+  );
 
   if (isLoading) {
     return (
@@ -252,16 +280,28 @@ export function ChatBody() {
           onScroll={markContentScrollActive}
         >
           <ImageGalleryProvider>
-            <div className="max-w-4xl mx-auto px-6 space-y-12">
-              {displayMessages.map((msg) => (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg}
-                  platform={conversation.platform}
-                  onExcerpt={() => handleExcerptMessage(msg)}
-                  excerpting={excerpting}
+            <div className="mx-auto max-w-4xl px-6">
+              {/* 元数据面板：滚动区内、首条消息前；版本预览时不渲染。
+                  与消息列表拆开，避免 space-y-12 把面板下间距拉得与文档页不一致。 */}
+              {!previewingVersionId ? (
+                <MetadataPanel
+                  entryId={conversation.id}
+                  fields={metaFields}
+                  technical={techFields}
+                  className="mb-8"
                 />
-              ))}
+              ) : null}
+              <div className="space-y-12">
+                {displayMessages.map((msg) => (
+                  <MessageBubble
+                    key={msg.id}
+                    message={msg}
+                    platform={conversation.platform}
+                    onExcerpt={() => handleExcerptMessage(msg)}
+                    excerpting={excerpting}
+                  />
+                ))}
+              </div>
             </div>
           </ImageGalleryProvider>
         </div>

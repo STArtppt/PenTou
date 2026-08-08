@@ -1,17 +1,24 @@
-import React, { useEffect, useState } from "react";
-import { FileText, EyeOff, List } from "lucide-react";
-import clsx from "clsx";
+import React, { useEffect, useMemo, useState } from "react";
+import { FileText, EyeOff } from "lucide-react";
 import { useAppContext } from "../data";
 import { useTranslation } from "../i18n";
-import { extractHeadings } from "../doc-utils";
 import { DocViewer } from "./DocViewer";
 import { DocEditor } from "./DocEditor";
 import { VersionPanel } from "./VersionPanel";
+import { MetadataPanel } from "./MetadataPanel";
+import {
+  documentMetaFields,
+  splitLeadingFrontmatter,
+  technicalDetailFields,
+} from "../metadata-fields";
+import { formatDisplayDateTime } from "../utils/dateFormat";
 
 export function DocBody() {
   const {
     activeDocId,
     documents,
+    documentFolders,
+    documentProjects,
     annotationsByDoc,
     versionsByDoc,
     loadAnnotations,
@@ -19,7 +26,7 @@ export function DocBody() {
     previewingVersionId,
     setPreviewingVersionId,
   } = useAppContext();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const activeDoc = documents.find((d) => d.id === activeDocId);
   const [previewBody, setPreviewBody] = useState<string | null>(null);
@@ -43,6 +50,42 @@ export function DocBody() {
       .catch(() => setPreviewBody(null));
   }, [previewingVersionId, activeDocId]);
 
+  // Hooks must run unconditionally (before any early return).
+  const displayBody = activeDoc
+    ? previewingVersionId
+      ? (previewBody ?? activeDoc.body)
+      : activeDoc.body
+    : "";
+  // 展示层剥离用户自带 YAML；编辑模式仍用完整 activeDoc.body
+  const { entries: rawEntries, body: viewBody } = useMemo(
+    () => splitLeadingFrontmatter(displayBody),
+    [displayBody],
+  );
+  const metaFields = useMemo(
+    () =>
+      activeDoc
+        ? documentMetaFields(activeDoc, documentProjects, documentFolders, {
+            formatDateTime: (iso) => formatDisplayDateTime(iso, language),
+            defaultProjectName: t("sidebar.defaultProject"),
+          })
+        : [],
+    [activeDoc, documentProjects, documentFolders, language, t],
+  );
+  const techFields = useMemo(
+    () =>
+      activeDoc
+        ? technicalDetailFields({
+            id: activeDoc.id,
+            currentVersionId: activeDoc.currentVersionId,
+            externalKey: activeDoc.externalKey,
+            sourceConversationId: activeDoc.sourceConversationId,
+            sourceAiChatId: activeDoc.sourceAiChatId,
+            ingestSource: activeDoc.ingestSource,
+          })
+        : [],
+    [activeDoc],
+  );
+
   if (!activeDoc) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-[#1A1A1A] text-zinc-400 min-w-0">
@@ -53,12 +96,12 @@ export function DocBody() {
     );
   }
 
-  const displayBody = previewingVersionId ? (previewBody ?? activeDoc.body) : activeDoc.body;
   const docAnnotations = annotationsByDoc[activeDoc.id] ?? [];
-  const headings = extractHeadings(displayBody);
   const previewVersionNum = previewingVersionId
     ? (versionsByDoc[activeDoc.id] ?? []).find((v) => v.id === previewingVersionId)?.version ?? "?"
     : null;
+
+  const showMetadataPanel = editMode !== "edit" && !previewingVersionId;
 
   return (
     <div className="flex-1 flex bg-zinc-50 dark:bg-[#151515] relative overflow-hidden min-w-0">
@@ -86,11 +129,22 @@ export function DocBody() {
         ) : (
           <DocViewer
             docId={activeDoc.id}
-            body={displayBody}
+            body={viewBody}
             annotations={docAnnotations}
             annotateMode={editMode === "annotate" && !previewingVersionId}
             // 预览历史版本时正文不是当前正文：勾选会把旧版本整体写回去
             bodyReadOnly={!!previewingVersionId}
+            headerSlot={
+              showMetadataPanel ? (
+                <MetadataPanel
+                  entryId={activeDoc.id}
+                  fields={metaFields}
+                  technical={techFields}
+                  rawEntries={rawEntries}
+                  className="mx-8 mb-0 mt-8 sm:mx-16 sm:mt-10"
+                />
+              ) : null
+            }
           />
         )}
       </div>
