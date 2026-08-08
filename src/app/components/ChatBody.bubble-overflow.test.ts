@@ -18,8 +18,17 @@ describe("user message right alignment", () => {
     const chatBody = readFileSync("src/app/components/ChatBody.tsx", "utf8");
     expect(chatBody).toContain('isUser && "flex-row-reverse"');
     expect(chatBody).toContain('align={isUser ? "right" : "left"}');
-    expect(chatBody).toContain('isUser ? "text-right md:pr-12" : "md:pl-12"');
+    expect(chatBody).toContain('isUser && "text-right"');
     expect(chatBody).toContain("rounded-tr-sm");
     expect(chatBody).not.toContain("rounded-tl-sm");
+  });
+});
+
+// 正文不预留头像槽：桌面留槽会让消息左/右边界与拉通全宽的元数据面板对不齐。
+describe("message body has no avatar gutter", () => {
+  it("keeps desktop body flush with the avatar column", () => {
+    const chatBody = readFileSync("src/app/components/ChatBody.tsx", "utf8");
+    expect(chatBody).not.toContain("md:pl-12");
+    expect(chatBody).not.toContain("md:pr-12");
   });
 });

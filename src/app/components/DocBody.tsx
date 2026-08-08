@@ -134,14 +134,14 @@ export function DocBody() {
             annotateMode={editMode === "annotate" && !previewingVersionId}
             // 预览历史版本时正文不是当前正文：勾选会把旧版本整体写回去
             bodyReadOnly={!!previewingVersionId}
-            headerSlot={
+            footerSlot={
               showMetadataPanel ? (
                 <MetadataPanel
                   entryId={activeDoc.id}
                   fields={metaFields}
                   technical={techFields}
                   rawEntries={rawEntries}
-                  className="mx-8 mb-0 mt-8 sm:mx-16 sm:mt-10"
+                  className="mx-8 mb-12 mt-12 sm:mx-16 sm:mb-16 sm:mt-16"
                 />
               ) : null
             }

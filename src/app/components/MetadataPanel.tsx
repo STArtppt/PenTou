@@ -113,8 +113,10 @@ function TriggerRow({ children }: { children: ReactNode }) {
 }
 
 /**
- * 正文顶部可折叠元数据面板。
- * 默认折叠；key=entryId 切换条目时重置。不在 .markdown-body 内挂载。
+ * 正文末尾的元数据面板。
+ * 放在正文之后（查阅型内容不与正文争第一屏），故默认展开；
+ * 内部「技术细节」仍默认收起。key=entryId 切换条目时重置。
+ * 不在 .markdown-body 内挂载。
  */
 export function MetadataPanel({
   entryId,
@@ -130,12 +132,9 @@ export function MetadataPanel({
     <div
       key={entryId}
       data-slot="metadata-panel"
-      className={cn(
-        "mb-6 rounded-lg border border-border bg-muted/30 text-foreground",
-        className,
-      )}
+      className={cn("rounded-lg border border-border bg-muted/30 text-foreground", className)}
     >
-      <Collapsible>
+      <Collapsible defaultOpen>
         <CollapsibleTrigger className="text-sm font-medium">
           <TriggerRow>{t("meta.panelTitle")}</TriggerRow>
         </CollapsibleTrigger>

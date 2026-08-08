@@ -12,8 +12,10 @@ describe("mobile responsive layout contract", () => {
     const chatBody = read("src/app/components/ChatBody.tsx");
     // 顶栏在 < md 整体隐藏（US-03 AC4）
     expect(chatBody).toContain('px-6 hidden md:flex items-center justify-between');
-    // 复制/摘录按钮 < md 常显、>= md 才 hover（I0）
-    expect(chatBody).toContain("opacity-100 transition-all md:opacity-0 md:group-hover/header:opacity-100");
+    // 复制/摘录按钮下沉到正文底部：用户侧 < md 常显、>= md 才 hover（I0）；AI 侧全断点常驻，
+    // 故移动端「常显」契约在两侧都成立。
+    expect(chatBody).toContain("opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100");
+    expect(chatBody).not.toContain("group/header");
     // 右侧 TOC(RightNav) < md 隐藏
     expect(chatBody).toContain('"hidden md:block"');
   });

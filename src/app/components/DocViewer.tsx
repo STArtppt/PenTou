@@ -28,10 +28,10 @@ interface Props {
   /** 预览历史版本时正文不是当前正文，复选框 MUST 不可点 —— 勾了会把旧版本写回去。 */
   bodyReadOnly?: boolean;
   /**
-   * 滚动区内、`.markdown-body` 之外的页眉槽（元数据面板等）。
+   * 纸面内、`.markdown-body` 之后的页脚槽（元数据面板等）。
    * 必须在标注根之外，避免选中面板文本触发标注浮层。
    */
-  headerSlot?: React.ReactNode;
+  footerSlot?: React.ReactNode;
 }
 
 type PopupState =
@@ -48,7 +48,7 @@ export function DocViewer({
   annotations,
   annotateMode,
   bodyReadOnly = false,
-  headerSlot,
+  footerSlot,
 }: Props) {
   const {
     upsertAnnotation,
@@ -225,12 +225,11 @@ export function DocViewer({
       <div className="flex justify-center w-full max-w-[1166px] mx-auto mt-6 mb-24 relative">
         {/* Paper Container */}
         <div className="w-full min-w-0 max-w-4xl bg-white dark:bg-[#1A1A1A] shadow-sm ring-1 ring-zinc-200 dark:ring-white/10 rounded-xl min-h-[800px] relative">
-          {headerSlot}
           <div
             className={clsx(
               "px-8 text-[15px] leading-7 text-zinc-800 dark:text-zinc-200 sm:px-16 markdown-body",
-              // 有元数据面板时收紧顶部留白，与对话页面板下间距（mb-8）对齐；无面板时保持原文纸面边距
-              headerSlot ? "pb-12 pt-8 sm:pb-16" : "py-12 sm:py-16",
+              // 有元数据面板时收紧底部留白，间距交给面板自身的上外边距；无面板时保持原文纸面边距
+              footerSlot ? "pt-12 pb-0 sm:pt-16" : "py-12 sm:py-16",
             )}
             onMouseUp={handleMouseUp}
             onClick={handleMarkClick}
@@ -241,6 +240,7 @@ export function DocViewer({
               </ReactMarkdown>
             </ImageGalleryProvider>
           </div>
+          {footerSlot}
         </div>
 
         <div className="hidden xl:block w-[240px] shrink-0 ml-[30px] sticky top-6 self-start">

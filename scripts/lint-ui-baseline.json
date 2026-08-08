@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T06:55:21.328Z",
+  "generatedAt": "2026-08-06T03:02:47.983Z",
   "count": 78,
   "violations": [
     {
@@ -11,26 +11,20 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 93,
+      "line": 94,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 723,
+      "line": 747,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 735,
+      "line": 759,
       "match": "dark:bg-[#1A1A1A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/AiSidebar.tsx",
-      "line": 815,
-      "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
@@ -41,19 +35,25 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 859,
+      "line": 863,
       "match": "dark:bg-[#151515]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 910,
+      "line": 883,
+      "match": "dark:bg-[#151515]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/AiSidebar.tsx",
+      "line": 934,
       "match": "\"bg-[#35B86B]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/AiSidebar.tsx",
-      "line": 1008,
+      "line": 1032,
       "match": "dark:bg-[#202020]"
     },
     {
@@ -95,13 +95,13 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 435,
+      "line": 445,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/ChatBody.tsx",
-      "line": 492,
+      "line": 490,
       "match": "text-[15px]"
     },
     {
@@ -161,7 +161,7 @@
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/DocViewer.tsx",
-      "line": 231,
+      "line": 230,
       "match": "text-[15px]"
     },
     {

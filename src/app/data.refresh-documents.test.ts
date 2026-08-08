@@ -40,7 +40,7 @@ describe("mergeDocumentMetaList", () => {
   it("keeps meta-only body empty for never-hydrated docs", () => {
     const meta = [{ id: "doc_unopened", title: "U", body: "", folderId: "df_x" }];
     const next = mergeDocumentMetaList(
-      [{ id: "doc_unopened", title: "U", body: "", folderId: null }],
+      [{ id: "doc_unopened", title: "U", body: "", folderId: null as string | null }],
       meta,
     );
     expect(next[0].body).toBe("");
