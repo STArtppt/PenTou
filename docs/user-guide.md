@@ -133,6 +133,8 @@ npx -y @startist/pentou@latest
 
 ## 6. 让 AI 替你完成
 
+若已把 [`pentou-setup`](./agent-skills/pentou-setup/SKILL.md) 技能装进你的编码 Agent，直接说「帮我装 pentou」即可，不必复制下面的提示词。未装技能时，继续用下面整段提示词（门槛最低的路径）。
+
 如果你完全没有编程基础，把下面整段提示词复制给任意 AI Agent（Claude Code、Cursor、Codex 等），让它替你检查环境、处理报错、启动 Pentou 并创建桌面脚本：
 
 ```text

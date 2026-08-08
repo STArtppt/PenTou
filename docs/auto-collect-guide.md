@@ -40,6 +40,8 @@
 
 ## 2. 通道 A：CLI 采集器（桌面 agent）
 
+> 也可装 Agent 技能 [`pentou-collect`](./agent-skills/pentou-collect/SKILL.md)，用自然语言驱动 `collect init / pull / watch`（含排除与 dry-run 闸门）。下面仍是完整手写步骤。
+
 ### 2.1 它能采哪些
 
 采集器读取各个 agent **自己在本机存的会话记录**，不需要你导出任何东西。本机没装的来源会自动跳过。

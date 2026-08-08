@@ -190,7 +190,7 @@ npx -y @startist/pentou@latest
 | [`docs/user-guide.md`](./docs/user-guide.md) | 本机 `npx` 用户指南 |
 | [`docs/auto-collect-guide.md`](./docs/auto-collect-guide.md) | 自动采集指南（CLI 采集器 + 浏览器插件） |
 | [`docs/cli-doc-push-guide.md`](./docs/cli-doc-push-guide.md) | 使用 CLI 上传文档指南（项目 Markdown → 文档平面） |
-| [`docs/agent-skills/README.md`](./docs/agent-skills/README.md) | 面向用户的 Agent Skill（自然语言推文档，可整夹复制） |
+| [`docs/agent-skills/README.md`](./docs/agent-skills/README.md) | 面向用户的 Agent Skill（setup / collect / docs-push，可整夹复制） |
 | [`docs/releases.md`](./docs/releases.md) | 版本发布说明 |
 | [`docs/deployment.md`](./docs/deployment.md) | Docker 部署与反代 |
 | [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md) | 贡献指南 |
