@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Bot, User, Copy, Check, Import, Loader2, Quote, History, EyeOff, Globe, Terminal, PenLine, FolderKanban } from "lucide-react";
+import { remarkPlugins } from "@/shared/markdown-gfm";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -494,7 +494,7 @@ function MessageBubble({
             ? "bg-zinc-50 dark:bg-white/5 inline-block px-5 py-4 border border-zinc-100 dark:border-white/10 rounded-2xl rounded-tr-sm text-left text-zinc-800 dark:text-zinc-200 shadow-sm"
             : "text-zinc-800 dark:text-zinc-200",
         )}>
-          <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]} urlTransform={imageUrlTransform}>
+          <ReactMarkdown components={markdownComponents} remarkPlugins={remarkPlugins} urlTransform={imageUrlTransform}>
             {message.content}
           </ReactMarkdown>
         </div>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, useContext, createContext } from "react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import { remarkPlugins } from "@/shared/markdown-gfm";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { MessageSquare, Highlighter, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -236,7 +236,7 @@ export function DocViewer({
             onClick={handleMarkClick}
           >
             <ImageGalleryProvider>
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={components} urlTransform={docUrlTransform}>
+              <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components} urlTransform={docUrlTransform}>
                 {body}
               </ReactMarkdown>
             </ImageGalleryProvider>

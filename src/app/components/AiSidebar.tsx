@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/IconTooltip";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Check, ChevronLeft, ChevronRight, Clock3, CornerDownLeft, Copy, FileText, History, Loader2, PanelLeft, PanelRight, Play, Plus, Settings, Sparkles, Square, Trash2, X } from "lucide-react";
+import { remarkPlugins } from "@/shared/markdown-gfm";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { useAppContext } from "../data";
@@ -1151,7 +1151,7 @@ function MessageBubble({
             <button onClick={onRetry} className="mt-1 text-xs font-medium underline">{t("aiSidebar.retry")}</button>
           </div>
         ) : (
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={aiMarkdownComponents} urlTransform={imageUrlTransform}>{message.content || (streaming ? "..." : "")}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={remarkPlugins} components={aiMarkdownComponents} urlTransform={imageUrlTransform}>{message.content || (streaming ? "..." : "")}</ReactMarkdown>
         )}
       </div>
       {!isUser && message.retrievalStatus && (

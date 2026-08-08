@@ -16,9 +16,9 @@ import net from "node:net";
 import dns from "node:dns";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
-import remarkGfm from "remark-gfm";
 import type { Image, Root } from "mdast";
 import { visit } from "unist-util-visit";
+import { remarkGfm, remarkGfmOptions } from "../shared/markdown-gfm.js";
 
 // ── 常量（spec §4.3） ─────────────────────────────────────────────────────────
 
@@ -366,7 +366,7 @@ function compactLongDataUris(body: string): { compactBody: string; tokenMap: Map
 }
 
 function collectImageRefs(body: string): ImageRef[] {
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(body) as Root;
+  const tree = unified().use(remarkParse).use(remarkGfm, remarkGfmOptions).parse(body) as Root;
   const refs: ImageRef[] = [];
   visit(tree, "image", (node) => {
     const img = node as Image;
