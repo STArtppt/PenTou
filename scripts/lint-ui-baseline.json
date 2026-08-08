@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-03T07:28:30.966Z",
+  "generatedAt": "2026-08-05T01:24:41.409Z",
   "count": 78,
   "violations": [
     {
@@ -173,43 +173,37 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 72,
+      "line": 73,
       "match": "dark:bg-[#222]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 424,
+      "line": 425,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 465,
+      "line": 466,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 467,
+      "line": 468,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 476,
+      "line": 477,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 802,
-      "match": "dark:bg-[#1A1A1A]"
-    },
-    {
-      "rule": "hardcoded-hex",
-      "file": "src/app/components/ImportDrawer.tsx",
-      "line": 844,
+      "line": 803,
       "match": "dark:bg-[#1A1A1A]"
     },
     {
@@ -221,25 +215,31 @@
     {
       "rule": "hardcoded-hex",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 856,
+      "line": 846,
+      "match": "dark:bg-[#1A1A1A]"
+    },
+    {
+      "rule": "hardcoded-hex",
+      "file": "src/app/components/ImportDrawer.tsx",
+      "line": 857,
       "match": "dark:bg-[#2A2A2A]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 572,
+      "line": 573,
       "match": "text-[11px]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 595,
+      "line": 596,
       "match": "text-[11px]"
     },
     {
       "rule": "arbitrary-text-px",
       "file": "src/app/components/ImportDrawer.tsx",
-      "line": 631,
+      "line": 632,
       "match": "text-[11px]"
     },
     {

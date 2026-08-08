@@ -12,6 +12,7 @@ export interface CollectorConfig {
     // 文件型（spec collector-source-expansion §4.3）
     codex: { enabled: boolean; root?: string };
     "grok-cli": { enabled: boolean; root?: string };
+    pi: { enabled: boolean; root?: string };
     "copilot-vscode": { enabled: boolean; root?: string };
     // SQLite 查询型
     opencode: { enabled: boolean; db?: string };

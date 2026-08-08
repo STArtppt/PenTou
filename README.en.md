@@ -57,7 +57,7 @@ PenTou pulls those conversations off a dozen platforms onto your own machine, as
 ### 1. Multi-source capture: archived as it happens
 
 - **Manual import**: ChatGPT / DeepSeek JSON exports, assorted `.jsonl` files, Markdown, and platform share links. Drop them in as a batch — one bad file won't sink the rest.
-- **CLI collector**: watches desktop agent sessions and reports them automatically, covering Claude Code, Codex, Cursor, Copilot, OpenCode, Hermes, Grok CLI and more. `pull` for batches, `watch` for incremental updates.
+- **CLI collector**: watches desktop agent sessions and reports them automatically, covering Claude Code, Codex, Cursor, Copilot, OpenCode, Hermes, Grok CLI, Pi and more. `pull` for batches, `watch` for incremental updates.
 - **Browser extension**: dumb capture in the page; parsing and deduplication happen server-side.
 - **Ingest gateway**: idempotent upserts, secret redaction, and automatic slimming of oversized sessions — syncing repeatedly won't litter your library with duplicates.
 - **Auto-filing on import**: conversations land in the folder matching their platform, so there's less to tidy by hand.

@@ -7,6 +7,7 @@ import { createWaylogAdapter, extractWaylogExternalId } from "./adapters/waylog"
 import { createCodexAdapter, extractCodexExternalId } from "./adapters/codex";
 import { createGrokCliAdapter } from "./adapters/grok-cli";
 import { createCopilotVscodeAdapter } from "./adapters/copilot-vscode";
+import { createPiAdapter, piExternalId } from "./adapters/pi";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -179,5 +180,37 @@ describe("collector adapters", () => {
     expect(await adapter.toItem(empty)).toBeNull();
     const item = await adapter.toItem(full);
     expect(item).toMatchObject({ platform: "copilot-vscode", externalId: "sess-1", format: "raw" });
+  });
+
+  it("pi: discovers session jsonl and takes the UUID after the timestamp prefix as externalId", async () => {
+    const root = tmpDir("pentou-pi-");
+    // ~/.pi/agent/sessions/<编码cwd>/<时间戳>_<uuid>.jsonl
+    const project = path.join(root, "--Users-me-proj--");
+    fs.mkdirSync(project, { recursive: true });
+    const name = "2026-07-27T09-43-03-653Z_019fa2f4-dae5-7c3c-b3fe-905ee8e4baf9.jsonl";
+    const raw = '{"type":"session","id":"019fa2f4","timestamp":"2026-07-27T09:43:03.653Z","cwd":"/Users/me/proj"}\n';
+    fs.writeFileSync(path.join(project, name), raw);
+    fs.writeFileSync(path.join(project, "notes.txt"), "ignore");
+
+    const adapter = createPiAdapter(root);
+    const files = await adapter.discover();
+    expect(files.map((f) => f.path)).toEqual([path.join(project, name)]);
+    expect(await adapter.toItem(path.join(project, "notes.txt"))).toBeNull();
+
+    // 整文件即载荷：会话头已带时间 / cwd，不加信封
+    const item = await adapter.toItem(files[0].path);
+    expect(item).toMatchObject({
+      platform: "pi",
+      externalId: "019fa2f4-dae5-7c3c-b3fe-905ee8e4baf9",
+      format: "raw",
+      data: raw,
+      filename: name,
+    });
+  });
+
+  it("pi: filename without the timestamp prefix falls back to the whole basename", () => {
+    expect(piExternalId("/x/019fa2f4.jsonl")).toBe("019fa2f4");
+    // 时间戳前缀里本身带 `-` 不带 `_`，切在首个 `_` 上不会误伤 UUID
+    expect(piExternalId("/x/2026-07-27T09-43-03-653Z_abc_def.jsonl")).toBe("abc_def");
   });
 });

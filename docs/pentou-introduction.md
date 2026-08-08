@@ -115,7 +115,7 @@ PDF / Docx / PPTX 等外部资料也可经 MinerU 解析入库，与 AI 对话�
 
 - **Ingest Gateway**（`POST /api/ingest`）：token 鉴权；以平台 + 外部 ID 幂等 upsert；密钥脱敏；CORS 对采集端点友好。
 - **CLI Collector**（`pentou collect init/pull/watch`）：
-  - 文件型：Claude Code、Codex、Grok CLI、Copilot VS Code 会话文件、waylog 等  
+  - 文件型：Claude Code、Codex、Grok CLI、Pi、Copilot VS Code 会话文件、waylog 等  
   - 查询型：OpenCode、Copilot、Hermes、Cursor 等本地 SQLite 会话库  
   - 超大会话：超限时本地降级解析 / 确定性瘦身后再上报  
 - **浏览器扩展（MV3）**：网页端捕获原始数据，服务端统一解析入库。

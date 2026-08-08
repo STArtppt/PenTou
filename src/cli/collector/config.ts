@@ -30,6 +30,10 @@ export function defaultGrokRoot(): string {
   return path.join(os.homedir(), ".grok", "sessions");
 }
 
+export function defaultPiRoot(): string {
+  return path.join(os.homedir(), ".pi", "agent", "sessions");
+}
+
 /**
  * 与 opencode 自身的 `Global.Path.data` 保持一致：`path.join(xdgData, "opencode")`，
  * 其中 xdgData 来自 xdg-basedir —— `XDG_DATA_HOME || ~/.local/share`，**没有 Windows 分支**，
@@ -71,7 +75,7 @@ export function defaultCursorDb(): string {
 
 export function defaultConfig(overrides: Partial<CollectorConfig> = {}): CollectorConfig {
   const rootAdapter = (
-    name: "codex" | "grok-cli" | "copilot-vscode",
+    name: "codex" | "grok-cli" | "pi" | "copilot-vscode",
     defaultRoot: string,
   ): { enabled: boolean; root: string } => ({
     enabled: overrides.adapters?.[name]?.enabled ?? true,
@@ -101,6 +105,7 @@ export function defaultConfig(overrides: Partial<CollectorConfig> = {}): Collect
       },
       codex: rootAdapter("codex", defaultCodexRoot()),
       "grok-cli": rootAdapter("grok-cli", defaultGrokRoot()),
+      pi: rootAdapter("pi", defaultPiRoot()),
       "copilot-vscode": rootAdapter("copilot-vscode", defaultVscodeChatRoot()),
       opencode: dbAdapter("opencode", defaultOpencodeDb()),
       copilot: dbAdapter("copilot", defaultCopilotDb()),
@@ -159,6 +164,7 @@ export function normalizeConfig(raw: any): CollectorConfig {
       },
       codex: rootAdapter("codex", defaultCodexRoot()),
       "grok-cli": rootAdapter("grok-cli", defaultGrokRoot()),
+      pi: rootAdapter("pi", defaultPiRoot()),
       "copilot-vscode": rootAdapter("copilot-vscode", defaultVscodeChatRoot()),
       opencode: dbAdapter("opencode", defaultOpencodeDb()),
       copilot: dbAdapter("copilot", defaultCopilotDb()),

@@ -108,6 +108,7 @@ python3 assets/icons/normalize_icons.py --padding 20 --force
 - `openai.svg`
 - `opencode.svg`
 - `perplexity.svg`
+- `pi.svg`
 - `runway.svg`
 - `suno.svg`
 - `tencent-hunyuan.svg`

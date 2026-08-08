@@ -7,6 +7,7 @@ import { normalizeCopilot } from "./copilot.js";
 import { normalizeCopilotVscode } from "./copilot-vscode.js";
 import { normalizeHermes } from "./hermes.js";
 import { normalizeCursor } from "./cursor.js";
+import { normalizePi } from "./pi.js";
 
 export function registerDefaultRawNormalizers(): void {
   registerRawNormalizer("chatgpt", normalizeChatGptApi);
@@ -19,4 +20,5 @@ export function registerDefaultRawNormalizers(): void {
   registerRawNormalizer("copilot-vscode", normalizeCopilotVscode);
   registerRawNormalizer("hermes", normalizeHermes);
   registerRawNormalizer("cursor", normalizeCursor);
+  registerRawNormalizer("pi", normalizePi);
 }

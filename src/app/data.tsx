@@ -41,7 +41,7 @@ import {
 import type { RunEvent } from "./skill-runtime";
 
 // "Codex" 仅存量数据兼容：新解析一律输出 "ChatGPT"（spec collector-source-expansion 决策 2）
-export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode";
+export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode" | "Pi";
 
 export interface Message {
   id: string;

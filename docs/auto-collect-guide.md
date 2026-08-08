@@ -49,6 +49,7 @@
 | Claude Code | `~/.claude/projects/` | 开箱即用 |
 | Codex（CLI 与桌面版共用） | `~/.codex/sessions/` | 入库后归到 **ChatGPT** 文件夹 |
 | Grok CLI | `~/.grok/sessions/` | |
+| Pi | `~/.pi/agent/sessions/` | |
 | GitHub Copilot（VS Code 插件） | VS Code 的 workspaceStorage | |
 | GitHub Copilot（CLI 与桌面版共用） | `~/.copilot/session-store.db` | 需 Node ≥ 22.5 |
 | OpenCode | `~/.local/share/opencode/opencode.db` | 需 Node ≥ 22.5；设了 `XDG_DATA_HOME` 则跟随该目录 |
@@ -232,7 +233,7 @@ Windows 上即 `C:\Users\你的用户名\.pentou\collector.json`。可以直接�
 npx -y @startist/pentou@latest collect pull --adapter cursor --verbose
 ```
 
-可选值：`claude-code`、`waylog`、`codex`、`grok-cli`、`copilot`、`copilot-vscode`、`opencode`、`hermes`、`cursor`。
+可选值：`claude-code`、`waylog`、`codex`、`grok-cli`、`pi`、`copilot`、`copilot-vscode`、`opencode`、`hermes`、`cursor`。
 
 ---
 

@@ -57,7 +57,7 @@ PenTou 把散落在十几个平台的对话收进本机，沉淀成**可检索�
 ### 1. 多源采集：发生即归档
 
 - **手动导入**：ChatGPT / DeepSeek 导出 JSON、各类 `.jsonl`、Markdown、平台分享链接；批量拖入，单文件失败不拖垮整批。
-- **CLI Collector**：监听桌面 agent 会话并自动上报——覆盖 Claude Code、Codex、Cursor、Copilot、OpenCode、Hermes、Grok CLI 等；`pull` 批量 + `watch` 差量。
+- **CLI Collector**：监听桌面 agent 会话并自动上报——覆盖 Claude Code、Codex、Cursor、Copilot、OpenCode、Hermes、Grok CLI、Pi 等；`pull` 批量 + `watch` 差量。
 - **浏览器插件**：网页端哑采集，解析与去重在服务端统一完成。
 - **Ingest Gateway**：幂等 upsert、密钥脱敏、超长会话自动降级瘦身，反复同步不产生垃圾副本。
 - **导入自动归类**：按平台落入对应文件夹，减少手动整理。

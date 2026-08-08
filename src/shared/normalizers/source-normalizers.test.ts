@@ -10,6 +10,7 @@ import { normalizeCopilot } from "./copilot";
 import { normalizeCopilotVscode } from "./copilot-vscode";
 import { normalizeHermes } from "./hermes";
 import { normalizeCursor } from "./cursor";
+import { normalizePi } from "./pi";
 import { parseJsonl, parseMarkdown } from "../parsers";
 import { EmptyPayloadError } from "./util";
 
@@ -384,6 +385,88 @@ describe("cursor normalizer (US-06)", () => {
   it("throws when every bubble is empty", () => {
     const envelope = JSON.stringify({ schema: "cursor-v1", session: {}, messages: [{ bubbleId: "b", type: 1, text: "" }] });
     expect(() => normalizeCursor(envelope)).toThrow(/no messages/);
+  });
+});
+
+describe("pi normalizer", () => {
+  const line = (obj: unknown) => JSON.stringify(obj);
+
+  it("keeps user/assistant text, drops thinking / toolCall / toolResult and control events", () => {
+    const data = [
+      line({ type: "session", version: 3, id: "019fa2f4", timestamp: "2026-07-27T09:43:03.653Z", cwd: "/Users/me/code/pentou" }),
+      line({ type: "model_change", id: "m1", timestamp: "2026-07-27T09:43:03.682Z", provider: "volcengine", modelId: "kimi-k2.7-code" }),
+      line({ type: "thinking_level_change", id: "t1", timestamp: "2026-07-27T09:43:03.682Z", thinkingLevel: "off" }),
+      line({
+        type: "message",
+        id: "u1",
+        timestamp: "2026-07-27T09:43:33.240Z",
+        message: { role: "user", content: [{ type: "text", text: "你好" }], timestamp: 1785145413237 },
+      }),
+      line({
+        type: "message",
+        id: "a1",
+        timestamp: "2026-07-27T09:43:36.071Z",
+        message: {
+          role: "assistant",
+          content: [
+            { type: "thinking", thinking: "内部推理不入正文" },
+            { type: "text", text: "你好！有什么可以帮你的？" },
+            { type: "toolCall", id: "read_0", name: "read", arguments: { path: "/x" } },
+          ],
+        },
+      }),
+      line({
+        type: "message",
+        id: "r1",
+        timestamp: "2026-07-27T09:43:36.100Z",
+        message: { role: "toolResult", toolCallId: "read_0", toolName: "read", content: [{ type: "text", text: "文件内容" }] },
+      }),
+      // 纯工具调用轮：无 text part，整条丢弃
+      line({
+        type: "message",
+        id: "a2",
+        timestamp: "2026-07-27T09:43:40.000Z",
+        message: { role: "assistant", content: [{ type: "toolCall", id: "bash_1", name: "bash", arguments: {} }] },
+      }),
+    ].join("\n");
+
+    const [conv] = normalizePi(data);
+    expect(conv.platform).toBe("Pi");
+    expect(conv.date).toBe("2026-07-27T09:43:03.653Z");
+    expect(conv.dateFromSource).toBe(true);
+    expect(conv.sourceProject).toBe("pentou");
+    expect(conv.title).toBe("你好");
+    expect(conv.messages.map((m) => [m.role, m.content, m.timestamp])).toEqual([
+      ["user", "你好", "2026-07-27T09:43:33.240Z"],
+      ["ai", "你好！有什么可以帮你的？", "2026-07-27T09:43:36.071Z"],
+    ]);
+  });
+
+  it("falls back to message.timestamp (epoch ms) and strips agent-injected blocks from user text", () => {
+    const data = [
+      line({ type: "session", id: "s", cwd: "" }),
+      line({
+        type: "message",
+        message: { role: "user", content: [{ type: "text", text: "<system-reminder>噪声</system-reminder>\n真实提问" }], timestamp: 1785145413237 },
+      }),
+      // 清洗后为空 → 丢弃
+      line({ type: "message", message: { role: "user", content: [{ type: "text", text: "<system-reminder>只有噪声</system-reminder>" }] } }),
+      "半行 not json",
+    ].join("\n");
+
+    const [conv] = normalizePi(data);
+    expect(conv.sourceProject).toBeUndefined();
+    expect(conv.messages).toHaveLength(1);
+    expect(conv.messages[0]).toMatchObject({ content: "真实提问", timestamp: new Date(1785145413237).toISOString() });
+    expect(conv.dateFromSource).toBe(true);
+  });
+
+  it("throws EmptyPayloadError when the session holds no user/assistant text", () => {
+    const data = [
+      line({ type: "session", id: "s", timestamp: "2026-07-27T09:43:03.653Z", cwd: "/tmp/x" }),
+      line({ type: "message", message: { role: "toolResult", content: [{ type: "text", text: "只有工具回显" }] } }),
+    ].join("\n");
+    expect(() => normalizePi(data)).toThrow(EmptyPayloadError);
   });
 });
 

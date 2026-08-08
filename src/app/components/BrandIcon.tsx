@@ -13,6 +13,7 @@ import metasoUrl from "../assets/brand-icons/metaso.svg";
 import qwenUrl from "../assets/brand-icons/alibaba-qwen.svg";
 import grokUrl from "../assets/brand-icons/grok.svg";
 import opencodeUrl from "../assets/brand-icons/opencode.svg";
+import piUrl from "../assets/brand-icons/pi.svg";
 
 // 映射见 spec ai-brand-icons §4.3；Codex 属 OpenAI 产品复用其图标。
 // platform 是开放字符串（导入数据可超出 Platform 枚举），
@@ -33,6 +34,7 @@ export const BRAND_ICON_URLS: Record<string, string> = {
   Qianwen: qwenUrl,
   Grok: grokUrl,
   OpenCode: opencodeUrl,
+  Pi: piUrl,
 };
 
 // 资产为 #FFFFFF 单色填充（assets/icons/normalized/），直接 <img> 在深色主题
