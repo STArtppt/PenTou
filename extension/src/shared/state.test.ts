@@ -12,10 +12,14 @@ function queued(i: number): QueuedCapture {
 }
 
 describe("extension state", () => {
-  it("defaults auto collection off for all platforms", () => {
+  it("defaults auto collection off for all platforms (incl. R3 expansion)", () => {
     const state = mergeState();
     expect(state.platforms.chatgpt).toEqual({ enabled: true, auto: false });
     expect(state.platforms.deepseek).toEqual({ enabled: true, auto: false });
+    expect(state.platforms.doubao).toEqual({ enabled: true, auto: false });
+    expect(state.platforms.qwen).toEqual({ enabled: true, auto: false });
+    expect(state.platforms["qwen-intl"]).toEqual({ enabled: true, auto: false });
+    expect(state.platforms.gemini).toEqual({ enabled: true, auto: false });
   });
 
   it("caps queue at the newest 200 captures", () => {

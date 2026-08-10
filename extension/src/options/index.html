@@ -30,22 +30,8 @@
 
       <section>
         <h2>Platforms</h2>
-        <label class="row">
-          <input id="chatgpt-enabled" type="checkbox" />
-          ChatGPT
-        </label>
-        <label class="row indent">
-          <input id="chatgpt-auto" type="checkbox" />
-          Auto collect after idle
-        </label>
-        <label class="row">
-          <input id="deepseek-enabled" type="checkbox" />
-          DeepSeek
-        </label>
-        <label class="row indent">
-          <input id="deepseek-auto" type="checkbox" />
-          Auto collect after idle
-        </label>
+        <!-- 开关条目由 index.ts 按 SUPPORTED_PLATFORMS 清单派生，勿在此硬编码平台结构 -->
+        <div id="platforms"></div>
       </section>
 
       <section>

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { chatGptAdapter } from "./chatgpt";
 import { deepSeekAdapter } from "./deepseek";
+import { doubaoAdapter } from "./doubao";
+import { qwenAdapter } from "./qwen";
+import { qwenIntlAdapter } from "./qwen-intl";
+import { geminiAdapter } from "./gemini";
+import { adapters } from "./index";
 
 describe("platform adapters", () => {
   it("matches ChatGPT conversation URLs", () => {
@@ -14,6 +19,50 @@ describe("platform adapters", () => {
     expect(deepSeekAdapter.conversationId(new URL("https://chat.deepseek.com/a/chat/s/session-1"))).toBe("session-1");
     expect(deepSeekAdapter.conversationId(new URL("https://chat.deepseek.com/chat/session-2"))).toBe("session-2");
     expect(deepSeekAdapter.matches(new URL("https://chat.deepseek.com/"))).toBe(false);
+  });
+
+  it("matches Doubao /chat/<digits> and rejects home/settings", () => {
+    expect(doubaoAdapter.conversationId(new URL("https://www.doubao.com/chat/38435082212974338"))).toBe(
+      "38435082212974338",
+    );
+    expect(doubaoAdapter.matches(new URL("https://www.doubao.com/chat/38435082212974338"))).toBe(true);
+    expect(doubaoAdapter.matches(new URL("https://www.doubao.com/"))).toBe(false);
+    expect(doubaoAdapter.matches(new URL("https://www.doubao.com/setting"))).toBe(false);
+    expect(doubaoAdapter.matches(new URL("https://www.doubao.com/chat/not-digits"))).toBe(false);
+  });
+
+  it("matches Qwen CN /chat/<32hex> and rejects home; does not match intl host", () => {
+    const id = "68fec75828dd4923be7c33d6e60c85c6";
+    expect(qwenAdapter.conversationId(new URL(`https://www.qianwen.com/chat/${id}`))).toBe(id);
+    expect(qwenAdapter.matches(new URL("https://www.qianwen.com/"))).toBe(false);
+    expect(qwenAdapter.matches(new URL("https://chat.qwen.ai/c/067c5598-ce15-47ba-9f79-6fc4cf155227"))).toBe(false);
+  });
+
+  it("matches Qwen intl /c/<uuid> and rejects CN host / home", () => {
+    const id = "067c5598-ce15-47ba-9f79-6fc4cf155227";
+    expect(qwenIntlAdapter.conversationId(new URL(`https://chat.qwen.ai/c/${id}`))).toBe(id);
+    expect(qwenIntlAdapter.matches(new URL("https://chat.qwen.ai/"))).toBe(false);
+    expect(qwenIntlAdapter.matches(new URL("https://www.qianwen.com/chat/68fec75828dd4923be7c33d6e60c85c6"))).toBe(
+      false,
+    );
+  });
+
+  it("matches Gemini /app/<16hex> and rejects home", () => {
+    expect(geminiAdapter.conversationId(new URL("https://gemini.google.com/app/2a53dee8a991863e"))).toBe(
+      "2a53dee8a991863e",
+    );
+    expect(geminiAdapter.matches(new URL("https://gemini.google.com/"))).toBe(false);
+    expect(geminiAdapter.matches(new URL("https://gemini.google.com/app/"))).toBe(false);
+  });
+
+  it("does not cross-match Qwen CN and intl on the same id string", () => {
+    // 国内 32 hex 与国际 UUID 格式天然不同；再加域名互斥
+    const hex32 = "68fec75828dd4923be7c33d6e60c85c6";
+    const uuid = "067c5598-ce15-47ba-9f79-6fc4cf155227";
+    expect(qwenAdapter.conversationId(new URL(`https://www.qianwen.com/chat/${hex32}`))).toBe(hex32);
+    expect(qwenIntlAdapter.conversationId(new URL(`https://chat.qwen.ai/c/${uuid}`))).toBe(uuid);
+    expect(adapters.filter((a) => a.matches(new URL(`https://www.qianwen.com/chat/${hex32}`)))).toHaveLength(1);
+    expect(adapters.filter((a) => a.matches(new URL(`https://chat.qwen.ai/c/${uuid}`)))).toHaveLength(1);
   });
 });
 

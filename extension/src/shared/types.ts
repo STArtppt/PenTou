@@ -1,7 +1,7 @@
 import type { IngestAction } from "@shared/ingest-types";
 
 export type { IngestAction };
-export type PlatformSlug = "chatgpt" | "deepseek";
+export type PlatformSlug = "chatgpt" | "deepseek" | "doubao" | "qwen" | "qwen-intl" | "gemini";
 export type CaptureTrigger = "manual" | "auto";
 /** postCapture 的失败分类：只有 network（Pentou 不可达）允许进离线队列。 */
 export type CaptureFailureCode = "unauthorized" | "network" | "http" | "item-error";

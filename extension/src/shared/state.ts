@@ -1,15 +1,27 @@
 import type { ExtensionState, PlatformSlug, QueuedCapture } from "./types";
 
-export const SUPPORTED_PLATFORMS: PlatformSlug[] = ["chatgpt", "deepseek"];
+export const SUPPORTED_PLATFORMS: PlatformSlug[] = [
+  "chatgpt",
+  "deepseek",
+  "doubao",
+  "qwen",
+  "qwen-intl",
+  "gemini",
+];
 export const DEFAULT_SERVER = "http://localhost:5173";
 export const QUEUE_LIMIT = 200;
 
+const DEFAULT_PLATFORM_CONFIG = { enabled: true, auto: false };
+
+function defaultPlatforms(): Record<PlatformSlug, { enabled: boolean; auto: boolean }> {
+  return Object.fromEntries(
+    SUPPORTED_PLATFORMS.map((slug) => [slug, { ...DEFAULT_PLATFORM_CONFIG }]),
+  ) as Record<PlatformSlug, { enabled: boolean; auto: boolean }>;
+}
+
 const DEFAULT_STATE: ExtensionState = {
   config: { server: DEFAULT_SERVER, token: "" },
-  platforms: {
-    chatgpt: { enabled: true, auto: false },
-    deepseek: { enabled: true, auto: false },
-  },
+  platforms: defaultPlatforms(),
   queue: [],
   authBlocked: false,
 };
@@ -19,15 +31,19 @@ export function normalizeServer(value: string): string {
 }
 
 export function mergeState(raw?: Partial<ExtensionState>): ExtensionState {
+  const platforms = defaultPlatforms();
+  for (const slug of SUPPORTED_PLATFORMS) {
+    platforms[slug] = {
+      ...platforms[slug],
+      ...(raw?.platforms?.[slug] ?? {}),
+    };
+  }
   return {
     config: {
       server: normalizeServer(raw?.config?.server ?? DEFAULT_STATE.config.server),
       token: String(raw?.config?.token ?? ""),
     },
-    platforms: {
-      chatgpt: { ...DEFAULT_STATE.platforms.chatgpt, ...(raw?.platforms?.chatgpt ?? {}) },
-      deepseek: { ...DEFAULT_STATE.platforms.deepseek, ...(raw?.platforms?.deepseek ?? {}) },
-    },
+    platforms,
     queue: Array.isArray(raw?.queue) ? raw.queue.slice(-QUEUE_LIMIT) : [],
     authBlocked: Boolean(raw?.authBlocked),
   };
