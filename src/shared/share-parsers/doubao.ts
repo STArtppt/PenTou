@@ -2,7 +2,12 @@
  * 豆包分享态 turn 映射真源。
  * 仅服务分享页 `message_snapshot.message_list[]`；登录态是另一套 content_block 结构
  * （见 normalizers/doubao-api.ts），两侧共用 user_type / 定序 / 时间戳约定，不共用映射函数。
+ *
+ * reasoning：10025 / search_query_result_block → search；thinking_content → thinking
+ * （spec message-reasoning；与登录态共用 renderDoubaoSearchBlock）。
  */
+import type { MessageReasoning } from "../../app/data.js";
+import { buildReasoning, renderDoubaoSearchBlock } from "../reasoning.js";
 
 function tryParseJson(text: string): any | null {
   try {
@@ -16,8 +21,19 @@ function makeId(): string {
   return `conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function makeMsg(role: "user" | "ai", content: string, timestamp: string) {
-  return { id: `msg_${Math.random().toString(36).slice(2, 9)}`, role, content, timestamp };
+function makeMsg(
+  role: "user" | "ai",
+  content: string,
+  timestamp: string,
+  reasoning?: MessageReasoning,
+) {
+  return {
+    id: `msg_${Math.random().toString(36).slice(2, 9)}`,
+    role,
+    content,
+    timestamp,
+    ...(reasoning ? { reasoning } : {}),
+  };
 }
 
 /** 从图片对象按优先级取 URL（spec media-assets §4.5：原图 → 预览图 → 缩略图）。 */
@@ -72,6 +88,7 @@ export function extractDoubaoBlockImages(parsed: any): string[] {
   return parts;
 }
 
+/** 正文块：文本 + 图片；搜索块返回空（走 reasoning）。 */
 export function extractDoubaoBlockText(block: any): string {
   const candidates = [block?.content_v2, block?.content];
 
@@ -79,6 +96,11 @@ export function extractDoubaoBlockText(block: any): string {
     if (!candidate) continue;
     const parsed = typeof candidate === "string" ? tryParseJson(candidate) : candidate;
     if (!parsed) continue;
+
+    // 搜索块不进 content
+    if (parsed.search_query_result_block || Number(block?.block_type) === 10025) {
+      return "";
+    }
 
     const segments: string[] = [];
     const text = parsed?.text_block?.text || parsed?.text;
@@ -90,25 +112,64 @@ export function extractDoubaoBlockText(block: any): string {
   return "";
 }
 
-export function extractDoubaoMessageText(message: any): string {
-  const texts: string[] = [];
+function collectBlocks(message: any): any[] {
+  const blocks: any[] = [];
+  if (Array.isArray(message?.content_block)) {
+    blocks.push(...message.content_block);
+  }
+  if (blocks.length === 0 && typeof message?.content === "string") {
+    const parsed = tryParseJson(message.content);
+    if (Array.isArray(parsed)) blocks.push(...parsed);
+  }
+  return blocks;
+}
 
-  for (const block of message?.content_block || []) {
+function extractShareSearch(message: any): string {
+  const rendered: string[] = [];
+  const seen = new Set<string>();
+  for (const block of collectBlocks(message)) {
+    const candidates = [block?.content_v2, block?.content];
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      const parsed = typeof candidate === "string" ? tryParseJson(candidate) : candidate;
+      if (!parsed) continue;
+      const isSearch =
+        Number(block?.block_type) === 10025 ||
+        Boolean(parsed.search_query_result_block) ||
+        (parsed.queries && parsed.results);
+      if (!isSearch) continue;
+      const md = renderDoubaoSearchBlock(parsed);
+      if (!md || seen.has(md)) continue;
+      seen.add(md);
+      rendered.push(md);
+    }
+  }
+  return rendered.join("\n\n").trim();
+}
+
+function extractShareThinking(message: any): string {
+  return typeof message?.thinking_content === "string"
+    ? message.thinking_content.trim()
+    : "";
+}
+
+/** 提取正文 + reasoning（供 mapDoubaoMessageList 使用）。 */
+export function extractDoubaoMessageParts(message: any): {
+  content: string;
+  reasoning?: MessageReasoning;
+} {
+  const texts: string[] = [];
+  for (const block of collectBlocks(message)) {
     const text = extractDoubaoBlockText(block);
     if (text) texts.push(text);
   }
+  const content = Array.from(new Set(texts)).join("\n\n").trim();
+  const reasoning = buildReasoning(extractShareSearch(message), extractShareThinking(message));
+  return { content, reasoning };
+}
 
-  if (texts.length === 0 && typeof message?.content === "string") {
-    const blocks = tryParseJson(message.content);
-    if (Array.isArray(blocks)) {
-      for (const block of blocks) {
-        const text = extractDoubaoBlockText(block);
-        if (text) texts.push(text);
-      }
-    }
-  }
-
-  return Array.from(new Set(texts)).join("\n\n").trim();
+export function extractDoubaoMessageText(message: any): string {
+  return extractDoubaoMessageParts(message).content;
 }
 
 /** 数字或数字字符串的定序键；取不到返回 null（交给稳定排序保留原始顺序）。 */
@@ -134,16 +195,22 @@ export function mapDoubaoMessageList(messageList: any[], fallbackDate = new Date
     .slice()
     .sort((a: any, b: any) => (numericField(a, ["index", "index_in_conv"]) ?? 0) - (numericField(b, ["index", "index_in_conv"]) ?? 0))
     .map((message: any) => {
-      const content = extractDoubaoMessageText(message);
+      const { content, reasoning } = extractDoubaoMessageParts(message);
       if (!content) return null;
       const createTime = numericField(message, ["create_time"]);
       const timestamp =
         createTime && createTime > 0
           ? new Date(createTime > 10_000_000_000 ? createTime : createTime * 1000).toISOString()
           : fallbackDate;
-      return makeMsg(message.user_type === 1 ? "user" : "ai", content, timestamp);
+      return makeMsg(message.user_type === 1 ? "user" : "ai", content, timestamp, reasoning);
     })
-    .filter(Boolean) as Array<{ id: string; role: "user" | "ai"; content: string; timestamp: string }>;
+    .filter(Boolean) as Array<{
+      id: string;
+      role: "user" | "ai";
+      content: string;
+      timestamp: string;
+      reasoning?: MessageReasoning;
+    }>;
 }
 
 /** 从分享页已解出的 shareData 生成 Conversation 数组（与 parseDoubaoShare 输出同构）。 */

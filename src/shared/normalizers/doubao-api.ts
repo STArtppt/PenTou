@@ -2,8 +2,12 @@
  * 豆包登录态 raw normalizer。
  * 载荷：downlink_body.pull_singe_chain_downlink_body.messages[] + content_block[]
  * （与分享态 message_list 结构不同，独立映射；输出契约由等价性测试守住）。
+ *
+ * reasoning：block_type 10025 → search；消息级 thinking_content → thinking
+ * （spec message-reasoning）。
  */
 import type { Conversation, Message } from "../../app/data.js";
+import { buildReasoning, renderDoubaoSearchBlock } from "../reasoning.js";
 import { makeConvId, makeMessage, titleFromMessages } from "./util.js";
 
 function pickImageUrl(image: any, keys: string[]): string {
@@ -27,7 +31,10 @@ function blockPayload(block: any): any {
   return raw;
 }
 
-/** content_block 走查：10000 文本 / 2074 生成图 / 10025 联网搜索 / 10050 富媒体 / 10052 附件。 */
+/**
+ * content_block 走查：10000 文本 / 2074 生成图 / 10050 富媒体 / 10052 附件。
+ * 10025 搜索块不进 content，由 extractLoginSearch 单独处理。
+ */
 function extractLoginBlockText(block: any): string {
   const type = Number(block?.block_type);
   const payload = blockPayload(block);
@@ -61,27 +68,8 @@ function extractLoginBlockText(block: any): string {
     return parts.join("\n\n");
   }
 
-  if (type === 10025) {
-    const search = payload?.search_query_result_block ?? payload;
-    const queries = Array.isArray(search?.queries)
-      ? search.queries.map((q: any) => (typeof q === "string" ? q : q?.query || q?.text || "")).filter(Boolean)
-      : [];
-    const results = Array.isArray(search?.results)
-      ? search.results
-          .map((r: any) => {
-            const card = r?.text_card ?? r;
-            const title = card?.title || card?.name || "";
-            const snippet = card?.summary || card?.text || card?.snippet || "";
-            return [title, snippet].filter(Boolean).join(" — ");
-          })
-          .filter(Boolean)
-      : [];
-    const lines = [
-      queries.length ? `搜索：${queries.join("；")}` : "",
-      ...results.slice(0, 8),
-    ].filter(Boolean);
-    return lines.join("\n");
-  }
+  // 10025 搜索块 → reasoning.search，不进 content
+  if (type === 10025) return "";
 
   if (type === 10050) {
     const parts: string[] = [];
@@ -118,6 +106,29 @@ function extractLoginBlockText(block: any): string {
   // 未知 block：尽量捞文本
   const fallback = payload?.text_block?.text || payload?.text;
   return typeof fallback === "string" ? fallback.trim() : "";
+}
+
+/** 收集 10025 块渲染结果；相同 Markdown 去重。 */
+function extractLoginSearch(message: any): string {
+  const blocks = Array.isArray(message?.content_block) ? message.content_block : [];
+  const rendered: string[] = [];
+  const seen = new Set<string>();
+  for (const block of blocks) {
+    if (Number(block?.block_type) !== 10025) continue;
+    const payload = blockPayload(block);
+    if (!payload) continue;
+    const md = renderDoubaoSearchBlock(payload);
+    if (!md || seen.has(md)) continue;
+    seen.add(md);
+    rendered.push(md);
+  }
+  return rendered.join("\n\n").trim();
+}
+
+function extractLoginThinking(message: any): string {
+  return typeof message?.thinking_content === "string"
+    ? message.thinking_content.trim()
+    : "";
 }
 
 function extractLoginMessageContent(message: any): string {
@@ -200,10 +211,12 @@ export function normalizeDoubaoApi(data: string): Conversation[] {
   const messages: Message[] = [];
   for (const raw of ordered) {
     const content = extractLoginMessageContent(raw);
+    // content 为空不因 reasoning 复活
     if (!content) continue;
     const role: "user" | "ai" = Number(raw?.user_type) === 1 ? "user" : "ai";
     const timestamp = normalizeCreateTime(raw?.create_time, fallbackDate);
-    messages.push(makeMessage(role, content, timestamp));
+    const reasoning = buildReasoning(extractLoginSearch(raw), extractLoginThinking(raw));
+    messages.push(makeMessage(role, content, timestamp, reasoning));
   }
 
   if (messages.length === 0) {

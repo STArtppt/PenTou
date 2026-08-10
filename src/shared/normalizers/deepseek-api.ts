@@ -6,6 +6,7 @@
  */
 import type { Conversation, Message } from "../../app/data.js";
 import { parseDeepSeekExport } from "../parsers.js";
+import { buildReasoning } from "../reasoning.js";
 
 function makeId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
@@ -59,18 +60,18 @@ function toMessage(raw: any, fallbackDate: string): Message | null {
     content = typeof raw?.content === "string" ? raw.content : typeof raw?.text === "string" ? raw.text : "";
   }
 
-  let finalContent = content.trim();
-  if (think.trim()) {
-    const quoted = think.split("\n").map((line) => `> ${line}`).join("\n");
-    finalContent = `> [!NOTE]\n> **Thinking Process**\n${quoted}\n\n${finalContent}`.trim();
-  }
+  const finalContent = content.trim();
+  // content 为空不因 reasoning 复活
   if (!finalContent) return null;
+
+  const reasoning = buildReasoning(undefined, think.trim() || undefined);
 
   return {
     id: makeId("msg"),
     role,
     content: finalContent,
     timestamp: normalizeTimestamp(raw?.inserted_at ?? raw?.created_at ?? raw?.create_time ?? raw?.timestamp, fallbackDate),
+    ...(reasoning ? { reasoning } : {}),
   };
 }
 

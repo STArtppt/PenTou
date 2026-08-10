@@ -2,19 +2,13 @@
  * Qwen 国际站（chat.qwen.ai）raw normalizer。
  * Open WebUI 形态：data.chat.history.messages map 或 data.chat.messages 数组。
  * 助手正文在 content_list[] phase==="answer"（content 字段恒为空串）。
+ * thinking_summary + reasoning_content → reasoning.thinking（spec message-reasoning）。
  */
 import type { Conversation, Message } from "../../app/data.js";
+import { buildReasoning } from "../reasoning.js";
 import { makeConvId, makeMessage, titleFromMessages } from "./util.js";
 
-function formatThinkingNote(think: string, body: string): string {
-  const quoted = think
-    .split("\n")
-    .map((line) => `> ${line}`)
-    .join("\n");
-  return `> [!NOTE]\n> **Thinking Process**\n${quoted}\n\n${body}`.trim();
-}
-
-function assistantContent(msg: any): string {
+function assistantParts(msg: any): { body: string; think: string } {
   // 勿取 content——实测助手 content 恒为空串
   const list = Array.isArray(msg?.content_list) ? msg.content_list : [];
   const answers = list
@@ -30,13 +24,12 @@ function assistantContent(msg: any): string {
     thinkParts.push(msg.reasoning_content.trim());
   }
 
-  const body = answers.join("\n\n").trim();
-  const think = thinkParts.join("\n\n").trim();
-  if (think && body) return formatThinkingNote(think, body);
-  if (think) return formatThinkingNote(think, "");
+  let body = answers.join("\n\n").trim();
   // 极少数形态可能把正文放在 content
-  if (!body && typeof msg?.content === "string" && msg.content.trim()) return msg.content.trim();
-  return body;
+  if (!body && typeof msg?.content === "string" && msg.content.trim()) {
+    body = msg.content.trim();
+  }
+  return { body, think: thinkParts.join("\n\n").trim() };
 }
 
 function userContent(msg: any): string {
@@ -59,8 +52,10 @@ function collectFromArray(rawMessages: any[], fallbackDate: string): Message[] {
       continue;
     }
     if (roleRaw === "assistant") {
-      const content = assistantContent(raw);
-      if (content) messages.push(makeMessage("ai", content, ts));
+      const { body, think } = assistantParts(raw);
+      if (!body) continue; // content 为空不因 reasoning 复活
+      const reasoning = buildReasoning(undefined, think || undefined);
+      messages.push(makeMessage("ai", body, ts, reasoning));
     }
   }
   return messages;

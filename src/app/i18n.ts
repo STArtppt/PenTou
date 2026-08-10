@@ -233,6 +233,14 @@ export const translations = {
     "capture.terminal": "Terminal",
     "capture.manual": "Manual",
 
+    // Message reasoning panel (spec message-reasoning)
+    // 固定标题：采集到的非正文（搜索/思考等）都进此块
+    "reasoning.title": "Search chain, thinking chain, etc.",
+    "reasoning.search": "Search chain",
+    "reasoning.thinking": "Thinking chain",
+    "reasoning.expandAll": "Show all",
+    "reasoning.collapse": "Collapse",
+
     // Content metadata panel (spec content-metadata-panel)
     "meta.panelTitle": "Metadata",
     "meta.technicalDetails": "Technical details",
@@ -763,6 +771,14 @@ export const translations = {
     "capture.web": "网页",
     "capture.terminal": "终端",
     "capture.manual": "手工",
+
+    // Message reasoning panel (spec message-reasoning)
+    // 固定标题：采集到的非正文（搜索/思考等）都进此块
+    "reasoning.title": "搜索链、思考链等文本",
+    "reasoning.search": "搜索链",
+    "reasoning.thinking": "思考链",
+    "reasoning.expandAll": "查看全部",
+    "reasoning.collapse": "收起",
 
     // Content metadata panel
     "meta.panelTitle": "元数据",

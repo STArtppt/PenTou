@@ -18,6 +18,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { stripReasoningBlocks } from "../shared/reasoning.js";
 import { embed as providerEmbed, EmbeddingError } from "./embedding-provider.js";
 import type { EmbeddingConfig } from "./embedding-provider.js";
 
@@ -748,6 +749,8 @@ function readMd(raw: string, type: "conversation" | "document"): { title: string
       /^##\s+(user|ai|assistant|human|you|chatgpt|claude|deepseek|gemini|cli|cursor|copilot|codex)\s*$/gim,
       "",
     );
+    // 剥离 reasoning 注释块，避免引文淹没检索（spec message-reasoning 决策 4）
+    body = stripReasoningBlocks(body);
   }
   body = body.replace(/^---\s*$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
   return { title, date, body };

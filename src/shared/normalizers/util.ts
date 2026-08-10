@@ -1,5 +1,5 @@
 /** normalizer 共用的最小构造工具（与 parsers.ts 同构，避免跨层 export 私有函数） */
-import type { Conversation, Message, Platform } from "../../app/data.js";
+import type { Conversation, Message, MessageReasoning, Platform } from "../../app/data.js";
 
 /**
  * 空会话（载荷合法但不含任何用户/AI 消息，如只跑了 /exit 的 CLI 会话）。
@@ -11,8 +11,19 @@ export function makeConvId(): string {
   return `conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function makeMessage(role: "user" | "ai", content: string, timestamp: string): Message {
-  return { id: `msg_${Math.random().toString(36).slice(2, 9)}`, role, content, timestamp };
+export function makeMessage(
+  role: "user" | "ai",
+  content: string,
+  timestamp: string,
+  reasoning?: MessageReasoning,
+): Message {
+  return {
+    id: `msg_${Math.random().toString(36).slice(2, 9)}`,
+    role,
+    content,
+    timestamp,
+    ...(reasoning ? { reasoning } : {}),
+  };
 }
 
 export function titleFromMessages(messages: Message[], fallback: string): string {

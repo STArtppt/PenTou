@@ -49,6 +49,11 @@ import {
   deleteConvVersions,
 } from "./conversation-versions.js";
 import { matchAiProduct } from "../shared/ai-products.js";
+import {
+  extractReasoningFromBody,
+  formatReasoningForMd,
+  mergeReasoning,
+} from "../shared/reasoning.js";
 import { EmptyPayloadError, parseRawConversations } from "../shared/raw-dispatch.js";
 import {
   DOCS_PLATFORM,
@@ -195,7 +200,11 @@ export function conversationToMd(conv: any): string {
   const msgBlock = messages
     .map((m: any) => {
       const role = m.role === "user" ? "## User" : `## ${conv.platform ?? "AI"}`;
-      return `${role}\n${msgTsLine(m.timestamp)}\n${m.content}\n`;
+      // reasoning 落在 msg-ts 之后、正文之前；段为空整块不写（spec message-reasoning）
+      const reasoning = formatReasoningForMd(m.reasoning);
+      // 无 reasoning 时保留 msg-ts 与正文之间的空行（存量格式）
+      const spacer = reasoning ? "" : "\n";
+      return `${role}\n${msgTsLine(m.timestamp)}${reasoning}${spacer}${m.content}\n`;
     })
     .join("\n---\n\n");
 
@@ -228,6 +237,10 @@ function mergeConsecutiveMessages(messages: any[]): any[] {
     const previous = merged[merged.length - 1];
     if (previous && previous.role === message.role) {
       previous.content = [previous.content, message.content].filter(Boolean).join("\n\n");
+      // reasoning 按段以空行拼接（spec message-reasoning 决策 6）
+      const reasoning = mergeReasoning(previous.reasoning, message.reasoning);
+      if (reasoning) previous.reasoning = reasoning;
+      else delete previous.reasoning;
       continue;
     }
     merged.push(message);
@@ -304,6 +317,12 @@ export function parseMdFile(id: string, content: string): any {
         if (tsMatch[1]) timestamp = tsMatch[1];
       }
 
+      // 剥离 reasoning 注释块还原 structured field（spec message-reasoning）
+      const extracted = extractReasoningFromBody(content);
+      content = extracted.content;
+      const reasoning = extracted.reasoning;
+
+      // content 为空不因 reasoning 复活（spec message-reasoning）
       if (!content) continue;
 
       messages.push({
@@ -311,6 +330,7 @@ export function parseMdFile(id: string, content: string): any {
         role,
         content,
         timestamp,
+        ...(reasoning ? { reasoning } : {}),
       });
     }
   }

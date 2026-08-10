@@ -44,11 +44,19 @@ import type { RunEvent } from "./skill-runtime";
 // Doubao / Qwen：extension-source-expansion-cn 登录态采集输出（Qianwen 为存量 alias，归类层折叠到 Qwen）
 export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode" | "Pi" | "Doubao" | "Qwen";
 
+/** 消息级推理过程（spec message-reasoning）：搜索段 + 思考段，均为已渲染 Markdown。 */
+export interface MessageReasoning {
+  search?: string;
+  thinking?: string;
+}
+
 export interface Message {
   id: string;
   role: "user" | "ai";
   content: string;
   timestamp: string;
+  /** 推理过程；两段皆空时省略，不写成 `{}`（spec message-reasoning） */
+  reasoning?: MessageReasoning;
 }
 
 export interface Conversation {

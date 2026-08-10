@@ -124,8 +124,9 @@ describe("DeepSeek API normalizer", () => {
     expect(conv.title).toBe("DeepSeek topic");
     expect(conv.platform).toBe("DeepSeek");
     expect(conv.messages[0]).toMatchObject({ role: "user", content: "question" });
-    expect(conv.messages[1].content).toContain("Thinking Process");
-    expect(conv.messages[1].content).toContain("answer");
+    expect(conv.messages[1].content).toBe("answer");
+    expect(conv.messages[1].content).not.toContain("Thinking Process");
+    expect(conv.messages[1].reasoning?.thinking).toBe("think line");
   });
 
   // 登录态 GET /api/v0/chat/history_messages 的真实响应形态（2026-07-20 勘测确认字段名）
@@ -174,8 +175,9 @@ describe("DeepSeek API normalizer", () => {
     expect(conv.messages[0]).toMatchObject({ role: "user", content: "如何评价梅西" });
     expect(conv.messages[0].timestamp).toBe("2026-07-20T06:57:16.656Z");
     expect(conv.messages[1].role).toBe("ai");
-    expect(conv.messages[1].content).toContain("Thinking Process");
-    expect(conv.messages[1].content).toContain("梅西是……");
+    expect(conv.messages[1].content).toBe("梅西是……");
+    expect(conv.messages[1].content).not.toContain("Thinking Process");
+    expect(conv.messages[1].reasoning?.thinking).toBe("先分点");
   });
 
   it("also accepts export-style mapping payloads", () => {
@@ -318,6 +320,169 @@ describe("Doubao API normalizer", () => {
     expect(shareMsgs[0].timestamp).toBe(new Date(createTime * 1000).toISOString());
     expect(loginConv.messages[0].timestamp).toBe(new Date(createTime * 1000).toISOString());
   });
+
+  it("maps block_type 10025 into reasoning.search (not content) and keeps 14 results", () => {
+    const results = Array.from({ length: 14 }, (_, i) => ({
+      text_card: {
+        title: `资料 ${i + 1}`,
+        url: `https://example.com/r${i + 1}`,
+        sitename: "Example",
+        summary: `摘要 ${i + 1}`,
+      },
+    }));
+    const raw = JSON.stringify({
+      downlink_body: {
+        pull_singe_chain_downlink_body: {
+          messages: [
+            {
+              user_type: 1,
+              index_in_conv: "1",
+              create_time: "1785000000",
+              content_block: [{ block_type: 10000, content: { text_block: { text: "问一下" } } }],
+            },
+            {
+              user_type: 2,
+              index_in_conv: "2",
+              create_time: "1785000001",
+              thinking_content: "  先列检索词  ",
+              content_block: [
+                {
+                  block_type: 10025,
+                  content: {
+                    search_query_result_block: {
+                      summary: "搜索 2 个关键词，参考 14 篇资料",
+                      queries: ["q1", "q2"],
+                      results,
+                    },
+                  },
+                },
+                {
+                  block_type: 10000,
+                  content: { text_block: { text: "最终答案在此" } },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    const [conv] = normalizeDoubaoApi(raw);
+    const ai = conv.messages[1];
+    expect(ai.content).toBe("最终答案在此");
+    expect(ai.content).not.toContain("搜索");
+    expect(ai.content).not.toContain("资料 1");
+    expect(ai.reasoning?.search).toContain("**搜索词**");
+    expect(ai.reasoning?.search).toContain("[资料 14]");
+    expect(ai.reasoning?.search).not.toMatch(/摘要 14/);
+    expect(ai.reasoning?.thinking).toBe("先列检索词");
+  });
+
+  it("dedupes identical 10025 blocks within one message", () => {
+    const searchBlock = {
+      block_type: 10025,
+      content: {
+        search_query_result_block: {
+          summary: "same",
+          queries: ["q"],
+          results: [{ text_card: { title: "T", url: "https://ex.com", sitename: "S", summary: "s" } }],
+        },
+      },
+    };
+    const raw = JSON.stringify({
+      downlink_body: {
+        pull_singe_chain_downlink_body: {
+          messages: [
+            {
+              user_type: 1,
+              index_in_conv: "1",
+              create_time: "1785000000",
+              content_block: [{ block_type: 10000, content: { text_block: { text: "q" } } }],
+            },
+            {
+              user_type: 2,
+              index_in_conv: "2",
+              create_time: "1785000001",
+              content_block: [
+                searchBlock,
+                searchBlock,
+                { block_type: 10000, content: { text_block: { text: "answer" } } },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    const [conv] = normalizeDoubaoApi(raw);
+    const search = conv.messages[1].reasoning?.search ?? "";
+    expect(search.match(/same/g)?.length).toBe(1);
+  });
+
+  it("share and login paths produce equivalent content + reasoning for search blocks", () => {
+    // 样本语义对齐 doubao.com/thread/x5379fIAmQ9uedjAw（fixture: doubao-share-search.json）
+    const share = JSON.parse(fixture("doubao-share-search.json"));
+    const createTime = 1785000100;
+    const searchPayload = {
+      search_query_result_block: {
+        summary: "搜索 1 个关键词，参考 2 篇资料",
+        queries: ["潜水员戴夫 店铺等级"],
+        results: [
+          {
+            text_card: {
+              title: "店铺等级对照",
+              url: "https://example.com/a",
+              sitename: "TapTap",
+              summary: "白银最多接待 20 位",
+            },
+          },
+          {
+            text_card: {
+              title: "备菜数量",
+              url: "https://example.com/b",
+              sitename: "Bilibili",
+              summary: "钻石 45 位",
+            },
+          },
+        ],
+      },
+    };
+    const loginPayload = JSON.stringify({
+      downlink_body: {
+        pull_singe_chain_downlink_body: {
+          messages: [
+            {
+              user_type: 1,
+              index_in_conv: "1",
+              create_time: String(createTime),
+              content_block: [
+                { block_type: 10000, content: { text_block: { text: "每个店铺等级客人上限？" } } },
+              ],
+            },
+            {
+              user_type: 2,
+              index_in_conv: "2",
+              create_time: String(createTime + 1),
+              thinking_content: "",
+              content_block: [
+                { block_type: 10025, content: searchPayload },
+                { block_type: 10000, content: { text_block: { text: "白银 20，黄金 28，铂金 36，钻石 45。" } } },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    // 确保 fixture 与合成 login 语义一致（fixture 是分享态真源样本结构）
+    expect(share.message_snapshot.message_list).toHaveLength(2);
+    const shareMsgs = mapDoubaoMessageList(share.message_snapshot.message_list);
+    const [loginConv] = normalizeDoubaoApi(loginPayload);
+
+    expect(shareMsgs.map((m) => m.role)).toEqual(loginConv.messages.map((m) => m.role));
+    expect(shareMsgs.map((m) => m.content)).toEqual(loginConv.messages.map((m) => m.content));
+    expect(shareMsgs.map((m) => m.reasoning)).toEqual(loginConv.messages.map((m) => m.reasoning));
+    expect(shareMsgs[1].reasoning?.search).toContain("**参考资料**");
+    expect(shareMsgs[1].content).toBe("白银 20，黄金 28，铂金 36，钻石 45。");
+  });
 });
 
 describe("Qwen API normalizers (CN + intl)", () => {
@@ -382,7 +547,7 @@ describe("Qwen API normalizers (CN + intl)", () => {
     expect(conv.messages[1].content.length).toBeGreaterThan(10);
   });
 
-  it("renders thinking_summary / reasoning_content as NOTE blocks", () => {
+  it("maps thinking_summary / reasoning_content into reasoning.thinking", () => {
     const raw = JSON.stringify({
       data: {
         title: "think demo",
@@ -405,10 +570,10 @@ describe("Qwen API normalizers (CN + intl)", () => {
     });
     const [conv] = normalizeQwenIntlApi(raw);
     expect(conv.platform).toBe("Qwen");
-    expect(conv.messages[1].content).toContain("Thinking Process");
-    expect(conv.messages[1].content).toContain("summary line");
-    expect(conv.messages[1].content).toContain("step by step");
-    expect(conv.messages[1].content).toContain("final answer");
+    expect(conv.messages[1].content).toBe("final answer");
+    expect(conv.messages[1].content).not.toContain("Thinking Process");
+    expect(conv.messages[1].reasoning?.thinking).toContain("summary line");
+    expect(conv.messages[1].reasoning?.thinking).toContain("step by step");
   });
 
   it("throws platform-named errors for bad payloads", () => {

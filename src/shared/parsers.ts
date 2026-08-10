@@ -6,8 +6,9 @@
  * 自 src/app/parsers.ts 抽出为前端与服务端共享模块（spec ingest-gateway §4.2 决策 5）；
  * 前端入口 src/app/parsers.ts 改为 re-export，import 图不变。
  */
-import type { Conversation, Message, Platform } from "../app/data.js";
+import type { Conversation, Message, MessageReasoning, Platform } from "../app/data.js";
 import { cleanUserMessageContent } from "./agent-noise.js";
+import { buildReasoning } from "./reasoning.js";
 import { sourceProjectFromCwd } from "./source-project.js";
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
@@ -16,8 +17,19 @@ function makeId(): string {
   return `conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function makeMsg(role: "user" | "ai", content: string, timestamp: string): Message {
-  return { id: `msg_${Math.random().toString(36).slice(2, 9)}`, role, content, timestamp };
+function makeMsg(
+  role: "user" | "ai",
+  content: string,
+  timestamp: string,
+  reasoning?: MessageReasoning,
+): Message {
+  return {
+    id: `msg_${Math.random().toString(36).slice(2, 9)}`,
+    role,
+    content,
+    timestamp,
+    ...(reasoning ? { reasoning } : {}),
+  };
 }
 
 /**
@@ -139,17 +151,15 @@ export function parseDeepSeekExport(json: any): Conversation[] {
             }
           }
           
-          let finalContent = "";
-          if (thinkContent) {
-            finalContent += `> [!NOTE]\n> **Thinking Process**\n${thinkContent.split('\n').map(l => '> ' + l).join('\n')}\n\n`;
-          }
-          finalContent += content;
-          
-          if (finalContent.trim()) {
+          // THINK 分片改填 reasoning.thinking，不再注入 NOTE 块（spec message-reasoning）
+          const finalContent = content.trim();
+          if (finalContent) {
+            const reasoning = buildReasoning(undefined, thinkContent.trim() || undefined);
             messages.push(makeMsg(
-              role, 
-              finalContent.trim(), 
-              node.message.inserted_at || item.inserted_at || new Date().toISOString()
+              role,
+              finalContent,
+              node.message.inserted_at || item.inserted_at || new Date().toISOString(),
+              reasoning,
             ));
           }
         }

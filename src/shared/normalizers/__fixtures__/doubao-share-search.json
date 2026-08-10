@@ -1,0 +1,70 @@
+{
+  "share_info": {
+    "share_name": "每个店铺等级客人上限"
+  },
+  "message_snapshot": {
+    "message_list": [
+      {
+        "index": 0,
+        "index_in_conv": "1",
+        "user_type": 1,
+        "create_time": 1785000100,
+        "thinking_content": "",
+        "content_block": [
+          {
+            "block_type": 10000,
+            "content": {
+              "text_block": {
+                "text": "每个店铺等级客人上限？"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "index_in_conv": "2",
+        "user_type": 2,
+        "create_time": 1785000101,
+        "thinking_content": "",
+        "content_block": [
+          {
+            "block_type": 10025,
+            "content": {
+              "search_query_result_block": {
+                "summary": "搜索 1 个关键词，参考 2 篇资料",
+                "queries": ["潜水员戴夫 店铺等级"],
+                "results": [
+                  {
+                    "text_card": {
+                      "title": "店铺等级对照",
+                      "url": "https://example.com/a",
+                      "sitename": "TapTap",
+                      "summary": "白银最多接待 20 位"
+                    }
+                  },
+                  {
+                    "text_card": {
+                      "title": "备菜数量",
+                      "url": "https://example.com/b",
+                      "sitename": "Bilibili",
+                      "summary": "钻石 45 位"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "block_type": 10000,
+            "content": {
+              "text_block": {
+                "text": "白银 20，黄金 28，铂金 36，钻石 45。"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

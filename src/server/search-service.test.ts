@@ -80,6 +80,26 @@ describe("searchService", () => {
     expect(search("量子计算", 30).hits).toHaveLength(0);
   });
 
+  it("does not index reasoning comment blocks (spec message-reasoning)", () => {
+    configureSearch(dir);
+    const body = [
+      "<!-- msg-ts: 2026-08-07T09:36:48.000Z -->",
+      "<!-- reasoning:search -->",
+      "秘密检索词 unique_reasoning_token_xyz",
+      "<!-- /reasoning:search -->",
+      "<!-- reasoning:thinking -->",
+      "内部思考 another_reasoning_token_abc",
+      "<!-- /reasoning:thinking -->",
+      "",
+      "可见的最终答案",
+    ].join("\n");
+    writeConv("conv_reasoning", "有推理过程的会话", body);
+    refreshNow();
+    expect(search("unique_reasoning_token_xyz", 30).hits).toHaveLength(0);
+    expect(search("another_reasoning_token_abc", 30).hits).toHaveLength(0);
+    expect(search("最终答案", 30).hits).toHaveLength(1);
+  });
+
   it("short-circuits empty / whitespace-only / punctuation queries", () => {
     configureSearch(dir);
     writeDoc("doc_1", "X", "hello world");

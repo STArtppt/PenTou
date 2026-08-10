@@ -652,6 +652,147 @@ describe("message timestamp roundtrip (spec conversation-time-and-sort US-01)", 
   });
 });
 
+describe("message reasoning roundtrip (spec message-reasoning)", () => {
+  const base = {
+    id: "conv_reasoning_rt",
+    title: "Reasoning",
+    platform: "Doubao",
+    date: "2026-08-07T09:36:45.000Z",
+    folderId: null,
+  };
+
+  it("roundtrips search + thinking and keeps content clean", () => {
+    const conv = {
+      ...base,
+      messages: [
+        {
+          id: "m1",
+          role: "user",
+          content: "问",
+          timestamp: "2026-08-07T09:36:45.000Z",
+        },
+        {
+          id: "m2",
+          role: "ai",
+          content: "最终答案",
+          timestamp: "2026-08-07T09:36:48.000Z",
+          reasoning: {
+            search: "搜索摘要\n\n**搜索词**\n- q1",
+            thinking: "思考过程",
+          },
+        },
+      ],
+    };
+    const md = conversationToMd(conv);
+    expect(md).toContain("<!-- reasoning:search -->");
+    expect(md).toContain("<!-- reasoning:thinking -->");
+    const parsed = parseMdFile(conv.id, md);
+    expect(parsed.messages[1].content).toBe("最终答案");
+    expect(parsed.messages[1].reasoning).toEqual(conv.messages[1].reasoning);
+    // 二次序列化幂等
+    expect(conversationToMd(parsed)).toBe(md);
+  });
+
+  it("writes only thinking block when search is absent", () => {
+    const conv = {
+      ...base,
+      messages: [
+        {
+          id: "m1",
+          role: "ai",
+          content: "answer",
+          timestamp: "2026-08-07T09:36:48.000Z",
+          reasoning: { thinking: "only think" },
+        },
+      ],
+    };
+    const md = conversationToMd(conv);
+    expect(md).toContain("reasoning:thinking");
+    expect(md).not.toContain("reasoning:search");
+    const parsed = parseMdFile(conv.id, md);
+    expect(parsed.messages[0].reasoning).toEqual({ thinking: "only think" });
+    expect(parsed.messages[0].content).toBe("answer");
+  });
+
+  it("leaves legacy files without reasoning comments byte-identical in content", () => {
+    const legacy = `---
+id: conv_legacy_r
+title: Legacy
+platform: ChatGPT
+date: 2026-06-01T00:00:00.000Z
+folderId: null
+---
+
+## User
+
+hello
+
+---
+
+## ChatGPT
+
+hi there
+`;
+    const parsed = parseMdFile("conv_legacy_r", legacy);
+    expect(parsed.messages.map((m: any) => m.content)).toEqual(["hello", "hi there"]);
+    for (const m of parsed.messages) {
+      expect(m.reasoning).toBeUndefined();
+    }
+  });
+
+  it("treats unclosed reasoning comment as plain content", () => {
+    const broken = `---
+id: conv_broken_r
+title: Broken
+platform: Doubao
+date: 2026-08-01T00:00:00.000Z
+folderId: null
+---
+
+## Doubao
+
+<!-- reasoning:search -->
+orphan search text without close
+
+# real answer
+`;
+    const parsed = parseMdFile("conv_broken_r", broken);
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.messages[0].reasoning).toBeUndefined();
+    expect(parsed.messages[0].content).toContain("<!-- reasoning:search -->");
+    expect(parsed.messages[0].content).toContain("real answer");
+  });
+
+  it("merges same-role reasoning segments with blank lines", () => {
+    const conv = {
+      ...base,
+      messages: [
+        {
+          id: "m1",
+          role: "ai",
+          content: "a1",
+          timestamp: "2026-08-07T09:36:48.000Z",
+          reasoning: { search: "s1", thinking: "t1" },
+        },
+        {
+          id: "m2",
+          role: "ai",
+          content: "a2",
+          timestamp: "2026-08-07T09:37:00.000Z",
+          reasoning: { search: "s2" },
+        },
+      ],
+    };
+    const parsed = parseMdFile(conv.id, conversationToMd(conv));
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.messages[0].content).toBe("a1\n\na2");
+    expect(parsed.messages[0].reasoning).toEqual({
+      search: "s1\n\ns2",
+      thinking: "t1",
+    });
+  });
+});
+
 describe("import auto-classify (spec import-auto-classify)", () => {
   const base = (over: any = {}) => ({
     id: `conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
