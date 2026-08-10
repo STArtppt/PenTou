@@ -1,6 +1,6 @@
 # Privacy Policy — Pentou Collector (Chrome Extension)
 
-**Last updated:** 2026-07-27  
+**Last updated:** 2026-08-09  
 **Product:** Pentou Collector (browser extension) and the local Pentou application it writes to  
 **Publisher:** STArtppt / PenTou project  
 **Contact:** Open an issue at [https://github.com/STArtppt/PenTou](https://github.com/STArtppt/PenTou)
@@ -30,6 +30,10 @@ Supported platforms in the current release include:
 
 - ChatGPT (`chatgpt.com`, `chat.openai.com`)
 - DeepSeek (`chat.deepseek.com`)
+- Doubao / 豆包 (`www.doubao.com`)
+- Qwen China / 通义千问国内站 (`www.qianwen.com`; conversation API on sibling host `chat2-api.qianwen.com`)
+- Qwen International (`chat.qwen.ai`)
+- Gemini (`gemini.google.com`)
 
 Optional features that serve the **same** purpose:
 
@@ -53,7 +57,7 @@ When you trigger a capture (manually via the toolbar icon, or automatically if y
 | Active tab URL / tab id | Browser | Decide whether the page is a supported conversation page; route capture to the correct tab |
 | Capture result metadata | Extension + your Pentou response | Show badge / notification (e.g. new / updated / skipped / error) |
 
-The Extension does **not** ask for or store your ChatGPT or DeepSeek **passwords**. It uses the **session you already have** in the browser (cookies / page storage as required by each platform adapter) only to call that platform’s conversation API for the open chat.
+The Extension does **not** ask for or store your platform **passwords**. It uses the **session you already have** in the browser (cookies / page storage as required by each platform adapter) only to call that platform’s conversation API for the open chat. It does **not** inject scripts into the page main world for token access in the current release.
 
 ### 3.2 Settings you enter (stored in the browser)
 
@@ -101,7 +105,7 @@ If you deliberately configure a **self-hosted** Pentou on another host you contr
 
 ### 4.2 Supported AI platforms (source of the chat)
 
-To obtain the open conversation, the Extension contacts only the platform hosts declared in `host_permissions` (e.g. ChatGPT / DeepSeek), using each site’s own APIs as a logged-in user would. This is a **read** of the conversation you are already using, for the purpose of local archival in Pentou—not a transfer to a third-party analytics vendor.
+To obtain the open conversation, the Extension contacts the platform hosts needed for the open chat—including conversation-page hosts in `host_permissions` and, for Qwen China, the API host `chat2-api.qianwen.com` (same-site sibling used by the page itself; may or may not appear in `host_permissions` depending on CORS)—using each site’s own APIs as a logged-in user would. This is a **read** of the conversation you are already using, for the purpose of local archival in Pentou—not a transfer to a third-party analytics vendor.
 
 ### 4.3 Remote code
 
@@ -119,7 +123,7 @@ The Extension **does not use remote code**. All extension logic ships inside the
 | `storage` | Save Options settings and the offline retry queue |
 | `alarms` | Periodically flush the offline queue (~every 5 minutes) |
 | `notifications` | Optional desktop notifications for **manual** capture results (auto-collect uses badge only) |
-| Host: ChatGPT / DeepSeek | Content script + fetch conversation API on those sites |
+| Host: ChatGPT / DeepSeek / Doubao / Qwen (incl. `www.qianwen.com`) / Qwen intl / Gemini | Content script + fetch conversation API on those sites |
 | Host: `localhost` / `127.0.0.1` | Talk to your local Pentou ingest API |
 
 Host access is **not** `<all_urls>`.
@@ -175,7 +179,7 @@ Questions about this policy or the Extension’s data handling:
 
 ## 12. 中文摘要（同等效力的简明说明）
 
-**Pentou Collector** 是一款浏览器扩展，用于将你在受支持 AI 网站（当前包括 ChatGPT、DeepSeek）上**已登录**状态下打开的对话，采集并发送到**你在选项页自行配置的 Pentou 服务地址**（通常是本机 `localhost` / `127.0.0.1` 上的 Pentou）。
+**Pentou Collector** 是一款浏览器扩展，用于将你在受支持 AI 网站（当前包括 ChatGPT、DeepSeek、豆包、Qwen 国内站 `www.qianwen.com`（会话接口可能请求 `chat2-api.qianwen.com`）、Qwen 国际站 `chat.qwen.ai`、Gemini）上**已登录**状态下打开的对话，采集并发送到**你在选项页自行配置的 Pentou 服务地址**（通常是本机 `localhost` / `127.0.0.1` 上的 Pentou）。本期**不**对页面做 MAIN world 脚本注入。
 
 - **我们（扩展作者）不会**接收你的对话内容，也**没有**用于收集聊天记录的作者云端后端。  
 - 扩展会在浏览器本地（`chrome.storage.local`）保存：服务地址、采集令牌、平台开关，以及 Pentou 暂时不可达时的**离线队列**。  
