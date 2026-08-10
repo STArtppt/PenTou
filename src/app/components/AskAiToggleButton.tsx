@@ -4,7 +4,7 @@ import { IconTooltip } from "@/components/IconTooltip";
 import { useAppContext } from "../data";
 import { useTranslation } from "../i18n";
 import type { AiSidebarSide } from "../ai-sidebar-prefs";
-import aiSpaceIconUrl from "../../../assets/private/icon-AIspace.svg";
+import aiSpaceIconUrl from "../../../assets/icons/icon-AIspace.svg";
 
 /**
  * 收起态「问问 AI」悬浮按钮（桌面随停靠边左下/右下；移动端右下）。
