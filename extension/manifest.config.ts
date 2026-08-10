@@ -4,7 +4,7 @@ const manifest: ManifestV3Export = {
   manifest_version: 3,
   name: "Pentou Collector",
   description: "Collect logged-in AI conversations into local Pentou.",
-  version: "0.2.0",
+  version: "0.2.1",
   icons: {
     "128": "icon-128.png",
   },
