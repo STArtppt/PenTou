@@ -1,0 +1,144 @@
+{
+  "title": "梅西父亲去世：豪尔赫离世，梅西返阿根廷守灵",
+  "session": {
+    "record_list": [
+      {
+        "created_at": 1786244142637,
+        "request_messages": [
+          {
+            "content": "求证，梅西的父亲去世了吗"
+          }
+        ],
+        "response_messages": [
+          {
+            "content": "是的，梅西的父亲已经去世。",
+            "mime_type": "multi_load/iframe"
+          }
+        ]
+      },
+      {
+        "created_at": 1786244242637,
+        "request_messages": [
+          {
+            "content": "给我几张梅西世界杯相关感情流露的照片",
+            "mime_type": "text/plain",
+            "meta_data": {
+              "ori_query": "给我几张梅西世界杯相关感情流露的照片"
+            }
+          }
+        ],
+        "response_messages": [
+          {
+            "content": "[(multimodal_chat_think_1)]**梅西**是阿根廷传奇足球运动员，世界杯赛场上的他经历过无数情绪起伏，从失利落泪到夺冠狂喜，每一个瞬间都充满故事感。这里为你呈现**梅西**世界杯相关感情流露的照片：\n1. 梅西世界杯赛场落泪瞬间：\n[(image_waterfall_3)]\n2. 梅西世界杯情绪低落场景：\n[(image_waterfall_2)]\n3. 梅西世界杯其他感人情绪瞬间：\n[(image_waterfall_1)]\n需要我为你寻找梅西其他时期的相关照片吗？",
+            "mime_type": "multi_load/iframe",
+            "meta_data": {
+              "multi_load": [
+                {
+                  "type": "multimodal_chat_think",
+                  "source_seq": "multimodal_chat_think_1",
+                  "content": {
+                    "title": "基于 8 条图片和网页线索完成思考",
+                    "think_content": "thinking...",
+                    "status": "complete"
+                  }
+                },
+                {
+                  "type": "image_inline",
+                  "source_seq": "image_inline_1",
+                  "content": {
+                    "list": [
+                      {
+                        "img_thumbnail": "https://kkimgs.yisou.com/ims?kt=url&at=smstruct&key=aHR0cHM6Ly9uLnNpbmFpbWcuY24vc2luYWNuMDAvMzAwL3cxNjIwaDEwODAvMjAxODA2MjMvZjM5My1oZWlyeHllMjIyMDQyOS5qcGc=&sign=yx:S_MmQm6EAjt_oFd7kP92SvPVUcs=&tv=400_400",
+                        "img_width": "1620",
+                        "img_url": "https://kkimgs.yisou.com/ims?kt=url&at=ori&key=aHR0cHM6Ly9uLnNpbmFpbWcuY24vc2luYWNuMDAvMzAwL3cxNjIwaDEwODAvMjAxODA2MjMvZjM5My1oZWlyeHllMjIyMDQyOS5qcGc=&sign=yx:S_MmQm6EAjt_oFd7kP92SvPVUcs=&tv=0_0",
+                        "img_height": "1080",
+                        "title": "新浪网"
+                      },
+                      {
+                        "img_thumbnail": "https://kkimgs.yisou.com/ims?kt=url&at=smstruct&key=aHR0cDovL24uc2luYWltZy5jbi9zcGlkZXIyMDIxMDkxMC8xOTkvdzE5OTloMzAwMC8yMDIxMDkxMC81NWQ2LTU4ZTJjMjA4MWRkNjE3YmNkZjkyYzg5NDhlYWNlOWFkLmpwZw==&sign=yx:K_IILO9h2cMxpMRJeGdyAtjOeTY=&tv=400_400",
+                        "img_width": "1999",
+                        "img_url": "https://kkimgs.yisou.com/ims?kt=url&at=ori&key=aHR0cDovL24uc2luYWltZy5jbi9zcGlkZXIyMDIxMDkxMC8xOTkvdzE5OTloMzAwMC8yMDIxMDkxMC81NWQ2LTU4ZTJjMjA4MWRkNjE3YmNkZjkyYzg5NDhlYWNlOWFkLmpwZw==&sign=yx:K_IILO9h2cMxpMRJeGdyAtjOeTY=&tv=0_0",
+                        "img_height": "3000",
+                        "title": "新浪网"
+                      }
+                    ],
+                    "status": "complete"
+                  }
+                },
+                {
+                  "type": "image_waterfall",
+                  "source_seq": "image_waterfall_3",
+                  "content": {
+                    "list": [
+                      {
+                        "image_height": "1080",
+                        "img_thumbnail": "https://kkimgs.yisou.com/ims?kt=url&at=smstruct&key=aHR0cHM6Ly9uLnNpbmFpbWcuY24vc2luYWNuMDAvMzAwL3cxNjIwaDEwODAvMjAxODA2MjMvZjM5My1oZWlyeHllMjIyMDQyOS5qcGc=&sign=yx:S_MmQm6EAjt_oFd7kP92SvPVUcs=&tv=400_400",
+                        "image_url": "https://kkimgs.yisou.com/ims?kt=url&at=ori&key=aHR0cHM6Ly9uLnNpbmFpbWcuY24vc2luYWNuMDAvMzAwL3cxNjIwaDEwODAvMjAxODA2MjMvZjM5My1oZWlyeHllMjIyMDQyOS5qcGc=&sign=yx:S_MmQm6EAjt_oFd7kP92SvPVUcs=&tv=0_0",
+                        "image_width": "1620",
+                        "title": "新浪网"
+                      },
+                      {
+                        "image_height": "881",
+                        "img_thumbnail": "https://kkimgs.yisou.com/ims?kt=url&at=smstruct&key=aHR0cHM6Ly9uaW1nLndzLjEyNi5uZXQvP3VybD1odHRwJTNBJTJGJTJGZGluZ3l1ZS53cy4xMjYubmV0JTJGMjAyNiUyRjA3MjAlMkYzNzQ5NzZhYWowMHRpZzJ0ajAwazFkMDAxbnAwMjdtbS5qcGcmdGh1bWJuYWlsPTY2MHgyMTQ3NDgzNjQ3JnF1YWxpdHk9ODAmdHlwZT1qcGc=&sign=yx:AFu0Djhim6JkW7FmNEANSB46RQA=&tv=400_400",
+                        "image_url": "https://kkimgs.yisou.com/ims?kt=url&at=ori&key=aHR0cHM6Ly9uaW1nLndzLjEyNi5uZXQvP3VybD1odHRwJTNBJTJGJTJGZGluZ3l1ZS53cy4xMjYubmV0JTJGMjAyNiUyRjA3MjAlMkYzNzQ5NzZhYWowMHRpZzJ0ajAwazFkMDAxbnAwMjdtbS5qcGcmdGh1bWJuYWlsPTY2MHgyMTQ3NDgzNjQ3JnF1YWxpdHk9ODAmdHlwZT1qcGc=&sign=yx:AFu0Djhim6JkW7FmNEANSB46RQA=&tv=0_0",
+                        "image_width": "660",
+                        "title": "39岁梅西泪洒赛场！领取银牌后泪流不止 黯然神伤正式告别世界杯|阿根廷|西班牙|里奥梅西|利昂内尔"
+                      }
+                    ],
+                    "status": null
+                  }
+                },
+                {
+                  "type": "image_waterfall",
+                  "source_seq": "image_waterfall_2",
+                  "content": {
+                    "list": [
+                      {
+                        "image_height": "542",
+                        "img_thumbnail": "https://kkimgs.yisou.com/ims?kt=url&at=smstruct&key=aHR0cHM6Ly81YjA5ODhlNTk1MjI1LmNkbi5zb2h1Y3MuY29tL2ltYWdlcy8yMDE4MDYyNS83NmNjYWQyYTc2NGI0MDQ3YTlmZjkxOTRkM2QzN2I3ZS5wbmc=&sign=yx:WQoaybamwSM1ReNUPqfC5ohLR5Q=&tv=400_400",
+                        "image_url": "https://kkimgs.yisou.com/ims?kt=url&at=ori&key=aHR0cHM6Ly81YjA5ODhlNTk1MjI1LmNkbi5zb2h1Y3MuY29tL2ltYWdlcy8yMDE4MDYyNS83NmNjYWQyYTc2NGI0MDQ3YTlmZjkxOTRkM2QzN2I3ZS5wbmc=&sign=yx:WQoaybamwSM1ReNUPqfC5ohLR5Q=&tv=0_0",
+                        "image_width": "830",
+                        "title": "搜狐网"
+                      },
+                      {
+                        "image_height": "430",
+                        "img_thumbnail": "https://kkimgs.yisou.com/ims?kt=url&at=smstruct&key=aHR0cDovLzViMDk4OGU1OTUyMjUuY2RuLnNvaHVjcy5jb20vaW1hZ2VzLzIwMTgwNjI0LzliZGQzYzk1NWY0YjQxYjBiZGYzOWNkMTFmYTcxNGUzLmpwZWc=&sign=yx:NXGGfFQQPmOP5tvoSjry29mqgQg=&tv=400_400",
+                        "image_url": "https://kkimgs.yisou.com/ims?kt=url&at=ori&key=aHR0cDovLzViMDk4OGU1OTUyMjUuY2RuLnNvaHVjcy5jb20vaW1hZ2VzLzIwMTgwNjI0LzliZGQzYzk1NWY0YjQxYjBiZGYzOWNkMTFmYTcxNGUzLmpwZWc=&sign=yx:NXGGfFQQPmOP5tvoSjry29mqgQg=&tv=0_0",
+                        "image_width": "620",
+                        "title": "2018年世界杯，你们把激情无限的梅西整抑郁了？"
+                      }
+                    ],
+                    "status": null
+                  }
+                },
+                {
+                  "type": "image_waterfall",
+                  "source_seq": "image_waterfall_1",
+                  "content": {
+                    "list": [
+                      {
+                        "image_height": "365",
+                        "img_thumbnail": "https://kkimgs.yisou.com/ims?kt=url&at=smstruct&key=aHR0cHM6Ly9uaW1nLndzLjEyNi5uZXQvP3VybD1odHRwJTNBJTJGJTJGZGluZ3l1ZS53cy4xMjYubmV0JTJGQ010a25LUWRkOHo1UHhhM25BZEdMcTB3Y202MFlZc1JldzlpWXBaVnJTdTRWMTUyOTYxNTQxNTQxOS5qcGcmdGh1bWJuYWlsPTY2MHgyMTQ3NDgzNjQ3JnF1YWxpdHk9ODAmdHlwZT1qcGc=&sign=yx:YXqyvNPeaRruhUduDqp36TG3-3w=&tv=400_400",
+                        "image_url": "https://kkimgs.yisou.com/ims?kt=url&at=ori&key=aHR0cHM6Ly9uaW1nLndzLjEyNi5uZXQvP3VybD1odHRwJTNBJTJGJTJGZGluZ3l1ZS53cy4xMjYubmV0JTJGQ010a25LUWRkOHo1UHhhM25BZEdMcTB3Y202MFlZc1JldzlpWXBaVnJTdTRWMTUyOTYxNTQxNTQxOS5qcGcmdGh1bWJuYWlsPTY2MHgyMTQ3NDgzNjQ3JnF1YWxpdHk9ODAmdHlwZT1qcGc=&sign=yx:YXqyvNPeaRruhUduDqp36TG3-3w=&tv=0_0",
+                        "image_width": "650",
+                        "title": "最后一届世界杯悲情谢幕？梅西这次彻底蔫了！他一张图太让人心疼"
+                      },
+                      {
+                        "image_height": "860",
+                        "img_thumbnail": "https://kkimgs.yisou.com/ims?kt=url&at=smstruct&key=aHR0cDovL2Rpbmd5dWUud3MuMTI2Lm5ldC8yMDIyLzA2MjEvNTBmOTdkYWNqMDByZHQ2NDUwMDI2YzAwMHhjMDBud20uanBn&sign=yx:EqyDyz7gzef1X5K3Ts4faFxJ3Nw=&tv=400_400",
+                        "image_url": "https://kkimgs.yisou.com/ims?kt=url&at=ori&key=aHR0cDovL2Rpbmd5dWUud3MuMTI2Lm5ldC8yMDIyLzA2MjEvNTBmOTdkYWNqMDByZHQ2NDUwMDI2YzAwMHhjMDBud20uanBn&sign=yx:EqyDyz7gzef1X5K3Ts4faFxJ3Nw=&tv=0_0",
+                        "image_width": "1200",
+                        "title": "来自网易"
+                      }
+                    ],
+                    "status": null
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

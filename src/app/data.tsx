@@ -41,7 +41,8 @@ import {
 import type { RunEvent } from "./skill-runtime";
 
 // "Codex" 仅存量数据兼容：新解析一律输出 "ChatGPT"（spec collector-source-expansion 决策 2）
-export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode" | "Pi";
+// Doubao / Qwen：extension-source-expansion-cn 登录态采集输出（Qianwen 为存量 alias，归类层折叠到 Qwen）
+export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode" | "Pi" | "Doubao" | "Qwen";
 
 export interface Message {
   id: string;

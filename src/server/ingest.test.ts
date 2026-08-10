@@ -386,6 +386,49 @@ describe("externalId-first idempotent upsert", () => {
     expect(files).toHaveLength(1); // 未产生重复条目
   });
 
+  // Qwen 双站 slug 拆分：同 ID 字符串不得串档（extension-source-expansion-cn 决策 1）
+  it("keeps qwen:<id> and qwen-intl:<id> as separate conversations", async () => {
+    const dataDir = makeDataDir();
+    const headers = authed(dataDir);
+    const sameId = "same-session-id-0001";
+    const payload = (platform: string, title: string) => ({
+      source: "extension",
+      items: [{
+        platform,
+        externalId: sameId,
+        format: "conversation",
+        data: {
+          title,
+          platform: "Qwen",
+          date: "2026-08-08T00:00:00.000Z",
+          messages: [
+            { id: "m1", role: "user", content: `${title} q`, timestamp: "2026-08-08T00:00:00.000Z" },
+            { id: "m2", role: "ai", content: `${title} a`, timestamp: "2026-08-08T00:00:01.000Z" },
+          ],
+        },
+      }],
+    });
+
+    const cn = await call({ dataDir, method: "POST", url: "/api/ingest", body: payload("qwen", "CN"), headers });
+    const intl = await call({ dataDir, method: "POST", url: "/api/ingest", body: payload("qwen-intl", "INTL"), headers });
+    expect(cn.body.results[0].conversations[0].action).toBe("created");
+    expect(intl.body.results[0].conversations[0].action).toBe("created");
+    const cnId = cn.body.results[0].conversations[0].id;
+    const intlId = intl.body.results[0].conversations[0].id;
+    expect(cnId).not.toBe(intlId);
+
+    const cnMd = fs.readFileSync(path.join(dataDir, "conversations", `${cnId}.md`), "utf-8");
+    const intlMd = fs.readFileSync(path.join(dataDir, "conversations", `${intlId}.md`), "utf-8");
+    expect(cnMd).toContain(`externalKey: "qwen:${encodeURIComponent(sameId)}"`);
+    expect(intlMd).toContain(`externalKey: "qwen-intl:${encodeURIComponent(sameId)}"`);
+
+    // 再各采一次：各自 merged，互不覆盖
+    const cn2 = await call({ dataDir, method: "POST", url: "/api/ingest", body: payload("qwen", "CN v2"), headers });
+    expect(cn2.body.results[0].conversations[0]).toMatchObject({ action: "merged", id: cnId });
+    const files = fs.readdirSync(path.join(dataDir, "conversations")).filter((f) => f.endsWith(".md"));
+    expect(files).toHaveLength(2);
+  });
+
   it("falls back to fingerprint dedup when externalId is absent", async () => {
     const dataDir = makeDataDir();
     const headers = authed(dataDir);

@@ -1,0 +1,759 @@
+{
+  "success": true,
+  "request_id": "690fbea4-8e53-4abd-b7e1-9b6fc3a25a3f",
+  "data": {
+    "id": "067c5598-ce15-47ba-9f79-6fc4cf155227",
+    "user_id": "<REDACTED_UID>",
+    "title": "中文问候交流",
+    "chat": {
+      "history": {
+        "messages": {
+          "9c160b09-92ab-4d37-805e-73fb50843ae4": {
+            "id": "9c160b09-92ab-4d37-805e-73fb50843ae4",
+            "role": "user",
+            "content": "你好",
+            "models": [
+              "qwen3.8-max"
+            ],
+            "chat_type": "t2t",
+            "sub_chat_type": "t2t",
+            "edited": false,
+            "error": null,
+            "extra": {
+              "meta": {
+                "subChatType": "t2t"
+              }
+            },
+            "feature_config": {
+              "thinking_enabled": true,
+              "output_schema": "phase",
+              "instructions": null,
+              "research_mode": "normal",
+              "auto_thinking": true,
+              "thinking_mode": "Auto",
+              "thinking_format": "summary",
+              "auto_search": true
+            },
+            "parentId": null,
+            "turn_id": null,
+            "childrenIds": [
+              "9d441a1c-d307-4221-8b50-e5b46725789d"
+            ],
+            "files": [],
+            "timestamp": 1785920196
+          },
+          "9d441a1c-d307-4221-8b50-e5b46725789d": {
+            "role": "assistant",
+            "content": "",
+            "reasoning_content": null,
+            "chat_type": "t2t",
+            "sub_chat_type": "t2t",
+            "model": "qwen3.8-max",
+            "modelName": "Qwen3.8-Max",
+            "modelIdx": 0,
+            "id": "9d441a1c-d307-4221-8b50-e5b46725789d",
+            "parentId": "9c160b09-92ab-4d37-805e-73fb50843ae4",
+            "childrenIds": [
+              "27d79803-c508-45ec-98f8-6bdb960126d0"
+            ],
+            "feature_config": {
+              "thinking_enabled": true,
+              "output_schema": "phase",
+              "instructions": null,
+              "research_mode": "normal",
+              "auto_thinking": true,
+              "thinking_mode": "Auto",
+              "thinking_format": "summary",
+              "auto_search": true
+            },
+            "content_list": [
+              {
+                "content": "",
+                "phase": "thinking_summary",
+                "status": "finished",
+                "extra": {
+                  "summary_title": {
+                    "content": [
+                      "回应用户的问候",
+                      "问候用户并主动提供帮助",
+                      "问候用户并准备提供帮助"
+                    ]
+                  },
+                  "summary_thought": {
+                    "content": [
+                      "我感知到对方以中文致意，随即理解这是一次友好的打招呼。  \n我以同样温暖的语气予以回应，传递善意与尊重。  \n整个过程自然流畅，旨在建立和谐的交流氛围。",
+                      "我以亲切友好的态度向您问好，表达交流的喜悦之情。  \n我关注您的需求，期待为您提供及时而温暖的支持。  \n愿每一次对话都如春风拂面，让沟通充满温度与善意。",
+                      "我正在以友好自然的方式向用户致意，营造轻松的交流氛围。  \n通过简洁得体的表达，传递出愿意协助的态度，同时保持语言的流畅与亲切。  \n等待用户提出具体需求，以便进一步展开对话。"
+                    ]
+                  }
+                },
+                "role": "assistant",
+                "response_id": "9d441a1c-d307-4221-8b50-e5b46725789d",
+                "usage": {
+                  "input_tokens": 550,
+                  "output_tokens": 608,
+                  "total_tokens": 1158,
+                  "output_tokens_details": {
+                    "reasoning_tokens": 599
+                  },
+                  "prompt_tokens_details": {
+                    "cached_tokens": 0
+                  }
+                },
+                "timestamp": 1785920210
+              },
+              {
+                "content": "你好！请问有什么我可以帮你的吗？",
+                "phase": "answer",
+                "status": "finished",
+                "extra": null,
+                "role": "assistant",
+                "response_id": "9d441a1c-d307-4221-8b50-e5b46725789d",
+                "usage": {
+                  "input_tokens": 550,
+                  "output_tokens": 613,
+                  "total_tokens": 1163,
+                  "output_tokens_details": {
+                    "reasoning_tokens": 599
+                  },
+                  "prompt_tokens_details": {
+                    "cached_tokens": 0
+                  }
+                },
+                "timestamp": 1785920210
+              }
+            ],
+            "is_stop": false,
+            "edited": false,
+            "error": null,
+            "meta": {},
+            "extra": {
+              "meta": {
+                "subChatType": "t2t"
+              },
+              "endTime": 1785920210.6641424
+            },
+            "feedbackId": null,
+            "turn_id": null,
+            "annotation": null,
+            "done": true,
+            "info": null,
+            "timestamp": 1785920196
+          },
+          "27d79803-c508-45ec-98f8-6bdb960126d0": {
+            "id": "27d79803-c508-45ec-98f8-6bdb960126d0",
+            "role": "user",
+            "content": "你是什么模型",
+            "models": [
+              "qwen3.8-max"
+            ],
+            "chat_type": "t2t",
+            "sub_chat_type": "t2t",
+            "edited": false,
+            "error": null,
+            "extra": {
+              "meta": {
+                "subChatType": "t2t"
+              }
+            },
+            "feature_config": {
+              "thinking_enabled": true,
+              "output_schema": "phase",
+              "instructions": null,
+              "research_mode": "normal",
+              "auto_thinking": true,
+              "thinking_mode": "Auto",
+              "thinking_format": "summary",
+              "auto_search": true
+            },
+            "parentId": "9d441a1c-d307-4221-8b50-e5b46725789d",
+            "turn_id": null,
+            "childrenIds": [
+              "fed52177-bbd3-4427-aed2-155cb3368b3b"
+            ],
+            "files": [],
+            "timestamp": 1785920223
+          },
+          "fed52177-bbd3-4427-aed2-155cb3368b3b": {
+            "role": "assistant",
+            "content": "",
+            "reasoning_content": null,
+            "chat_type": "t2t",
+            "sub_chat_type": "t2t",
+            "model": "qwen3.8-max",
+            "modelName": "Qwen3.8-Max",
+            "modelIdx": 0,
+            "id": "fed52177-bbd3-4427-aed2-155cb3368b3b",
+            "parentId": "27d79803-c508-45ec-98f8-6bdb960126d0",
+            "childrenIds": [
+              "107f1232-b682-4429-9ba6-112cb9facd6f"
+            ],
+            "feature_config": {
+              "thinking_enabled": true,
+              "output_schema": "phase",
+              "instructions": null,
+              "research_mode": "normal",
+              "auto_thinking": true,
+              "thinking_mode": "Auto",
+              "thinking_format": "summary",
+              "auto_search": true
+            },
+            "content_list": [
+              {
+                "content": "",
+                "phase": "thinking_summary",
+                "status": "finished",
+                "extra": {
+                  "summary_title": {
+                    "content": [
+                      "确认身份并回应用户提问"
+                    ]
+                  },
+                  "summary_thought": {
+                    "content": [
+                      "我是通义千问，由阿里巴巴集团通义实验室自主研发的超大规模语言模型。我以真诚而礼貌的态度，清晰简洁地向您说明自己的身份与来源。"
+                    ]
+                  }
+                },
+                "role": "assistant",
+                "response_id": "fed52177-bbd3-4427-aed2-155cb3368b3b",
+                "usage": {
+                  "input_tokens": 572,
+                  "output_tokens": 197,
+                  "total_tokens": 769,
+                  "output_tokens_details": {
+                    "reasoning_tokens": 188
+                  },
+                  "prompt_tokens_details": {
+                    "cached_tokens": 0
+                  }
+                },
+                "timestamp": 1785920228
+              },
+              {
+                "content": "我是通义千问（Qwen），是由阿里巴巴集团通义实验室自主研发的超大规模语言模型。请问有什么我可以帮你的吗？",
+                "phase": "answer",
+                "status": "finished",
+                "extra": null,
+                "role": "assistant",
+                "response_id": "fed52177-bbd3-4427-aed2-155cb3368b3b",
+                "usage": {
+                  "input_tokens": 572,
+                  "output_tokens": 222,
+                  "total_tokens": 794,
+                  "output_tokens_details": {
+                    "reasoning_tokens": 188
+                  },
+                  "prompt_tokens_details": {
+                    "cached_tokens": 0
+                  }
+                },
+                "timestamp": 1785920229
+              }
+            ],
+            "is_stop": false,
+            "edited": false,
+            "error": null,
+            "meta": {},
+            "extra": {
+              "meta": {
+                "subChatType": "t2t"
+              },
+              "endTime": 1785920229.1505585
+            },
+            "feedbackId": null,
+            "turn_id": null,
+            "annotation": null,
+            "done": true,
+            "info": null,
+            "timestamp": 1785920223
+          },
+          "107f1232-b682-4429-9ba6-112cb9facd6f": {
+            "id": "107f1232-b682-4429-9ba6-112cb9facd6f",
+            "role": "user",
+            "content": "你能帮我做什么",
+            "models": [
+              "qwen3.8-max"
+            ],
+            "chat_type": "t2t",
+            "sub_chat_type": "t2t",
+            "edited": false,
+            "error": null,
+            "extra": {
+              "meta": {
+                "subChatType": "t2t"
+              }
+            },
+            "feature_config": {
+              "thinking_enabled": true,
+              "output_schema": "phase",
+              "instructions": null,
+              "research_mode": "normal",
+              "auto_thinking": true,
+              "thinking_mode": "Auto",
+              "thinking_format": "summary",
+              "auto_search": true
+            },
+            "parentId": "fed52177-bbd3-4427-aed2-155cb3368b3b",
+            "turn_id": null,
+            "childrenIds": [
+              "a491c0dd-2de1-48e9-8ffa-9c7c504270e9"
+            ],
+            "files": [],
+            "timestamp": 1785920239
+          },
+          "a491c0dd-2de1-48e9-8ffa-9c7c504270e9": {
+            "role": "assistant",
+            "content": "",
+            "reasoning_content": null,
+            "chat_type": "t2t",
+            "sub_chat_type": "t2t",
+            "model": "qwen3.8-max",
+            "modelName": "Qwen3.8-Max",
+            "modelIdx": 0,
+            "id": "a491c0dd-2de1-48e9-8ffa-9c7c504270e9",
+            "parentId": "107f1232-b682-4429-9ba6-112cb9facd6f",
+            "childrenIds": [],
+            "feature_config": {
+              "thinking_enabled": true,
+              "output_schema": "phase",
+              "instructions": null,
+              "research_mode": "normal",
+              "auto_thinking": true,
+              "thinking_mode": "Auto",
+              "thinking_format": "summary",
+              "auto_search": true
+            },
+            "content_list": [
+              {
+                "content": "我可以帮你完成很多任务，主要包括以下几个方面：\n\n1.  **解答问题**：无论是常识、专业知识、历史事实还是科学原理，我都能为你提供准确的信息和解释。\n2.  **内容创作**：帮你写文章、邮件、报告、故事、诗歌、文案，甚至编写和修改代码。\n3.  **语言处理**：提供多语言翻译、文本润色、语法纠错、长文总结和信息提取。\n4.  **逻辑与编程**：辅助编写代码、调试程序、进行数学计算、逻辑推理和数据分析。\n5.  **日常助手**：制定旅游计划、提供菜谱建议、推荐书籍电影、或者仅仅是陪你聊天解闷。\n6.  **学习与辅导**：解释复杂概念、提供学习路径建议、模拟面试或作为语言练习伙伴。\n\n简单来说，只要是用文字或代码能表达的需求，你都可以试着交给我。你现在有什么具体想做的事情吗？",
+                "phase": "answer",
+                "status": "finished",
+                "extra": null,
+                "role": "assistant",
+                "response_id": "a491c0dd-2de1-48e9-8ffa-9c7c504270e9",
+                "usage": {
+                  "input_tokens": 1341,
+                  "output_tokens": 198,
+                  "characters": 0,
+                  "total_tokens": 1539,
+                  "input_tokens_details": {
+                    "text_tokens": 1341
+                  },
+                  "output_tokens_details": {
+                    "text_tokens": 198
+                  },
+                  "prompt_tokens_details": {
+                    "cached_tokens": 0
+                  }
+                },
+                "timestamp": 1785920255
+              }
+            ],
+            "is_stop": false,
+            "edited": false,
+            "error": null,
+            "meta": {},
+            "extra": {
+              "meta": {
+                "subChatType": "t2t"
+              },
+              "endTime": 1785920255.1382241
+            },
+            "feedbackId": null,
+            "turn_id": null,
+            "annotation": null,
+            "done": true,
+            "info": null,
+            "timestamp": 1785920239
+          }
+        },
+        "currentId": "a491c0dd-2de1-48e9-8ffa-9c7c504270e9",
+        "currentResponseIds": [
+          "a491c0dd-2de1-48e9-8ffa-9c7c504270e9"
+        ],
+        "pagination": null
+      },
+      "models": [
+        "qwen3.8-max"
+      ],
+      "messages": [
+        {
+          "id": "9c160b09-92ab-4d37-805e-73fb50843ae4",
+          "role": "user",
+          "content": "你好",
+          "models": [
+            "qwen3.8-max"
+          ],
+          "chat_type": "t2t",
+          "sub_chat_type": "t2t",
+          "edited": false,
+          "error": null,
+          "extra": {
+            "meta": {
+              "subChatType": "t2t"
+            }
+          },
+          "feature_config": {
+            "thinking_enabled": true,
+            "output_schema": "phase",
+            "instructions": null,
+            "research_mode": "normal",
+            "auto_thinking": true,
+            "thinking_mode": "Auto",
+            "thinking_format": "summary",
+            "auto_search": true
+          },
+          "parentId": null,
+          "turn_id": null,
+          "childrenIds": [
+            "9d441a1c-d307-4221-8b50-e5b46725789d"
+          ],
+          "files": [],
+          "timestamp": 1785920196
+        },
+        {
+          "role": "assistant",
+          "content": "",
+          "reasoning_content": null,
+          "chat_type": "t2t",
+          "sub_chat_type": "t2t",
+          "model": "qwen3.8-max",
+          "modelName": "Qwen3.8-Max",
+          "modelIdx": 0,
+          "id": "9d441a1c-d307-4221-8b50-e5b46725789d",
+          "parentId": "9c160b09-92ab-4d37-805e-73fb50843ae4",
+          "childrenIds": [
+            "27d79803-c508-45ec-98f8-6bdb960126d0"
+          ],
+          "feature_config": {
+            "thinking_enabled": true,
+            "output_schema": "phase",
+            "instructions": null,
+            "research_mode": "normal",
+            "auto_thinking": true,
+            "thinking_mode": "Auto",
+            "thinking_format": "summary",
+            "auto_search": true
+          },
+          "content_list": [
+            {
+              "content": "",
+              "phase": "thinking_summary",
+              "status": "finished",
+              "extra": {
+                "summary_title": {
+                  "content": [
+                    "回应用户的问候",
+                    "问候用户并主动提供帮助",
+                    "问候用户并准备提供帮助"
+                  ]
+                },
+                "summary_thought": {
+                  "content": [
+                    "我感知到对方以中文致意，随即理解这是一次友好的打招呼。  \n我以同样温暖的语气予以回应，传递善意与尊重。  \n整个过程自然流畅，旨在建立和谐的交流氛围。",
+                    "我以亲切友好的态度向您问好，表达交流的喜悦之情。  \n我关注您的需求，期待为您提供及时而温暖的支持。  \n愿每一次对话都如春风拂面，让沟通充满温度与善意。",
+                    "我正在以友好自然的方式向用户致意，营造轻松的交流氛围。  \n通过简洁得体的表达，传递出愿意协助的态度，同时保持语言的流畅与亲切。  \n等待用户提出具体需求，以便进一步展开对话。"
+                  ]
+                }
+              },
+              "role": "assistant",
+              "response_id": "9d441a1c-d307-4221-8b50-e5b46725789d",
+              "usage": {
+                "input_tokens": 550,
+                "output_tokens": 608,
+                "total_tokens": 1158,
+                "output_tokens_details": {
+                  "reasoning_tokens": 599
+                },
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                }
+              },
+              "timestamp": 1785920210
+            },
+            {
+              "content": "你好！请问有什么我可以帮你的吗？",
+              "phase": "answer",
+              "status": "finished",
+              "extra": null,
+              "role": "assistant",
+              "response_id": "9d441a1c-d307-4221-8b50-e5b46725789d",
+              "usage": {
+                "input_tokens": 550,
+                "output_tokens": 613,
+                "total_tokens": 1163,
+                "output_tokens_details": {
+                  "reasoning_tokens": 599
+                },
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                }
+              },
+              "timestamp": 1785920210
+            }
+          ],
+          "is_stop": false,
+          "edited": false,
+          "error": null,
+          "meta": {},
+          "extra": {
+            "meta": {
+              "subChatType": "t2t"
+            },
+            "endTime": 1785920210.6641424
+          },
+          "feedbackId": null,
+          "turn_id": null,
+          "annotation": null,
+          "done": true,
+          "info": null,
+          "timestamp": 1785920196
+        },
+        {
+          "id": "27d79803-c508-45ec-98f8-6bdb960126d0",
+          "role": "user",
+          "content": "你是什么模型",
+          "models": [
+            "qwen3.8-max"
+          ],
+          "chat_type": "t2t",
+          "sub_chat_type": "t2t",
+          "edited": false,
+          "error": null,
+          "extra": {
+            "meta": {
+              "subChatType": "t2t"
+            }
+          },
+          "feature_config": {
+            "thinking_enabled": true,
+            "output_schema": "phase",
+            "instructions": null,
+            "research_mode": "normal",
+            "auto_thinking": true,
+            "thinking_mode": "Auto",
+            "thinking_format": "summary",
+            "auto_search": true
+          },
+          "parentId": "9d441a1c-d307-4221-8b50-e5b46725789d",
+          "turn_id": null,
+          "childrenIds": [
+            "fed52177-bbd3-4427-aed2-155cb3368b3b"
+          ],
+          "files": [],
+          "timestamp": 1785920223
+        },
+        {
+          "role": "assistant",
+          "content": "",
+          "reasoning_content": null,
+          "chat_type": "t2t",
+          "sub_chat_type": "t2t",
+          "model": "qwen3.8-max",
+          "modelName": "Qwen3.8-Max",
+          "modelIdx": 0,
+          "id": "fed52177-bbd3-4427-aed2-155cb3368b3b",
+          "parentId": "27d79803-c508-45ec-98f8-6bdb960126d0",
+          "childrenIds": [
+            "107f1232-b682-4429-9ba6-112cb9facd6f"
+          ],
+          "feature_config": {
+            "thinking_enabled": true,
+            "output_schema": "phase",
+            "instructions": null,
+            "research_mode": "normal",
+            "auto_thinking": true,
+            "thinking_mode": "Auto",
+            "thinking_format": "summary",
+            "auto_search": true
+          },
+          "content_list": [
+            {
+              "content": "",
+              "phase": "thinking_summary",
+              "status": "finished",
+              "extra": {
+                "summary_title": {
+                  "content": [
+                    "确认身份并回应用户提问"
+                  ]
+                },
+                "summary_thought": {
+                  "content": [
+                    "我是通义千问，由阿里巴巴集团通义实验室自主研发的超大规模语言模型。我以真诚而礼貌的态度，清晰简洁地向您说明自己的身份与来源。"
+                  ]
+                }
+              },
+              "role": "assistant",
+              "response_id": "fed52177-bbd3-4427-aed2-155cb3368b3b",
+              "usage": {
+                "input_tokens": 572,
+                "output_tokens": 197,
+                "total_tokens": 769,
+                "output_tokens_details": {
+                  "reasoning_tokens": 188
+                },
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                }
+              },
+              "timestamp": 1785920228
+            },
+            {
+              "content": "我是通义千问（Qwen），是由阿里巴巴集团通义实验室自主研发的超大规模语言模型。请问有什么我可以帮你的吗？",
+              "phase": "answer",
+              "status": "finished",
+              "extra": null,
+              "role": "assistant",
+              "response_id": "fed52177-bbd3-4427-aed2-155cb3368b3b",
+              "usage": {
+                "input_tokens": 572,
+                "output_tokens": 222,
+                "total_tokens": 794,
+                "output_tokens_details": {
+                  "reasoning_tokens": 188
+                },
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                }
+              },
+              "timestamp": 1785920229
+            }
+          ],
+          "is_stop": false,
+          "edited": false,
+          "error": null,
+          "meta": {},
+          "extra": {
+            "meta": {
+              "subChatType": "t2t"
+            },
+            "endTime": 1785920229.1505585
+          },
+          "feedbackId": null,
+          "turn_id": null,
+          "annotation": null,
+          "done": true,
+          "info": null,
+          "timestamp": 1785920223
+        },
+        {
+          "id": "107f1232-b682-4429-9ba6-112cb9facd6f",
+          "role": "user",
+          "content": "你能帮我做什么",
+          "models": [
+            "qwen3.8-max"
+          ],
+          "chat_type": "t2t",
+          "sub_chat_type": "t2t",
+          "edited": false,
+          "error": null,
+          "extra": {
+            "meta": {
+              "subChatType": "t2t"
+            }
+          },
+          "feature_config": {
+            "thinking_enabled": true,
+            "output_schema": "phase",
+            "instructions": null,
+            "research_mode": "normal",
+            "auto_thinking": true,
+            "thinking_mode": "Auto",
+            "thinking_format": "summary",
+            "auto_search": true
+          },
+          "parentId": "fed52177-bbd3-4427-aed2-155cb3368b3b",
+          "turn_id": null,
+          "childrenIds": [
+            "a491c0dd-2de1-48e9-8ffa-9c7c504270e9"
+          ],
+          "files": [],
+          "timestamp": 1785920239
+        },
+        {
+          "role": "assistant",
+          "content": "",
+          "reasoning_content": null,
+          "chat_type": "t2t",
+          "sub_chat_type": "t2t",
+          "model": "qwen3.8-max",
+          "modelName": "Qwen3.8-Max",
+          "modelIdx": 0,
+          "id": "a491c0dd-2de1-48e9-8ffa-9c7c504270e9",
+          "parentId": "107f1232-b682-4429-9ba6-112cb9facd6f",
+          "childrenIds": [],
+          "feature_config": {
+            "thinking_enabled": true,
+            "output_schema": "phase",
+            "instructions": null,
+            "research_mode": "normal",
+            "auto_thinking": true,
+            "thinking_mode": "Auto",
+            "thinking_format": "summary",
+            "auto_search": true
+          },
+          "content_list": [
+            {
+              "content": "我可以帮你完成很多任务，主要包括以下几个方面：\n\n1.  **解答问题**：无论是常识、专业知识、历史事实还是科学原理，我都能为你提供准确的信息和解释。\n2.  **内容创作**：帮你写文章、邮件、报告、故事、诗歌、文案，甚至编写和修改代码。\n3.  **语言处理**：提供多语言翻译、文本润色、语法纠错、长文总结和信息提取。\n4.  **逻辑与编程**：辅助编写代码、调试程序、进行数学计算、逻辑推理和数据分析。\n5.  **日常助手**：制定旅游计划、提供菜谱建议、推荐书籍电影、或者仅仅是陪你聊天解闷。\n6.  **学习与辅导**：解释复杂概念、提供学习路径建议、模拟面试或作为语言练习伙伴。\n\n简单来说，只要是用文字或代码能表达的需求，你都可以试着交给我。你现在有什么具体想做的事情吗？",
+              "phase": "answer",
+              "status": "finished",
+              "extra": null,
+              "role": "assistant",
+              "response_id": "a491c0dd-2de1-48e9-8ffa-9c7c504270e9",
+              "usage": {
+                "input_tokens": 1341,
+                "output_tokens": 198,
+                "characters": 0,
+                "total_tokens": 1539,
+                "input_tokens_details": {
+                  "text_tokens": 1341
+                },
+                "output_tokens_details": {
+                  "text_tokens": 198
+                },
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                }
+              },
+              "timestamp": 1785920255
+            }
+          ],
+          "is_stop": false,
+          "edited": false,
+          "error": null,
+          "meta": {},
+          "extra": {
+            "meta": {
+              "subChatType": "t2t"
+            },
+            "endTime": 1785920255.1382241
+          },
+          "feedbackId": null,
+          "turn_id": null,
+          "annotation": null,
+          "done": true,
+          "info": null,
+          "timestamp": 1785920239
+        }
+      ]
+    },
+    "updated_at": 1785920240,
+    "created_at": 1785920197,
+    "share_id": null,
+    "archived": false,
+    "pinned": false,
+    "meta": {
+      "timestamp": 1785920196070
+    },
+    "folder_id": null,
+    "currentResponseIds": [
+      "a491c0dd-2de1-48e9-8ffa-9c7c504270e9"
+    ],
+    "currentId": "a491c0dd-2de1-48e9-8ffa-9c7c504270e9",
+    "chat_type": "t2t",
+    "models": null,
+    "project_id": null
+  }
+}

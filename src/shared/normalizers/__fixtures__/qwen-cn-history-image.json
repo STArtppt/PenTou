@@ -1,0 +1,673 @@
+{
+  "trace_id": "213e037c17861544119905759e0ae8",
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "have_next_page": false,
+    "list": [
+      {
+        "user_type": 0,
+        "session_id": "68fec75828dd4923be7c33d6e60c85c6",
+        "req_id": "a23acaad6613420c855a263e00035de8",
+        "request_messages": [
+          {
+            "content": "参考这个 https://getdesign.md/ 帮我生成关于我的站点acgogogo.comd的一张相同风格的首页设计图",
+            "mime_type": "text/plain",
+            "meta_data": {
+              "ori_query": "参考这个 https://getdesign.md/ 帮我生成关于我的站点acgogogo.comd的一张相同风格的首页设计图"
+            }
+          }
+        ],
+        "response_messages": [
+          {
+            "mime_type": "signal/post",
+            "status": "complete",
+            "meta_data": {
+              "operation_types": [
+                [
+                  "regenerate"
+                ]
+              ],
+              "intent_content": "",
+              "intent_data": "{\"agent_info\":{\"agent\":\"AIZaoDianAgent\",\"image_request\":\"0\",\"hit_vlm\":false,\"intent_request\":\"0\",\"scene\":\"zaodian_image_generate_image\",\"sub_scene\":\"\"},\"agentic_intent\":{},\"banner_intent\":{\"need_trigger\":false},\"confidence_intent\":{\"document\":false,\"topic\":false},\"ef_intent\":{},\"explicit_intent\":{\"explicit_memory\":false},\"intentResults\":{},\"rag_intent\":{},\"task_intent\":{},\"txt_intent\":{},\"uvl_intent\":{},\"vl_intent\":{},\"vqa_ext_intent\":{},\"writer_intent\":{}}",
+              "ori_query": "参考这个 https://getdesign.md/ 帮我生成关于我的站点acgogogo.comd的一张相同风格的首页设计图",
+              "generate_mode": "stream",
+              "agent_mode": "0",
+              "scene": "zaodian_image_generate_image"
+            }
+          },
+          {
+            "mime_type": "bar/progress",
+            "status": "complete",
+            "meta_data": {
+              "type": "generated"
+            }
+          },
+          {
+            "mime_type": "bar/iframe",
+            "status": "complete",
+            "meta_data": {
+              "sources": []
+            }
+          },
+          {
+            "content": "没问题，这就参考那个网站的风格，为您设计一张acgogogo.com的首页图！\n\n[(ai_generate_image_list_1)]",
+            "mime_type": "multi_load/iframe",
+            "status": "complete",
+            "meta_data": {
+              "multi_load": [
+                {
+                  "html": {
+                    "image": [],
+                    "callFnConfig": {},
+                    "sc_html": "<div class=\"card card_card_images\" data-tpl=\"card_images~index\" data-tpl-version=\"0.0.7-1769073350032\" id=\"card_card_images_12071_53838_12071_98750\"><div><div class=\"multi-images-3Ui27\"><div class=\"image-grid-2qQgZ\" data-sc-action=\"onClick\"><img src=\"https://workspace-zb-cdn.qianwen.com/b3254a58f3f64646a01bbf6324e8e058%2Fo%2F1781234867215.webp.jpg?auth_key=1788747180-0-0-be330041eeb57523587185817ae0895b\" class=\"image-1VvYQ\"/></div><div class=\"image-grid-2qQgZ\" data-sc-action=\"onClick\"><img src=\"https://workspace-zb-cdn.qianwen.com/268d3e98711d4b10aa10957e57c6ae64%2Fo%2F1781234867233.webp.jpg?auth_key=1788750600-0-0-4f2a69a5e7379513c8bbe254220a9fd9\" class=\"image-1VvYQ\"/></div><div class=\"image-grid-2qQgZ\" data-sc-action=\"onClick\"><img src=\"https://workspace-zb-cdn.qianwen.com/2d8caa8a027d4640b3edbf71ca8e9c3e%2Fo%2F1781234867245.webp.jpg?auth_key=1788748260-0-0-e756b429887cac4c469f99bff55be65f\" class=\"image-1VvYQ\"/></div><div class=\"image-grid-2qQgZ\" data-sc-action=\"onClick\"><img src=\"https://workspace-zb-cdn.qianwen.com/5c23407fffcd48b8812a3d453f79fbb0%2Fo%2F1781234867203.webp.jpg?auth_key=1788748080-0-0-36553017bb55bca4a6ecf7bbe273c3c1\" class=\"image-1VvYQ\"/></div></div></div></div>",
+                    "css": [
+                      {
+                        "size": 9123,
+                        "prefetch": true,
+                        "name": "bizCss",
+                        "id": "https://g.alicdn.com/sm-frontend/card_images/client/static/css/index.c4044.css",
+                        "cdn": "https://g.alicdn.com/sm-frontend/card_images/client/static/css/index.c4044.css",
+                        "version": "index.c4044.css",
+                        "content": "<style type=\"text/css\">.two-images-sQaYr{--total-width:var(--message-content-width,89.33333vw);--half-width:calc(var(--total-width)/2);width:var(--total-width);height:var(--total-width);max-width:117.33333vw;max-height:117.33333vw;border-radius:2.13333vw;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:.53333vw;height:var(--half-width);max-height:58.66667vw}.browser-special-class .two-images-sQaYr,.quark-pc-special-class .two-images-sQaYr{--total-width:var(--message-content-width,335px);max-width:440px;max-height:440px;border-radius:8px;gap:2px;max-height:220px}@media (min-width:405px){.two-images-sQaYr{--total-width:var(--message-content-width,361.8px);max-width:475.2px;max-height:475.2px;border-radius:8.64px;gap:2.16px;max-height:237.6px}}.three-images-3bRqt{--total-width:var(--message-content-width,89.33333vw);--half-width:calc(var(--total-width)/2);width:var(--total-width);height:var(--total-width);max-width:117.33333vw;max-height:117.33333vw;border-radius:2.13333vw;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:.53333vw;height:calc(var(--total-width)*2/3);max-height:78.22222vw}.browser-special-class .three-images-3bRqt,.quark-pc-special-class .three-images-3bRqt{--total-width:var(--message-content-width,335px);max-width:440px;max-height:440px;border-radius:8px;gap:2px;max-height:293.3px}@media (min-width:405px){.three-images-3bRqt{--total-width:var(--message-content-width,361.8px);max-width:475.2px;max-height:475.2px;border-radius:8.64px;gap:2.16px;max-height:316.8px}}.multi-images-3Ui27{--total-width:var(--message-content-width,89.33333vw);--half-width:calc(var(--total-width)/2);width:var(--total-width);height:var(--total-width);max-width:117.33333vw;max-height:117.33333vw;border-radius:2.13333vw;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:.53333vw;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);aspect-ratio:1}.browser-special-class .multi-images-3Ui27,.quark-pc-special-class .multi-images-3Ui27{--total-width:var(--message-content-width,335px);max-width:440px;max-height:440px;border-radius:8px;gap:2px}@media (min-width:405px){.multi-images-3Ui27{--total-width:var(--message-content-width,361.8px);max-width:475.2px;max-height:475.2px;border-radius:8.64px;gap:2.16px}}.left-three-col-1qmse{width:calc(var(--total-width)*2/3);height:100%;position:relative}.right-three-col-iuRaA{flex:1;display:flex;flex-direction:column;gap:.53333vw;height:100%}.browser-special-class .right-three-col-iuRaA,.quark-pc-special-class .right-three-col-iuRaA{gap:2px}@media (min-width:405px){.right-three-col-iuRaA{gap:2.16px}}.image-container-2CBj4{position:relative;width:100%;height:100%;flex:1}.image-1VvYQ{width:100%;height:100%;object-fit:cover;display:block}.image-container-col-bT85g{position:relative;width:100%;height:50%;flex:1}.image-grid-2qQgZ{position:relative;width:100%;height:100%;overflow:hidden}.above-four-container-3fFVc{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);display:flex;justify-content:center;align-items:center;font-family:PingFangSC-Medium;font-size:4.26667vw;color:var(--color-White_Constant);text-align:center;font-weight:500}.browser-special-class .above-four-container-3fFVc,.quark-pc-special-class .above-four-container-3fFVc{font-size:16px}@media (min-width:405px){.above-four-container-3fFVc{font-size:17.28px}}.title-2XXA2{position:absolute;bottom:2.13333vw;left:2.13333vw;font-family:PingFangSC-Semibold;font-size:2.93333vw;color:var(--color-White_Constant);letter-spacing:0;font-weight:600;max-width:35.2vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:.53333vw 1.33333vw;background:rgba(34,34,34,.5);border-radius:1.06667vw;box-sizing:border-box}.browser-special-class .title-2XXA2,.quark-pc-special-class .title-2XXA2{bottom:8px;left:8px;font-size:11px;max-width:132px;padding:2px 5px;border-radius:4px}@media (min-width:405px){.title-2XXA2{bottom:8.64px;left:8.64px;font-size:11.88px;max-width:142.56px;padding:2.16px 5.4px;border-radius:4.32px}}.container-uHf5Y{position:relative}.image-2BRxe{border-radius:2.13333vw;max-width:440px;display:block;object-fit:cover}.browser-special-class .image-2BRxe,.quark-pc-special-class .image-2BRxe{border-radius:8px}@media (min-width:405px){.image-2BRxe{border-radius:8.64px}}.img-1-2coMM{width:var(--message-content-width,89.33333vw)}.browser-special-class .img-1-2coMM,.quark-pc-special-class .img-1-2coMM{width:var(--message-content-width,335px)}@media (min-width:405px){.img-1-2coMM{width:var(--message-content-width,361.8px)}}.img-2-Zp8Yo{height:59.46667vw}.browser-special-class .img-2-Zp8Yo,.quark-pc-special-class .img-2-Zp8Yo{height:223px}@media (min-width:405px){.img-2-Zp8Yo{height:240.84px}}.img-3-1P98W{height:59.46667vw;width:29.86667vw}.browser-special-class .img-3-1P98W,.quark-pc-special-class .img-3-1P98W{height:223px;width:112px}@media (min-width:405px){.img-3-1P98W{height:240.84px;width:120.96px}}.title-1C6Dk{position:absolute;bottom:2.13333vw;left:2.13333vw;font-family:PingFangSC-Semibold;font-size:2.93333vw;color:var(--color-White_Constant);letter-spacing:0;font-weight:600;max-width:35.2vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:.53333vw 1.33333vw;background:rgba(34,34,34,.5);border-radius:1.06667vw;box-sizing:border-box}.browser-special-class .title-1C6Dk,.quark-pc-special-class .title-1C6Dk{bottom:8px;left:8px;font-size:11px;max-width:132px;padding:2px 5px;border-radius:4px}@media (min-width:405px){.title-1C6Dk{bottom:8.64px;left:8.64px;font-size:11.88px;max-width:142.56px;padding:2.16px 5.4px;border-radius:4.32px}}.long-image-3f9Ap{position:absolute;top:2.13333vw;left:2.13333vw;font-family:PingFangSC-Semibold;font-size:2.93333vw;color:var(--color-White_Constant);letter-spacing:0;font-weight:600;max-width:35.2vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:.53333vw 1.33333vw;background:rgba(34,34,34,.5);border-radius:1.06667vw;box-sizing:border-box}.browser-special-class .long-image-3f9Ap,.quark-pc-special-class .long-image-3f9Ap{top:8px;left:8px;font-size:11px;max-width:132px;padding:2px 5px;border-radius:4px}@media (min-width:405px){.long-image-3f9Ap{top:8.64px;left:8.64px;font-size:11.88px;max-width:142.56px;padding:2.16px 5.4px;border-radius:4.32px}}.quark-pc-special-class .card{--color-Black_Constant:var(--quark-style-black-fixed-color,#000);--color-Button_Blue:var(--quark-style-theme-color-color,#0d53ff);--color-Button_Grey:var(--quark-style-gray-5-color,rgba(6,10,38,0.03));--color-Button_LightBlue:var(--quark-style-theme-color-10-color,rgba(13,83,255,0.07));--color-Button_LightRed:var(--quark-style-ash-orange-color,#fff9f8);--color-Green:var(--quark-style-cyan-color,#29becc);--color-Icon_Black:var(--quark-style-gray-90-opaque-color,#1f223c);--color-Icon_Blue:var(--quark-style-theme-color-color,#0d53ff);--color-Icon_Grey:var(--quark-style-gray-50-opaque-color,#828492);--color-Icon_White:var(--quark-style-white-color,#fff);--color-Icon_White_Constant:var(--quark-style-white-fixed-color,#fff);--color-Line:var(--quark-style-gray-10-color,rgba(6,10,38,0.06));--color-Line_Button:var(--quark-style-gray-20-color,rgba(6,10,38,0.12));--color-OnPage_Bg_Grey:var(--quark-style-gray-5-opaque-color,#f5f6f7);--color-OnPage_Bg_Grey1:var(--quark-style-ash-80-color,rgba(247,248,250,0.8));--color-OnPage_Bg_Grey2:var(--quark-style-ash-80-color,rgba(247,248,250,0.8));--color-OnPage_Bg_Grey3:var(--quark-style-ash-60-color,rgba(247,248,250,0.6));--color-OnPage_Bg_White:var(--quark-style-white-button-color,#fff);--color-OnPage_Bg_White1:var(--quark-style-white-color,#fff);--color-Page_Bg_Ai:var(--quark-style-ash-theme-color-color,#f7f9ff);--color-Page_Bg_Grey:var(--quark-style-gray-5-opaque-color,#f5f6f7);--color-Page_Bg_Grey1:var(--quark-style-ash-90-color,rgba(247,248,250,0.9));--color-Quark_Ai:var(--quark-style-purple-color,#432cdb);--color-Quark_Blue:var(--quark-style-theme-color-color,#0d53ff);--color-Text_Black:var(--quark-style-gray-90-opaque-color,#1f223c);--color-Text_Grey1:var(--quark-style-gray-60-opaque-color,#696c7d);--color-Text_Grey2:var(--quark-style-gray-40-opaque-color,#9c9da9);--color-Text_Grey3:var(--quark-style-gray-30-opaque-color,#c3c4cb);--color-Text_White_Constant:var(--quark-style-white-fixed-color,#fff);--color-Toast_white:var(--quark-style-white-color,#fff);--color-Warning_Red:var(--quark-style-red-color,#ff4040);--color-White_Constant:var(--quark-style-white-fixed-color,#fff);--color-gray10:var(--quark-style-gray-10-color,rgba(6,10,38,0.06));--color-Page_Bg_White:var(--quark-style-white-color,#fff);--color-Deep_Blue:var(--quark-style-sea-blue-color,#4d80ff)}.title-2hUxe{flex:none;font-family:PingFangSC-Regular;font-size:4.26667vw;color:var(--color-Icon_Black);line-height:6.93333vw;font-weight:400;margin-bottom:4.26667vw}.browser-special-class .title-2hUxe,.quark-pc-special-class .title-2hUxe{font-size:16px;line-height:26px;margin-bottom:16px}@media (min-width:405px){.title-2hUxe{font-size:17.28px;line-height:28.08px;margin-bottom:17.28px}}\n/*# sourceMappingURL=index.c4044.css.map */</style>"
+                      }
+                    ],
+                    "param": {
+                      "log": {
+                        "sc_name": "card_images"
+                      }
+                    },
+                    "format": "html",
+                    "js": [
+                      {
+                        "fullContent": true,
+                        "name": "runScCore",
+                        "contentId": "",
+                        "prepend": true,
+                        "id": "_hydrate_core",
+                        "content": "<script>window._hydrate_core=window._hydrate_core||{useRegisterSc:!0,hydrateIdMap:{},hydrateRootDomIdList:[],run_sc(d){var t=d.hydrateId,e=d.rootDomId,r=d.hydrateUrl,a=!1;if(this.hydrateIdMap[t])a=!0,this.hydrateIdMap[t](d);else{var h=document.createElement(\"script\");h.src=r,document.head.appendChild(h)}this.hydrateRootDomIdList.push({hydrateId:t,rootDomId:e,hydrateUrl:r,isHydrated:a})},register_sc(d,t){var e=d.hydrateId;this.hydrateIdMap[e]=t,this.hydrateRootDomIdList.forEach(function(d,r){d.hydrateId!==e||d.isHydrated||(d.isHydrated=!0,t(d))})}};</script>"
+                      },
+                      {
+                        "size": 20920,
+                        "name": "hydrateData",
+                        "id": "card_images_12071_53838_12071_98750",
+                        "content": "<script type=\"application/json\" id=\"s-data-card_images_12071_53838_12071_98750\" data-used-by=\"hydrate\">{\"data\":{\"initialData\":{\"data\":{\"type\":\"ai_generate_image_list\",\"content\":{\"list\":[{\"image_height\":720,\"image_width\":1280,\"image_url\":\"https://workspace-zb-cdn.qianwen.com/547cc8d577f54cf0b9fa1e2ec47932f7%2Fo%2F1781234867183.png?auth_key=1788749340-0-0-6c8337b6c469c1867c3fb343194d3860\",\"thumbnail_url\":\"https://workspace-zb-cdn.qianwen.com/b3254a58f3f64646a01bbf6324e8e058%2Fo%2F1781234867215.webp.jpg?auth_key=1788747180-0-0-be330041eeb57523587185817ae0895b\",\"watermark_url\":\"https://workspace-zb-cdn.qianwen.com/e4c4a7a28286403fac1109ca3ac0e14b%2Fo%2F1781234867192.png?auth_key=1788747780-0-0-bddd62426b79c09356f8926b4e127781\"},{\"image_height\":720,\"image_width\":1280,\"image_url\":\"https://workspace-zb-cdn.qianwen.com/e3544b9b91fa47348f34dea8fec25fae%2Fo%2F1781234867291.png?auth_key=1788748740-0-0-6efe4d3180f31d28982510cb5e972ed3\",\"thumbnail_url\":\"https://workspace-zb-cdn.qianwen.com/268d3e98711d4b10aa10957e57c6ae64%2Fo%2F1781234867233.webp.jpg?auth_key=1788750600-0-0-4f2a69a5e7379513c8bbe254220a9fd9\",\"watermark_url\":\"https://workspace-zb-cdn.qianwen.com/17cce9dcb4244042b986b629ba308567%2Fo%2F1781234867241.png?auth_key=1788748380-0-0-6fb1ee52e1527fcfb9090a7b39293d36\"},{\"image_height\":720,\"image_width\":1280,\"image_url\":\"https://workspace-zb-cdn.qianwen.com/5e550779195043b4895f2f22ba52080c%2Fo%2F1781234867274.png?auth_key=1788747180-0-0-19ca580434d249577b8304bb0194d27a\",\"thumbnail_url\":\"https://workspace-zb-cdn.qianwen.com/2d8caa8a027d4640b3edbf71ca8e9c3e%2Fo%2F1781234867245.webp.jpg?auth_key=1788748260-0-0-e756b429887cac4c469f99bff55be65f\",\"watermark_url\":\"https://workspace-zb-cdn.qianwen.com/4da7f9690a384488808b967cf2191fc6%2Fo%2F1781234867220.png?auth_key=1788750180-0-0-1153071bffdfd09ef9eb30d95c155b70\"},{\"image_height\":720,\"image_width\":1280,\"image_url\":\"https://workspace-zb-cdn.qianwen.com/5318d647416a4f36897df4fd8c620cfd%2Fo%2F1781234867228.png?auth_key=1788747720-0-0-bb4527670d1a5fd224c8a29653a23584\",\"thumbnail_url\":\"https://workspace-zb-cdn.qianwen.com/5c23407fffcd48b8812a3d453f79fbb0%2Fo%2F1781234867203.webp.jpg?auth_key=1788748080-0-0-36553017bb55bca4a6ecf7bbe273c3c1\",\"watermark_url\":\"https://workspace-zb-cdn.qianwen.com/e304b2f4c7a341cebe4156d5725e940c%2Fo%2F1781234867260.png?auth_key=1788748500-0-0-85e2916e9a69f3f6810effe26b750bef\"}]},\"source_seq\":\"ai_generate_image_list_1\"},\"chatId\":\"a23acaad6613420c855a263e00035de8\",\"scContextData\":{\"scName\":\"card_images\",\"hid\":\"a23acaad6613420c855a263e00035de8\",\"header\":{\"referer\":\"https://www.qianwen.com/chat/de81523c178a490ab1f10427a5bf259b?pos=1785155995896\",\"sec-fetch-site\":\"same-site\",\"x5-uuid\":\"d2e47130da6cce67c8677d9ac11f1ab5\",\"x-client-http2\":\"h2\",\"origin\":\"https://www.qianwen.com\",\"sec-ch-ua-mobile\":\"?0\",\"x-forwarded-host\":\"chat2-api.qianwen.com\",\"x-remote-ip\":\"183.221.16.31\",\"x-client-scheme\":\"https\",\"host\":\"chat2-api.qianwen.com\",\"x-real-port\":\"19041\",\"ns-client-ip\":\"183.221.16.31\",\"x-chat-biz\":\"{\\\"chatId\\\":\\\"a23acaad6613420c855a263e00035de8\\\",\\\"agentId\\\":\\\"\\\",\\\"enableWebp\\\":\\\"\\\"}\",\"sec-fetch-mode\":\"cors\",\"web-server-type\":\"tengine-ingress\",\"proxy-x-forwarded-for\":\"183.221.16.31\",\"x-real-scheme\":\"https\",\"x-forwarded-proto\":\"https\",\"accept-language\":\"en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7\",\"cookie\":\"UM_distinctid=19f835edc71e5d-0f8d6333d0e61d-1f525630-1fa400-19f835edc72338e; theme-mode=light; tongyi_sso_ticket=uSAmHzbJZb6jzpf8Gz1g_BynogsOH1apRX0qcdzyjCx$o8LZGJpWOv1xV37eUjJDJ4vAHeYwC4Fs0; tongyi_sso_ticket_hash=438906329a6da9f0987c29cf910e7b8e; _ON_EXT_DVIDN=eCy#AAMgXr8ton7yExsKsudB4P8KADkdYrlQC6xEf4rfla7ZEv2vTdJLOApIw6u7c+DbBDY=; _qk_bx_ck_v1=eyJkZXZpY2VJZCI6ImVDeSNBQU1nWHI4dG9uN3lFeHNLc3VkQjRQOEtBRGtkWXJsUUM2eEVmNHJmbGE3WkV2MnZUZEpMT0FwSXc2dTdjK0RiQkRZPSIsImRldmljZUZpbmdlcnByaW50IjoiZWEwOTA1YzU2MWQyZGQxOWYzM2JlZjFhNjYzMTE3OTQifQ==; XSRF-TOKEN=e5db505a-c42b-4556-810e-08e3f0a0973f; XSRF-TOKEN=e5db505a-c42b-4556-810e-08e3f0a0973f; _qw_bx_timeout_v1=1000; xlly_s=1; cna=6dL6Iuc/E1ABASQJiWKbS5Si; _qk_bx_um_v1=eyJ1ZCI6IlQyZ0F4YjVaUHg5djY2cFN1U3RCbFI3WHp6SUlHdFk5ZllPNzYyNmRrbUtsaTAyZkthZWhWRFVNV05pNl9aRnNtQ1E9IiwiZXAiOjE3ODYxNzM4NzMzOTF9; tfstk=gU4jRj6--RUP79fABK5PPacVeF3_u_7eMCGTt5L26q3vBdFKUjPVm5J958MzuxPqkAO_QWHY7sYtyUhssrlvkF3swjlOi1mAs4F-tfJAijIMf0hEG12_ssctBResQoSP8SVmSVBU1w7UicfbPVzjWdP-ofySvon18SVDwI9OTuQFfhQPnfHTBmHJyXDJDK3TB0L-sYLx6Eh9e_GieVhxHmnJefGwXKhTB7CSsYHtWVety_GieA3tWUWkOfsjnS1ZqqVegOOaeYT9WzGfnvFjFbcuPjijpmkWWkzSGmMLGyjlP-h_vyi0pT-qHkZadXyVyEwQM-ZKvrpRFVVzARGQk6KIC-V8u0UA_HcoSoEKkP6BHSnQyru0V9TEpuVT50FcdHczXWz4f-WkWxrQw8iUzL8Eyrwbk0gd4OYEdw8efQiH5bMFN_tMjtxHKSsVaOfZDbcj4_1WHlvHWe8T7_tOPmhoGbC5NKEG.; isg=BAMDFcIIbRxMlyHBNzXiDXRrksGteJe6YuQBsTXgX2LZ9CMWvUgnCuFqa4y60O-y\",\"x-wua-code\":\"FF_WUA_EMPTY\",\"wl-proxy-client-ip\":\"183.221.16.31\",\"x5-ext-info\":\"{\\\"bx-flowtype\\\":\\\"PCWeb\\\",\\\"p-flowtype\\\":\\\"ajax\\\"}\",\"x5-ext-trans\":\"{\\\"bx-flowtype\\\":\\\"PCWeb\\\",\\\"p-flowtype\\\":\\\"ajax\\\"}\",\"x-wua-result\":\"{\\\"s\\\":\\\"FF_WUA_EMPTY\\\",\\\"b\\\":\\\"\\\",\\\"v\\\":\\\"\\\",\\\"g\\\":0,\\\"e\\\":\\\"\\\",\\\"d\\\":\\\"\\\",\\\"h\\\":\\\"\\\"}\",\"x-forwarded-for\":\"183.221.16.31\",\"priority\":\"u=1, i\",\"x-chat-id\":\"a23acaad6613420c855a263e00035de8\",\"eagleeye-traceid\":\"213e037c17861544119905759e0ae8\",\"accept\":\"*/*\",\"x-real-ip\":\"183.221.16.31\",\"sec-ch-ua\":\"\\\"Not;A=Brand\\\";v=\\\"8\\\", \\\"Chromium\\\";v=\\\"150\\\"\",\"x-accesslayer-ip\":\"33.62.3.124\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\",\"x-sinfo\":\"on\",\"x-request-from\":\"aserver\",\"x-scheme\":\"https\",\"eagleeye-rpcid\":\"0.1\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"user-agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36\",\"sec-fetch-dest\":\"empty\"},\"envInfo\":{\"isQuark\":false,\"isScanking\":false,\"isAndroid\":false,\"isIOS\":false,\"envType\":\"prod\",\"version\":\"0\"}}},\"originalData\":{\"type\":\"ai_generate_image_list\",\"content\":{\"resource_infos\":[{\"refer_id\":\"ref1\",\"width\":1280,\"id\":\"2b1649e8cdeb4d5797d07ab905fba186\",\"url\":\"https://workspace-zb-cdn.qianwen.com/547cc8d577f54cf0b9fa1e2ec47932f7%2Fo%2F1781234867183.png?auth_key=1788749340-0-0-6c8337b6c469c1867c3fb343194d3860\",\"height\":720,\"md5\":\"JH4rupMGq/x8kdhi1nqdeA==\"},{\"refer_id\":\"ref2\",\"width\":1280,\"id\":\"1901683ede2e4f6994a9ada9f1fad786\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e4c4a7a28286403fac1109ca3ac0e14b%2Fo%2F1781234867192.png?auth_key=1788747780-0-0-bddd62426b79c09356f8926b4e127781\",\"height\":720,\"md5\":\"RiYJhoW18oFSn3bDIZznJA==\"},{\"refer_id\":\"ref3\",\"width\":1280,\"id\":\"baee0b4c11344e91883963806f9bcf9a\",\"url\":\"https://workspace-zb-cdn.qianwen.com/b3254a58f3f64646a01bbf6324e8e058%2Fo%2F1781234867215.webp.jpg?auth_key=1788747180-0-0-be330041eeb57523587185817ae0895b\",\"height\":720,\"md5\":\"WEYbqwIh7sppWxmIkQ9wFA==\"},{\"refer_id\":\"ref4\",\"width\":1280,\"id\":\"c17041eb35e7421693e3488905b7a6c6\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e3544b9b91fa47348f34dea8fec25fae%2Fo%2F1781234867291.png?auth_key=1788748740-0-0-6efe4d3180f31d28982510cb5e972ed3\",\"height\":720,\"md5\":\"mXJrP8cwq8wlGCdjMDsI4Q==\"},{\"refer_id\":\"ref5\",\"width\":1280,\"id\":\"33d4dc7e0ea7418caa01bb2d21bae69b\",\"url\":\"https://workspace-zb-cdn.qianwen.com/17cce9dcb4244042b986b629ba308567%2Fo%2F1781234867241.png?auth_key=1788748380-0-0-6fb1ee52e1527fcfb9090a7b39293d36\",\"height\":720,\"md5\":\"Iijv65/eCEy8Au4Lpm48Kw==\"},{\"refer_id\":\"ref6\",\"width\":1280,\"id\":\"f89880f7912f4dc2a1d37dff8d1a366d\",\"url\":\"https://workspace-zb-cdn.qianwen.com/268d3e98711d4b10aa10957e57c6ae64%2Fo%2F1781234867233.webp.jpg?auth_key=1788750600-0-0-4f2a69a5e7379513c8bbe254220a9fd9\",\"height\":720,\"md5\":\"Eno2E7R2WuvzME5GE91TTA==\"},{\"refer_id\":\"ref7\",\"width\":1280,\"id\":\"6030126e7ccd483bb966e9615d7d3ded\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5e550779195043b4895f2f22ba52080c%2Fo%2F1781234867274.png?auth_key=1788747180-0-0-19ca580434d249577b8304bb0194d27a\",\"height\":720,\"md5\":\"62j2UJn7NU9PlrB0plj1RQ==\"},{\"refer_id\":\"ref8\",\"width\":1280,\"id\":\"1d951f1b7b1f46149f102bd1d2591d2a\",\"url\":\"https://workspace-zb-cdn.qianwen.com/4da7f9690a384488808b967cf2191fc6%2Fo%2F1781234867220.png?auth_key=1788750180-0-0-1153071bffdfd09ef9eb30d95c155b70\",\"height\":720,\"md5\":\"jIICXfoznXehiHjLCpkqMw==\"},{\"refer_id\":\"ref9\",\"width\":1280,\"id\":\"b661c4c9dc1c4171ae6f56b2a933c809\",\"url\":\"https://workspace-zb-cdn.qianwen.com/2d8caa8a027d4640b3edbf71ca8e9c3e%2Fo%2F1781234867245.webp.jpg?auth_key=1788748260-0-0-e756b429887cac4c469f99bff55be65f\",\"height\":720,\"md5\":\"uvR6buVF4pB8QIYZYk5lQw==\"},{\"refer_id\":\"ref10\",\"width\":1280,\"id\":\"a81b2629bd0b4ed083b8eb398fa99c82\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5318d647416a4f36897df4fd8c620cfd%2Fo%2F1781234867228.png?auth_key=1788747720-0-0-bb4527670d1a5fd224c8a29653a23584\",\"height\":720,\"md5\":\"E08/a8ZibzKO3awpwPTy5g==\"},{\"refer_id\":\"ref11\",\"width\":1280,\"id\":\"3826d6bbc33047dea1e386d5a92eb0b3\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e304b2f4c7a341cebe4156d5725e940c%2Fo%2F1781234867260.png?auth_key=1788748500-0-0-85e2916e9a69f3f6810effe26b750bef\",\"height\":720,\"md5\":\"OXOZVfUN7WIOi0GFWGAVDA==\"},{\"refer_id\":\"ref12\",\"width\":1280,\"id\":\"e731343fb4b9411b98b66003b360a2cd\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5c23407fffcd48b8812a3d453f79fbb0%2Fo%2F1781234867203.webp.jpg?auth_key=1788748080-0-0-36553017bb55bca4a6ecf7bbe273c3c1\",\"height\":720,\"md5\":\"C7UszQz95l2cpUD4S7MVrA==\"}],\"complete_description\":\"根据你刚才的要求，视频已经生成好啦！\",\"generate_model_name\":\"\",\"task_id\":\"00d6280443f84b56a2d8edf585d053d9\",\"scene\":\"qwen2_t2i\",\"image_num\":4,\"start_time\":1781234857671,\"layout_list\":[{\"image\":[\"ref1\"],\"thumbnail\":[\"ref3\"],\"ref_image_ids\":[],\"agent_material_id\":\"93f30e77de75474c88c5ff06e3cbb544\",\"type\":\"generate_image\",\"watermark_image\":[\"ref2\"],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[\"ref4\"],\"thumbnail\":[\"ref6\"],\"ref_image_ids\":[],\"agent_material_id\":\"37a5fd5be99148aeb5ea5db48e57b97b\",\"type\":\"generate_image\",\"watermark_image\":[\"ref5\"],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[\"ref7\"],\"thumbnail\":[\"ref9\"],\"ref_image_ids\":[],\"agent_material_id\":\"fe9f661d9e0c4f42b1b0b33116cd72bc\",\"type\":\"generate_image\",\"watermark_image\":[\"ref8\"],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[\"ref10\"],\"thumbnail\":[\"ref12\"],\"ref_image_ids\":[],\"agent_material_id\":\"eb9193ccbfee430d8f5d0c52c58b9be0\",\"type\":\"generate_image\",\"watermark_image\":[\"ref11\"],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]}],\"extra_info\":{\"disable_publish\":0,\"offset\":1781234857671,\"type\":\"TEXT_TO_IMG\",\"content\":{\"gmt_create\":1781234857671,\"disable_publish\":0,\"record_id\":\"00d6280443f84b56a2d8edf585d053d9\",\"user_tags\":[\"normal\"],\"estimated_completion_time\":\"2026-06-12T11:27:46.094+0800\",\"num\":4,\"extra\":{\"is_cameo\":false,\"can_reedit\":true,\"query\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"root_model\":\"qwen2\",\"params\":{\"features\":[\"qwen_image_2\"],\"attachments\":[],\"size\":\"16:9\",\"source_cameo_profiles\":[]},\"seen\":true,\"scene\":\"qwen2_t2i\",\"bgm_audios\":[],\"req_id\":\"a23acaad6613420c855a263e00035de8\",\"model_name\":\"Qwen-Image 2.0\",\"origin_query\":\"参考这个 https://getdesign.md/ 帮我生成关于我的站点acgogogo.comd的一张相同风格的首页设计图\",\"result_images\":[{\"thumbnail_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-081c277ee825435296ec488ecc119537.png?auth_key=1782530866-0-0-893d5a47b73d555531f32c31b92a9fe5&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800\",\"i2iIntent\":\"无\",\"url\":\"http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864790-081c277ee825435296ec488ecc119537.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=O9gMl6%2FR%2BpsLhSqiekZtX4ZNwcA%3D\",\"is_multi_intent\":false,\"ref_image_ids\":[],\"cdn_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-081c277ee825435296ec488ecc119537.png?auth_key=1782530866-0-0-893d5a47b73d555531f32c31b92a9fe5\",\"preview_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-081c277ee825435296ec488ecc119537.png?auth_key=1782530866-0-0-893d5a47b73d555531f32c31b92a9fe5&x-oss-process=image%2Fformat%2Cwebp\",\"width\":1280,\"download_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864989-9bc2d2d921e041998ce0ba2dcfd0cc9c.png?auth_key=1782530866-0-0-47be8636f4b0516a908166732e1ff523\",\"material_id\":\"93f30e77de75474c88c5ff06e3cbb544\",\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"height\":720,\"ratio\":\"16:9\"},{\"thumbnail_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?auth_key=1782530866-0-0-1bc0ab981f535f7c2f00ee94cfb330e4&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800\",\"i2iIntent\":\"无\",\"url\":\"http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=PfErf%2B4GbMef2cHHGFhxv2s01Ys%3D\",\"is_multi_intent\":false,\"ref_image_ids\":[],\"cdn_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?auth_key=1782530866-0-0-1bc0ab981f535f7c2f00ee94cfb330e4\",\"preview_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?auth_key=1782530866-0-0-1bc0ab981f535f7c2f00ee94cfb330e4&x-oss-process=image%2Fformat%2Cwebp\",\"width\":1280,\"download_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234865029-f2cd6aa203cc47788c4420ce6a211f6d.png?auth_key=1782530866-0-0-374aefed71f7f18d3d47f088a303525b\",\"material_id\":\"37a5fd5be99148aeb5ea5db48e57b97b\",\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"height\":720,\"ratio\":\"16:9\"},{\"thumbnail_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?auth_key=1782530866-0-0-3175cb5cfc172288c7c29f8fca0a7c29&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800\",\"i2iIntent\":\"无\",\"url\":\"http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=LV5%2FvpgwzG4JWDaqd27hID9VyBw%3D\",\"is_multi_intent\":false,\"ref_image_ids\":[],\"cdn_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?auth_key=1782530866-0-0-3175cb5cfc172288c7c29f8fca0a7c29\",\"preview_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?auth_key=1782530866-0-0-3175cb5cfc172288c7c29f8fca0a7c29&x-oss-process=image%2Fformat%2Cwebp\",\"width\":1280,\"download_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864981-c4060b0df3094d96a236682ac84a3581.png?auth_key=1782530866-0-0-2544124ee7d0d8b3578bd9b5f2bfcb6a\",\"material_id\":\"fe9f661d9e0c4f42b1b0b33116cd72bc\",\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"height\":720,\"ratio\":\"16:9\"},{\"thumbnail_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864783-b0b5de903fac45d99625514eb7715e9f.png?auth_key=1782530866-0-0-acd7369c4564d584fc3a4c845294180a&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800\",\"i2iIntent\":\"无\",\"url\":\"http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864783-b0b5de903fac45d99625514eb7715e9f.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=aohs8mUicpKz%2FYtQvQe3oRjhU2c%3D\",\"is_multi_intent\":false,\"ref_image_ids\":[],\"cdn_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864783-b0b5de903fac45d99625514eb7715e9f.png?auth_key=1782530866-0-0-acd7369c4564d584fc3a4c845294180a\",\"preview_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864783-b0b5de903fac45d99625514eb7715e9f.png?auth_key=1782530866-0-0-acd7369c4564d584fc3a4c845294180a&x-oss-process=image%2Fformat%2Cwebp\",\"width\":1280,\"download_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864973-741ecc3693e14007a1a7002263be1acc.png?auth_key=1782530866-0-0-73a333905f78e42d5a1fc1a0aa0262ed\",\"material_id\":\"eb9193ccbfee430d8f5d0c52c58b9be0\",\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"height\":720,\"ratio\":\"16:9\"}],\"model\":\"qwen2\"},\"task_id\":\"0d8e6d3d2b9b4add8fa3e4cbde101ea1\",\"title\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"gmt_modified\":1781234866094,\"seen\":true,\"status\":1}},\"retry_description\":\"请再帮我生成一次\",\"display_list\":[{\"image\":[{\"width\":1280,\"id\":\"2b1649e8cdeb4d5797d07ab905fba186\",\"url\":\"https://workspace-zb-cdn.qianwen.com/547cc8d577f54cf0b9fa1e2ec47932f7%2Fo%2F1781234867183.png?auth_key=1788749340-0-0-6c8337b6c469c1867c3fb343194d3860\",\"height\":720}],\"thumbnail\":[{\"width\":1280,\"id\":\"baee0b4c11344e91883963806f9bcf9a\",\"url\":\"https://workspace-zb-cdn.qianwen.com/b3254a58f3f64646a01bbf6324e8e058%2Fo%2F1781234867215.webp.jpg?auth_key=1788747180-0-0-be330041eeb57523587185817ae0895b\",\"height\":720}],\"ref_image_ids\":[],\"agent_material_id\":\"93f30e77de75474c88c5ff06e3cbb544\",\"type\":\"generate_image\",\"watermark_image\":[{\"width\":1280,\"id\":\"1901683ede2e4f6994a9ada9f1fad786\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e4c4a7a28286403fac1109ca3ac0e14b%2Fo%2F1781234867192.png?auth_key=1788747780-0-0-bddd62426b79c09356f8926b4e127781\",\"height\":720}],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[{\"width\":1280,\"id\":\"c17041eb35e7421693e3488905b7a6c6\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e3544b9b91fa47348f34dea8fec25fae%2Fo%2F1781234867291.png?auth_key=1788748740-0-0-6efe4d3180f31d28982510cb5e972ed3\",\"height\":720}],\"thumbnail\":[{\"width\":1280,\"id\":\"f89880f7912f4dc2a1d37dff8d1a366d\",\"url\":\"https://workspace-zb-cdn.qianwen.com/268d3e98711d4b10aa10957e57c6ae64%2Fo%2F1781234867233.webp.jpg?auth_key=1788750600-0-0-4f2a69a5e7379513c8bbe254220a9fd9\",\"height\":720}],\"ref_image_ids\":[],\"agent_material_id\":\"37a5fd5be99148aeb5ea5db48e57b97b\",\"type\":\"generate_image\",\"watermark_image\":[{\"width\":1280,\"id\":\"33d4dc7e0ea7418caa01bb2d21bae69b\",\"url\":\"https://workspace-zb-cdn.qianwen.com/17cce9dcb4244042b986b629ba308567%2Fo%2F1781234867241.png?auth_key=1788748380-0-0-6fb1ee52e1527fcfb9090a7b39293d36\",\"height\":720}],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[{\"width\":1280,\"id\":\"6030126e7ccd483bb966e9615d7d3ded\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5e550779195043b4895f2f22ba52080c%2Fo%2F1781234867274.png?auth_key=1788747180-0-0-19ca580434d249577b8304bb0194d27a\",\"height\":720}],\"thumbnail\":[{\"width\":1280,\"id\":\"b661c4c9dc1c4171ae6f56b2a933c809\",\"url\":\"https://workspace-zb-cdn.qianwen.com/2d8caa8a027d4640b3edbf71ca8e9c3e%2Fo%2F1781234867245.webp.jpg?auth_key=1788748260-0-0-e756b429887cac4c469f99bff55be65f\",\"height\":720}],\"ref_image_ids\":[],\"agent_material_id\":\"fe9f661d9e0c4f42b1b0b33116cd72bc\",\"type\":\"generate_image\",\"watermark_image\":[{\"width\":1280,\"id\":\"1d951f1b7b1f46149f102bd1d2591d2a\",\"url\":\"https://workspace-zb-cdn.qianwen.com/4da7f9690a384488808b967cf2191fc6%2Fo%2F1781234867220.png?auth_key=1788750180-0-0-1153071bffdfd09ef9eb30d95c155b70\",\"height\":720}],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[{\"width\":1280,\"id\":\"a81b2629bd0b4ed083b8eb398fa99c82\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5318d647416a4f36897df4fd8c620cfd%2Fo%2F1781234867228.png?auth_key=1788747720-0-0-bb4527670d1a5fd224c8a29653a23584\",\"height\":720}],\"thumbnail\":[{\"width\":1280,\"id\":\"e731343fb4b9411b98b66003b360a2cd\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5c23407fffcd48b8812a3d453f79fbb0%2Fo%2F1781234867203.webp.jpg?auth_key=1788748080-0-0-36553017bb55bca4a6ecf7bbe273c3c1\",\"height\":720}],\"ref_image_ids\":[],\"agent_material_id\":\"eb9193ccbfee430d8f5d0c52c58b9be0\",\"type\":\"generate_image\",\"watermark_image\":[{\"width\":1280,\"id\":\"3826d6bbc33047dea1e386d5a92eb0b3\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e304b2f4c7a341cebe4156d5725e940c%2Fo%2F1781234867260.png?auth_key=1788748500-0-0-85e2916e9a69f3f6810effe26b750bef\",\"height\":720}],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]}],\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"status\":\"complete\",\"ratio\":\"16:9\",\"estimated_time\":1781234866094},\"source_seq\":\"ai_generate_image_list_1\"}},\"extraData\":{\"device\":\"mobile\",\"scId\":\"card_images_12071_53838_12071_98750\",\"reqId\":\"a23acaad6613420c855a263e00035de8\",\"updateTime\":1769073350032,\"envType\":\"prod\",\"_renderServerEnvType\":\"prod\"}}</script>"
+                      },
+                      {
+                        "size": 85901,
+                        "prefetch": true,
+                        "name": "runSc",
+                        "id": "runsc#card_images_12071_53838_12071_98750",
+                        "cdn": "https://g.alicdn.com/sm-frontend/card_images/client/static/js/index.56f3f.js",
+                        "version": "index.56f3f.js",
+                        "content": "<script>window._hydrate_core && window._hydrate_core.run_sc({log:{jsSize:107384,cssSize:9123,htmlSize:1200,totalSize:117707,changeDays:197.7,aggSize:18805,hydrateSize:20920,rt:10},hydrateId:\"card_images_index.56f3f.js\",rootDomId:\"card_images_12071_53838_12071_98750\",hydrateUrl:\"https://g.alicdn.com/sm-frontend/card_images/client/static/js/index.56f3f.js\",scInfo: {pos:null,hy:\"ai-agent\"}});</script>"
+                      },
+                      {
+                        "fullContent": true,
+                        "name": "renderSertverAddJsDebugLog",
+                        "contentId": "",
+                        "prepend": true,
+                        "id": "a23acaad6613420c855a263e00035de81786154412076",
+                        "type": "js",
+                        "content": "<script type=\"text/javascript\">window['javaToNodeDataList'] = window['javaToNodeDataList'] || [];\n         window['javaToNodeDataList'].push({\"reqId\":\"a23acaad6613420c855a263e00035de8\",\"hid\":\"a23acaad6613420c855a263e00035de8\",\"templateId\":\"card_images\",\"scName\":\"card_images\",\"bodyParam\":{\"aggData\":{\"sc_name\":\"card_images\",\"data\":{\"type\":\"ai_generate_image_list\",\"content\":{\"resource_infos\":[{\"refer_id\":\"ref1\",\"width\":1280,\"id\":\"2b1649e8cdeb4d5797d07ab905fba186\",\"url\":\"https://workspace-zb-cdn.qianwen.com/547cc8d577f54cf0b9fa1e2ec47932f7%2Fo%2F1781234867183.png?auth_key=1788749340-0-0-6c8337b6c469c1867c3fb343194d3860\",\"height\":720,\"md5\":\"JH4rupMGq/x8kdhi1nqdeA==\"},{\"refer_id\":\"ref2\",\"width\":1280,\"id\":\"1901683ede2e4f6994a9ada9f1fad786\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e4c4a7a28286403fac1109ca3ac0e14b%2Fo%2F1781234867192.png?auth_key=1788747780-0-0-bddd62426b79c09356f8926b4e127781\",\"height\":720,\"md5\":\"RiYJhoW18oFSn3bDIZznJA==\"},{\"refer_id\":\"ref3\",\"width\":1280,\"id\":\"baee0b4c11344e91883963806f9bcf9a\",\"url\":\"https://workspace-zb-cdn.qianwen.com/b3254a58f3f64646a01bbf6324e8e058%2Fo%2F1781234867215.webp.jpg?auth_key=1788747180-0-0-be330041eeb57523587185817ae0895b\",\"height\":720,\"md5\":\"WEYbqwIh7sppWxmIkQ9wFA==\"},{\"refer_id\":\"ref4\",\"width\":1280,\"id\":\"c17041eb35e7421693e3488905b7a6c6\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e3544b9b91fa47348f34dea8fec25fae%2Fo%2F1781234867291.png?auth_key=1788748740-0-0-6efe4d3180f31d28982510cb5e972ed3\",\"height\":720,\"md5\":\"mXJrP8cwq8wlGCdjMDsI4Q==\"},{\"refer_id\":\"ref5\",\"width\":1280,\"id\":\"33d4dc7e0ea7418caa01bb2d21bae69b\",\"url\":\"https://workspace-zb-cdn.qianwen.com/17cce9dcb4244042b986b629ba308567%2Fo%2F1781234867241.png?auth_key=1788748380-0-0-6fb1ee52e1527fcfb9090a7b39293d36\",\"height\":720,\"md5\":\"Iijv65/eCEy8Au4Lpm48Kw==\"},{\"refer_id\":\"ref6\",\"width\":1280,\"id\":\"f89880f7912f4dc2a1d37dff8d1a366d\",\"url\":\"https://workspace-zb-cdn.qianwen.com/268d3e98711d4b10aa10957e57c6ae64%2Fo%2F1781234867233.webp.jpg?auth_key=1788750600-0-0-4f2a69a5e7379513c8bbe254220a9fd9\",\"height\":720,\"md5\":\"Eno2E7R2WuvzME5GE91TTA==\"},{\"refer_id\":\"ref7\",\"width\":1280,\"id\":\"6030126e7ccd483bb966e9615d7d3ded\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5e550779195043b4895f2f22ba52080c%2Fo%2F1781234867274.png?auth_key=1788747180-0-0-19ca580434d249577b8304bb0194d27a\",\"height\":720,\"md5\":\"62j2UJn7NU9PlrB0plj1RQ==\"},{\"refer_id\":\"ref8\",\"width\":1280,\"id\":\"1d951f1b7b1f46149f102bd1d2591d2a\",\"url\":\"https://workspace-zb-cdn.qianwen.com/4da7f9690a384488808b967cf2191fc6%2Fo%2F1781234867220.png?auth_key=1788750180-0-0-1153071bffdfd09ef9eb30d95c155b70\",\"height\":720,\"md5\":\"jIICXfoznXehiHjLCpkqMw==\"},{\"refer_id\":\"ref9\",\"width\":1280,\"id\":\"b661c4c9dc1c4171ae6f56b2a933c809\",\"url\":\"https://workspace-zb-cdn.qianwen.com/2d8caa8a027d4640b3edbf71ca8e9c3e%2Fo%2F1781234867245.webp.jpg?auth_key=1788748260-0-0-e756b429887cac4c469f99bff55be65f\",\"height\":720,\"md5\":\"uvR6buVF4pB8QIYZYk5lQw==\"},{\"refer_id\":\"ref10\",\"width\":1280,\"id\":\"a81b2629bd0b4ed083b8eb398fa99c82\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5318d647416a4f36897df4fd8c620cfd%2Fo%2F1781234867228.png?auth_key=1788747720-0-0-bb4527670d1a5fd224c8a29653a23584\",\"height\":720,\"md5\":\"E08/a8ZibzKO3awpwPTy5g==\"},{\"refer_id\":\"ref11\",\"width\":1280,\"id\":\"3826d6bbc33047dea1e386d5a92eb0b3\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e304b2f4c7a341cebe4156d5725e940c%2Fo%2F1781234867260.png?auth_key=1788748500-0-0-85e2916e9a69f3f6810effe26b750bef\",\"height\":720,\"md5\":\"OXOZVfUN7WIOi0GFWGAVDA==\"},{\"refer_id\":\"ref12\",\"width\":1280,\"id\":\"e731343fb4b9411b98b66003b360a2cd\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5c23407fffcd48b8812a3d453f79fbb0%2Fo%2F1781234867203.webp.jpg?auth_key=1788748080-0-0-36553017bb55bca4a6ecf7bbe273c3c1\",\"height\":720,\"md5\":\"C7UszQz95l2cpUD4S7MVrA==\"}],\"complete_description\":\"根据你刚才的要求，视频已经生成好啦！\",\"generate_model_name\":\"\",\"task_id\":\"00d6280443f84b56a2d8edf585d053d9\",\"scene\":\"qwen2_t2i\",\"image_num\":4,\"start_time\":1781234857671,\"layout_list\":[{\"image\":[\"ref1\"],\"thumbnail\":[\"ref3\"],\"ref_image_ids\":[],\"agent_material_id\":\"93f30e77de75474c88c5ff06e3cbb544\",\"type\":\"generate_image\",\"watermark_image\":[\"ref2\"],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[\"ref4\"],\"thumbnail\":[\"ref6\"],\"ref_image_ids\":[],\"agent_material_id\":\"37a5fd5be99148aeb5ea5db48e57b97b\",\"type\":\"generate_image\",\"watermark_image\":[\"ref5\"],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[\"ref7\"],\"thumbnail\":[\"ref9\"],\"ref_image_ids\":[],\"agent_material_id\":\"fe9f661d9e0c4f42b1b0b33116cd72bc\",\"type\":\"generate_image\",\"watermark_image\":[\"ref8\"],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[\"ref10\"],\"thumbnail\":[\"ref12\"],\"ref_image_ids\":[],\"agent_material_id\":\"eb9193ccbfee430d8f5d0c52c58b9be0\",\"type\":\"generate_image\",\"watermark_image\":[\"ref11\"],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]}],\"extra_info\":{\"disable_publish\":0,\"offset\":1781234857671,\"type\":\"TEXT_TO_IMG\",\"content\":{\"gmt_create\":1781234857671,\"disable_publish\":0,\"record_id\":\"00d6280443f84b56a2d8edf585d053d9\",\"user_tags\":[\"normal\"],\"estimated_completion_time\":\"2026-06-12T11:27:46.094+0800\",\"num\":4,\"extra\":{\"is_cameo\":false,\"can_reedit\":true,\"query\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"root_model\":\"qwen2\",\"params\":{\"features\":[\"qwen_image_2\"],\"attachments\":[],\"size\":\"16:9\",\"source_cameo_profiles\":[]},\"seen\":true,\"scene\":\"qwen2_t2i\",\"bgm_audios\":[],\"req_id\":\"a23acaad6613420c855a263e00035de8\",\"model_name\":\"Qwen-Image 2.0\",\"origin_query\":\"参考这个 https://getdesign.md/ 帮我生成关于我的站点acgogogo.comd的一张相同风格的首页设计图\",\"result_images\":[{\"thumbnail_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-081c277ee825435296ec488ecc119537.png?auth_key=1782530866-0-0-893d5a47b73d555531f32c31b92a9fe5&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800\",\"i2iIntent\":\"无\",\"url\":\"http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864790-081c277ee825435296ec488ecc119537.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=O9gMl6%2FR%2BpsLhSqiekZtX4ZNwcA%3D\",\"is_multi_intent\":false,\"ref_image_ids\":[],\"cdn_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-081c277ee825435296ec488ecc119537.png?auth_key=1782530866-0-0-893d5a47b73d555531f32c31b92a9fe5\",\"preview_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-081c277ee825435296ec488ecc119537.png?auth_key=1782530866-0-0-893d5a47b73d555531f32c31b92a9fe5&x-oss-process=image%2Fformat%2Cwebp\",\"width\":1280,\"download_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864989-9bc2d2d921e041998ce0ba2dcfd0cc9c.png?auth_key=1782530866-0-0-47be8636f4b0516a908166732e1ff523\",\"material_id\":\"93f30e77de75474c88c5ff06e3cbb544\",\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"height\":720,\"ratio\":\"16:9\"},{\"thumbnail_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?auth_key=1782530866-0-0-1bc0ab981f535f7c2f00ee94cfb330e4&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800\",\"i2iIntent\":\"无\",\"url\":\"http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=PfErf%2B4GbMef2cHHGFhxv2s01Ys%3D\",\"is_multi_intent\":false,\"ref_image_ids\":[],\"cdn_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?auth_key=1782530866-0-0-1bc0ab981f535f7c2f00ee94cfb330e4\",\"preview_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?auth_key=1782530866-0-0-1bc0ab981f535f7c2f00ee94cfb330e4&x-oss-process=image%2Fformat%2Cwebp\",\"width\":1280,\"download_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234865029-f2cd6aa203cc47788c4420ce6a211f6d.png?auth_key=1782530866-0-0-374aefed71f7f18d3d47f088a303525b\",\"material_id\":\"37a5fd5be99148aeb5ea5db48e57b97b\",\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"height\":720,\"ratio\":\"16:9\"},{\"thumbnail_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?auth_key=1782530866-0-0-3175cb5cfc172288c7c29f8fca0a7c29&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800\",\"i2iIntent\":\"无\",\"url\":\"http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=LV5%2FvpgwzG4JWDaqd27hID9VyBw%3D\",\"is_multi_intent\":false,\"ref_image_ids\":[],\"cdn_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?auth_key=1782530866-0-0-3175cb5cfc172288c7c29f8fca0a7c29\",\"preview_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?auth_key=1782530866-0-0-3175cb5cfc172288c7c29f8fca0a7c29&x-oss-process=image%2Fformat%2Cwebp\",\"width\":1280,\"download_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864981-c4060b0df3094d96a236682ac84a3581.png?auth_key=1782530866-0-0-2544124ee7d0d8b3578bd9b5f2bfcb6a\",\"material_id\":\"fe9f661d9e0c4f42b1b0b33116cd72bc\",\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"height\":720,\"ratio\":\"16:9\"},{\"thumbnail_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864783-b0b5de903fac45d99625514eb7715e9f.png?auth_key=1782530866-0-0-acd7369c4564d584fc3a4c845294180a&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800\",\"i2iIntent\":\"无\",\"url\":\"http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864783-b0b5de903fac45d99625514eb7715e9f.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=aohs8mUicpKz%2FYtQvQe3oRjhU2c%3D\",\"is_multi_intent\":false,\"ref_image_ids\":[],\"cdn_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864783-b0b5de903fac45d99625514eb7715e9f.png?auth_key=1782530866-0-0-acd7369c4564d584fc3a4c845294180a\",\"preview_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864783-b0b5de903fac45d99625514eb7715e9f.png?auth_key=1782530866-0-0-acd7369c4564d584fc3a4c845294180a&x-oss-process=image%2Fformat%2Cwebp\",\"width\":1280,\"download_url\":\"https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864973-741ecc3693e14007a1a7002263be1acc.png?auth_key=1782530866-0-0-73a333905f78e42d5a1fc1a0aa0262ed\",\"material_id\":\"eb9193ccbfee430d8f5d0c52c58b9be0\",\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"height\":720,\"ratio\":\"16:9\"}],\"model\":\"qwen2\"},\"task_id\":\"0d8e6d3d2b9b4add8fa3e4cbde101ea1\",\"title\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"gmt_modified\":1781234866094,\"seen\":true,\"status\":1}},\"retry_description\":\"请再帮我生成一次\",\"display_list\":[{\"image\":[{\"width\":1280,\"id\":\"2b1649e8cdeb4d5797d07ab905fba186\",\"url\":\"https://workspace-zb-cdn.qianwen.com/547cc8d577f54cf0b9fa1e2ec47932f7%2Fo%2F1781234867183.png?auth_key=1788749340-0-0-6c8337b6c469c1867c3fb343194d3860\",\"height\":720}],\"thumbnail\":[{\"width\":1280,\"id\":\"baee0b4c11344e91883963806f9bcf9a\",\"url\":\"https://workspace-zb-cdn.qianwen.com/b3254a58f3f64646a01bbf6324e8e058%2Fo%2F1781234867215.webp.jpg?auth_key=1788747180-0-0-be330041eeb57523587185817ae0895b\",\"height\":720}],\"ref_image_ids\":[],\"agent_material_id\":\"93f30e77de75474c88c5ff06e3cbb544\",\"type\":\"generate_image\",\"watermark_image\":[{\"width\":1280,\"id\":\"1901683ede2e4f6994a9ada9f1fad786\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e4c4a7a28286403fac1109ca3ac0e14b%2Fo%2F1781234867192.png?auth_key=1788747780-0-0-bddd62426b79c09356f8926b4e127781\",\"height\":720}],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[{\"width\":1280,\"id\":\"c17041eb35e7421693e3488905b7a6c6\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e3544b9b91fa47348f34dea8fec25fae%2Fo%2F1781234867291.png?auth_key=1788748740-0-0-6efe4d3180f31d28982510cb5e972ed3\",\"height\":720}],\"thumbnail\":[{\"width\":1280,\"id\":\"f89880f7912f4dc2a1d37dff8d1a366d\",\"url\":\"https://workspace-zb-cdn.qianwen.com/268d3e98711d4b10aa10957e57c6ae64%2Fo%2F1781234867233.webp.jpg?auth_key=1788750600-0-0-4f2a69a5e7379513c8bbe254220a9fd9\",\"height\":720}],\"ref_image_ids\":[],\"agent_material_id\":\"37a5fd5be99148aeb5ea5db48e57b97b\",\"type\":\"generate_image\",\"watermark_image\":[{\"width\":1280,\"id\":\"33d4dc7e0ea7418caa01bb2d21bae69b\",\"url\":\"https://workspace-zb-cdn.qianwen.com/17cce9dcb4244042b986b629ba308567%2Fo%2F1781234867241.png?auth_key=1788748380-0-0-6fb1ee52e1527fcfb9090a7b39293d36\",\"height\":720}],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[{\"width\":1280,\"id\":\"6030126e7ccd483bb966e9615d7d3ded\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5e550779195043b4895f2f22ba52080c%2Fo%2F1781234867274.png?auth_key=1788747180-0-0-19ca580434d249577b8304bb0194d27a\",\"height\":720}],\"thumbnail\":[{\"width\":1280,\"id\":\"b661c4c9dc1c4171ae6f56b2a933c809\",\"url\":\"https://workspace-zb-cdn.qianwen.com/2d8caa8a027d4640b3edbf71ca8e9c3e%2Fo%2F1781234867245.webp.jpg?auth_key=1788748260-0-0-e756b429887cac4c469f99bff55be65f\",\"height\":720}],\"ref_image_ids\":[],\"agent_material_id\":\"fe9f661d9e0c4f42b1b0b33116cd72bc\",\"type\":\"generate_image\",\"watermark_image\":[{\"width\":1280,\"id\":\"1d951f1b7b1f46149f102bd1d2591d2a\",\"url\":\"https://workspace-zb-cdn.qianwen.com/4da7f9690a384488808b967cf2191fc6%2Fo%2F1781234867220.png?auth_key=1788750180-0-0-1153071bffdfd09ef9eb30d95c155b70\",\"height\":720}],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]},{\"image\":[{\"width\":1280,\"id\":\"a81b2629bd0b4ed083b8eb398fa99c82\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5318d647416a4f36897df4fd8c620cfd%2Fo%2F1781234867228.png?auth_key=1788747720-0-0-bb4527670d1a5fd224c8a29653a23584\",\"height\":720}],\"thumbnail\":[{\"width\":1280,\"id\":\"e731343fb4b9411b98b66003b360a2cd\",\"url\":\"https://workspace-zb-cdn.qianwen.com/5c23407fffcd48b8812a3d453f79fbb0%2Fo%2F1781234867203.webp.jpg?auth_key=1788748080-0-0-36553017bb55bca4a6ecf7bbe273c3c1\",\"height\":720}],\"ref_image_ids\":[],\"agent_material_id\":\"eb9193ccbfee430d8f5d0c52c58b9be0\",\"type\":\"generate_image\",\"watermark_image\":[{\"width\":1280,\"id\":\"3826d6bbc33047dea1e386d5a92eb0b3\",\"url\":\"https://workspace-zb-cdn.qianwen.com/e304b2f4c7a341cebe4156d5725e940c%2Fo%2F1781234867260.png?auth_key=1788748500-0-0-85e2916e9a69f3f6810effe26b750bef\",\"height\":720}],\"resource_fields\":[\"image\",\"watermark_image\",\"thumbnail\"]}],\"prompt\":\"生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/\",\"status\":\"complete\",\"ratio\":\"16:9\",\"estimated_time\":1781234866094},\"source_seq\":\"ai_generate_image_list_1\"},\"template_id\":\"card_images\"},\"debug\":{\"deleteCache\":0,\"debug\":0,\"jsdebug\":1},\"log\":{\"sc\":{\"sc\":\"card_images\"},\"comm\":{}},\"format\":\"html\",\"reqId\":\"a23acaad6613420c855a263e00035de8\",\"scene\":\"card\",\"option\":{\"request\":{\"pathName\":\"/api/v1/session/msg/list\",\"protocol\":\"HTTP/1.1\",\"host\":\"chat2-api.qianwen.com\",\"header\":{\"referer\":\"https://www.qianwen.com/chat/de81523c178a490ab1f10427a5bf259b?pos=1785155995896\",\"sec-fetch-site\":\"same-site\",\"x5-uuid\":\"d2e47130da6cce67c8677d9ac11f1ab5\",\"x-client-http2\":\"h2\",\"origin\":\"https://www.qianwen.com\",\"sec-ch-ua-mobile\":\"?0\",\"x-forwarded-host\":\"chat2-api.qianwen.com\",\"x-remote-ip\":\"183.221.16.31\",\"x-client-scheme\":\"https\",\"host\":\"chat2-api.qianwen.com\",\"x-real-port\":\"19041\",\"ns-client-ip\":\"183.221.16.31\",\"x-chat-biz\":\"{\\\"chatId\\\":\\\"a23acaad6613420c855a263e00035de8\\\",\\\"agentId\\\":\\\"\\\",\\\"enableWebp\\\":\\\"\\\"}\",\"sec-fetch-mode\":\"cors\",\"web-server-type\":\"tengine-ingress\",\"proxy-x-forwarded-for\":\"183.221.16.31\",\"x-real-scheme\":\"https\",\"x-forwarded-proto\":\"https\",\"accept-language\":\"en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7\",\"cookie\":\"UM_distinctid=19f835edc71e5d-0f8d6333d0e61d-1f525630-1fa400-19f835edc72338e; theme-mode=light; tongyi_sso_ticket=uSAmHzbJZb6jzpf8Gz1g_BynogsOH1apRX0qcdzyjCx$o8LZGJpWOv1xV37eUjJDJ4vAHeYwC4Fs0; tongyi_sso_ticket_hash=438906329a6da9f0987c29cf910e7b8e; _ON_EXT_DVIDN=eCy#AAMgXr8ton7yExsKsudB4P8KADkdYrlQC6xEf4rfla7ZEv2vTdJLOApIw6u7c+DbBDY=; _qk_bx_ck_v1=eyJkZXZpY2VJZCI6ImVDeSNBQU1nWHI4dG9uN3lFeHNLc3VkQjRQOEtBRGtkWXJsUUM2eEVmNHJmbGE3WkV2MnZUZEpMT0FwSXc2dTdjK0RiQkRZPSIsImRldmljZUZpbmdlcnByaW50IjoiZWEwOTA1YzU2MWQyZGQxOWYzM2JlZjFhNjYzMTE3OTQifQ==; XSRF-TOKEN=e5db505a-c42b-4556-810e-08e3f0a0973f; XSRF-TOKEN=e5db505a-c42b-4556-810e-08e3f0a0973f; _qw_bx_timeout_v1=1000; xlly_s=1; cna=6dL6Iuc/E1ABASQJiWKbS5Si; _qk_bx_um_v1=eyJ1ZCI6IlQyZ0F4YjVaUHg5djY2cFN1U3RCbFI3WHp6SUlHdFk5ZllPNzYyNmRrbUtsaTAyZkthZWhWRFVNV05pNl9aRnNtQ1E9IiwiZXAiOjE3ODYxNzM4NzMzOTF9; tfstk=gU4jRj6--RUP79fABK5PPacVeF3_u_7eMCGTt5L26q3vBdFKUjPVm5J958MzuxPqkAO_QWHY7sYtyUhssrlvkF3swjlOi1mAs4F-tfJAijIMf0hEG12_ssctBResQoSP8SVmSVBU1w7UicfbPVzjWdP-ofySvon18SVDwI9OTuQFfhQPnfHTBmHJyXDJDK3TB0L-sYLx6Eh9e_GieVhxHmnJefGwXKhTB7CSsYHtWVety_GieA3tWUWkOfsjnS1ZqqVegOOaeYT9WzGfnvFjFbcuPjijpmkWWkzSGmMLGyjlP-h_vyi0pT-qHkZadXyVyEwQM-ZKvrpRFVVzARGQk6KIC-V8u0UA_HcoSoEKkP6BHSnQyru0V9TEpuVT50FcdHczXWz4f-WkWxrQw8iUzL8Eyrwbk0gd4OYEdw8efQiH5bMFN_tMjtxHKSsVaOfZDbcj4_1WHlvHWe8T7_tOPmhoGbC5NKEG.; isg=BAMDFcIIbRxMlyHBNzXiDXRrksGteJe6YuQBsTXgX2LZ9CMWvUgnCuFqa4y60O-y\",\"x-wua-code\":\"FF_WUA_EMPTY\",\"wl-proxy-client-ip\":\"183.221.16.31\",\"x5-ext-info\":\"{\\\"bx-flowtype\\\":\\\"PCWeb\\\",\\\"p-flowtype\\\":\\\"ajax\\\"}\",\"x5-ext-trans\":\"{\\\"bx-flowtype\\\":\\\"PCWeb\\\",\\\"p-flowtype\\\":\\\"ajax\\\"}\",\"x-wua-result\":\"{\\\"s\\\":\\\"FF_WUA_EMPTY\\\",\\\"b\\\":\\\"\\\",\\\"v\\\":\\\"\\\",\\\"g\\\":0,\\\"e\\\":\\\"\\\",\\\"d\\\":\\\"\\\",\\\"h\\\":\\\"\\\"}\",\"x-forwarded-for\":\"183.221.16.31\",\"priority\":\"u=1, i\",\"x-chat-id\":\"a23acaad6613420c855a263e00035de8\",\"eagleeye-traceid\":\"213e037c17861544119905759e0ae8\",\"accept\":\"*/*\",\"x-real-ip\":\"183.221.16.31\",\"sec-ch-ua\":\"\\\"Not;A=Brand\\\";v=\\\"8\\\", \\\"Chromium\\\";v=\\\"150\\\"\",\"x-accesslayer-ip\":\"33.62.3.124\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\",\"x-sinfo\":\"on\",\"x-request-from\":\"aserver\",\"x-scheme\":\"https\",\"eagleeye-rpcid\":\"0.1\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"user-agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36\",\"sec-fetch-dest\":\"empty\"},\"queryParam\":{\"biz_id\":[\"ai_qwen\"],\"pr\":[\"qwen\"],\"ut\":[\"00000000-0000-4000-8000-000000000000\"],\"session_id\":[\"68fec75828dd4923be7c33d6e60c85c6\"],\"page_size\":[\"100\"],\"page\":[\"1\"]}},\"extra\":{\"hid\":\"a23acaad6613420c855a263e00035de8\",\"renderType\":\"sc\",\"device\":\"mobile\",\"envType\":\"prod\",\"_renderServerEnvType\":\"prod\"},\"renderConfig\":{\"quarkUi\":false,\"reactDom\":false,\"react\":false,\"isBizCssInline\":true}}},\"RequestedIP\":\"33.3.211.77\",\"env\":\"prod\"});\n         </script>"
+                      }
+                    ],
+                    "version": "0.0.7",
+                    "@attributes": {
+                      "sc": "card_images"
+                    },
+                    "lgno": 1
+                  },
+                  "type": "ai_generate_image_list",
+                  "html_meta": {
+                    "cost": 23,
+                    "status": 0
+                  },
+                  "content": {
+                    "resource_infos": [
+                      {
+                        "refer_id": "ref1",
+                        "width": 1280,
+                        "id": "2b1649e8cdeb4d5797d07ab905fba186",
+                        "url": "https://workspace-zb-cdn.qianwen.com/547cc8d577f54cf0b9fa1e2ec47932f7%2Fo%2F1781234867183.png?auth_key=1788749340-0-0-6c8337b6c469c1867c3fb343194d3860",
+                        "height": 720,
+                        "md5": "JH4rupMGq/x8kdhi1nqdeA=="
+                      },
+                      {
+                        "refer_id": "ref2",
+                        "width": 1280,
+                        "id": "1901683ede2e4f6994a9ada9f1fad786",
+                        "url": "https://workspace-zb-cdn.qianwen.com/e4c4a7a28286403fac1109ca3ac0e14b%2Fo%2F1781234867192.png?auth_key=1788747780-0-0-bddd62426b79c09356f8926b4e127781",
+                        "height": 720,
+                        "md5": "RiYJhoW18oFSn3bDIZznJA=="
+                      },
+                      {
+                        "refer_id": "ref3",
+                        "width": 1280,
+                        "id": "baee0b4c11344e91883963806f9bcf9a",
+                        "url": "https://workspace-zb-cdn.qianwen.com/b3254a58f3f64646a01bbf6324e8e058%2Fo%2F1781234867215.webp.jpg?auth_key=1788747180-0-0-be330041eeb57523587185817ae0895b",
+                        "height": 720,
+                        "md5": "WEYbqwIh7sppWxmIkQ9wFA=="
+                      },
+                      {
+                        "refer_id": "ref4",
+                        "width": 1280,
+                        "id": "c17041eb35e7421693e3488905b7a6c6",
+                        "url": "https://workspace-zb-cdn.qianwen.com/e3544b9b91fa47348f34dea8fec25fae%2Fo%2F1781234867291.png?auth_key=1788748740-0-0-6efe4d3180f31d28982510cb5e972ed3",
+                        "height": 720,
+                        "md5": "mXJrP8cwq8wlGCdjMDsI4Q=="
+                      },
+                      {
+                        "refer_id": "ref5",
+                        "width": 1280,
+                        "id": "33d4dc7e0ea7418caa01bb2d21bae69b",
+                        "url": "https://workspace-zb-cdn.qianwen.com/17cce9dcb4244042b986b629ba308567%2Fo%2F1781234867241.png?auth_key=1788748380-0-0-6fb1ee52e1527fcfb9090a7b39293d36",
+                        "height": 720,
+                        "md5": "Iijv65/eCEy8Au4Lpm48Kw=="
+                      },
+                      {
+                        "refer_id": "ref6",
+                        "width": 1280,
+                        "id": "f89880f7912f4dc2a1d37dff8d1a366d",
+                        "url": "https://workspace-zb-cdn.qianwen.com/268d3e98711d4b10aa10957e57c6ae64%2Fo%2F1781234867233.webp.jpg?auth_key=1788750600-0-0-4f2a69a5e7379513c8bbe254220a9fd9",
+                        "height": 720,
+                        "md5": "Eno2E7R2WuvzME5GE91TTA=="
+                      },
+                      {
+                        "refer_id": "ref7",
+                        "width": 1280,
+                        "id": "6030126e7ccd483bb966e9615d7d3ded",
+                        "url": "https://workspace-zb-cdn.qianwen.com/5e550779195043b4895f2f22ba52080c%2Fo%2F1781234867274.png?auth_key=1788747180-0-0-19ca580434d249577b8304bb0194d27a",
+                        "height": 720,
+                        "md5": "62j2UJn7NU9PlrB0plj1RQ=="
+                      },
+                      {
+                        "refer_id": "ref8",
+                        "width": 1280,
+                        "id": "1d951f1b7b1f46149f102bd1d2591d2a",
+                        "url": "https://workspace-zb-cdn.qianwen.com/4da7f9690a384488808b967cf2191fc6%2Fo%2F1781234867220.png?auth_key=1788750180-0-0-1153071bffdfd09ef9eb30d95c155b70",
+                        "height": 720,
+                        "md5": "jIICXfoznXehiHjLCpkqMw=="
+                      },
+                      {
+                        "refer_id": "ref9",
+                        "width": 1280,
+                        "id": "b661c4c9dc1c4171ae6f56b2a933c809",
+                        "url": "https://workspace-zb-cdn.qianwen.com/2d8caa8a027d4640b3edbf71ca8e9c3e%2Fo%2F1781234867245.webp.jpg?auth_key=1788748260-0-0-e756b429887cac4c469f99bff55be65f",
+                        "height": 720,
+                        "md5": "uvR6buVF4pB8QIYZYk5lQw=="
+                      },
+                      {
+                        "refer_id": "ref10",
+                        "width": 1280,
+                        "id": "a81b2629bd0b4ed083b8eb398fa99c82",
+                        "url": "https://workspace-zb-cdn.qianwen.com/5318d647416a4f36897df4fd8c620cfd%2Fo%2F1781234867228.png?auth_key=1788747720-0-0-bb4527670d1a5fd224c8a29653a23584",
+                        "height": 720,
+                        "md5": "E08/a8ZibzKO3awpwPTy5g=="
+                      },
+                      {
+                        "refer_id": "ref11",
+                        "width": 1280,
+                        "id": "3826d6bbc33047dea1e386d5a92eb0b3",
+                        "url": "https://workspace-zb-cdn.qianwen.com/e304b2f4c7a341cebe4156d5725e940c%2Fo%2F1781234867260.png?auth_key=1788748500-0-0-85e2916e9a69f3f6810effe26b750bef",
+                        "height": 720,
+                        "md5": "OXOZVfUN7WIOi0GFWGAVDA=="
+                      },
+                      {
+                        "refer_id": "ref12",
+                        "width": 1280,
+                        "id": "e731343fb4b9411b98b66003b360a2cd",
+                        "url": "https://workspace-zb-cdn.qianwen.com/5c23407fffcd48b8812a3d453f79fbb0%2Fo%2F1781234867203.webp.jpg?auth_key=1788748080-0-0-36553017bb55bca4a6ecf7bbe273c3c1",
+                        "height": 720,
+                        "md5": "C7UszQz95l2cpUD4S7MVrA=="
+                      }
+                    ],
+                    "complete_description": "根据你刚才的要求，视频已经生成好啦！",
+                    "generate_model_name": "",
+                    "task_id": "00d6280443f84b56a2d8edf585d053d9",
+                    "scene": "qwen2_t2i",
+                    "image_num": 4,
+                    "start_time": 1781234857671,
+                    "layout_list": [
+                      {
+                        "image": [
+                          "ref1"
+                        ],
+                        "thumbnail": [
+                          "ref3"
+                        ],
+                        "ref_image_ids": [],
+                        "agent_material_id": "93f30e77de75474c88c5ff06e3cbb544",
+                        "type": "generate_image",
+                        "watermark_image": [
+                          "ref2"
+                        ],
+                        "resource_fields": [
+                          "image",
+                          "watermark_image",
+                          "thumbnail"
+                        ]
+                      },
+                      {
+                        "image": [
+                          "ref4"
+                        ],
+                        "thumbnail": [
+                          "ref6"
+                        ],
+                        "ref_image_ids": [],
+                        "agent_material_id": "37a5fd5be99148aeb5ea5db48e57b97b",
+                        "type": "generate_image",
+                        "watermark_image": [
+                          "ref5"
+                        ],
+                        "resource_fields": [
+                          "image",
+                          "watermark_image",
+                          "thumbnail"
+                        ]
+                      },
+                      {
+                        "image": [
+                          "ref7"
+                        ],
+                        "thumbnail": [
+                          "ref9"
+                        ],
+                        "ref_image_ids": [],
+                        "agent_material_id": "fe9f661d9e0c4f42b1b0b33116cd72bc",
+                        "type": "generate_image",
+                        "watermark_image": [
+                          "ref8"
+                        ],
+                        "resource_fields": [
+                          "image",
+                          "watermark_image",
+                          "thumbnail"
+                        ]
+                      },
+                      {
+                        "image": [
+                          "ref10"
+                        ],
+                        "thumbnail": [
+                          "ref12"
+                        ],
+                        "ref_image_ids": [],
+                        "agent_material_id": "eb9193ccbfee430d8f5d0c52c58b9be0",
+                        "type": "generate_image",
+                        "watermark_image": [
+                          "ref11"
+                        ],
+                        "resource_fields": [
+                          "image",
+                          "watermark_image",
+                          "thumbnail"
+                        ]
+                      }
+                    ],
+                    "extra_info": {
+                      "disable_publish": 0,
+                      "offset": 1781234857671,
+                      "type": "TEXT_TO_IMG",
+                      "content": {
+                        "gmt_create": 1781234857671,
+                        "disable_publish": 0,
+                        "record_id": "00d6280443f84b56a2d8edf585d053d9",
+                        "user_tags": [
+                          "normal"
+                        ],
+                        "estimated_completion_time": "2026-06-12T11:27:46.094+0800",
+                        "num": 4,
+                        "extra": {
+                          "is_cameo": false,
+                          "can_reedit": true,
+                          "query": "生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/",
+                          "root_model": "qwen2",
+                          "params": {
+                            "features": [
+                              "qwen_image_2"
+                            ],
+                            "attachments": [],
+                            "size": "16:9",
+                            "source_cameo_profiles": []
+                          },
+                          "seen": true,
+                          "scene": "qwen2_t2i",
+                          "bgm_audios": [],
+                          "req_id": "a23acaad6613420c855a263e00035de8",
+                          "model_name": "Qwen-Image 2.0",
+                          "origin_query": "参考这个 https://getdesign.md/ 帮我生成关于我的站点acgogogo.comd的一张相同风格的首页设计图",
+                          "result_images": [
+                            {
+                              "thumbnail_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-081c277ee825435296ec488ecc119537.png?auth_key=1782530866-0-0-893d5a47b73d555531f32c31b92a9fe5&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800",
+                              "i2iIntent": "无",
+                              "url": "http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864790-081c277ee825435296ec488ecc119537.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=O9gMl6%2FR%2BpsLhSqiekZtX4ZNwcA%3D",
+                              "is_multi_intent": false,
+                              "ref_image_ids": [],
+                              "cdn_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-081c277ee825435296ec488ecc119537.png?auth_key=1782530866-0-0-893d5a47b73d555531f32c31b92a9fe5",
+                              "preview_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-081c277ee825435296ec488ecc119537.png?auth_key=1782530866-0-0-893d5a47b73d555531f32c31b92a9fe5&x-oss-process=image%2Fformat%2Cwebp",
+                              "width": 1280,
+                              "download_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864989-9bc2d2d921e041998ce0ba2dcfd0cc9c.png?auth_key=1782530866-0-0-47be8636f4b0516a908166732e1ff523",
+                              "material_id": "93f30e77de75474c88c5ff06e3cbb544",
+                              "prompt": "生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/",
+                              "height": 720,
+                              "ratio": "16:9"
+                            },
+                            {
+                              "thumbnail_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?auth_key=1782530866-0-0-1bc0ab981f535f7c2f00ee94cfb330e4&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800",
+                              "i2iIntent": "无",
+                              "url": "http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=PfErf%2B4GbMef2cHHGFhxv2s01Ys%3D",
+                              "is_multi_intent": false,
+                              "ref_image_ids": [],
+                              "cdn_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?auth_key=1782530866-0-0-1bc0ab981f535f7c2f00ee94cfb330e4",
+                              "preview_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864788-6d75f9f3065441989acf7e65f12b5c81.png?auth_key=1782530866-0-0-1bc0ab981f535f7c2f00ee94cfb330e4&x-oss-process=image%2Fformat%2Cwebp",
+                              "width": 1280,
+                              "download_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234865029-f2cd6aa203cc47788c4420ce6a211f6d.png?auth_key=1782530866-0-0-374aefed71f7f18d3d47f088a303525b",
+                              "material_id": "37a5fd5be99148aeb5ea5db48e57b97b",
+                              "prompt": "生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/",
+                              "height": 720,
+                              "ratio": "16:9"
+                            },
+                            {
+                              "thumbnail_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?auth_key=1782530866-0-0-3175cb5cfc172288c7c29f8fca0a7c29&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800",
+                              "i2iIntent": "无",
+                              "url": "http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=LV5%2FvpgwzG4JWDaqd27hID9VyBw%3D",
+                              "is_multi_intent": false,
+                              "ref_image_ids": [],
+                              "cdn_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?auth_key=1782530866-0-0-3175cb5cfc172288c7c29f8fca0a7c29",
+                              "preview_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864790-ec6b444cafd140a2a84d471f31c6c712.png?auth_key=1782530866-0-0-3175cb5cfc172288c7c29f8fca0a7c29&x-oss-process=image%2Fformat%2Cwebp",
+                              "width": 1280,
+                              "download_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864981-c4060b0df3094d96a236682ac84a3581.png?auth_key=1782530866-0-0-2544124ee7d0d8b3578bd9b5f2bfcb6a",
+                              "material_id": "fe9f661d9e0c4f42b1b0b33116cd72bc",
+                              "prompt": "生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/",
+                              "height": 720,
+                              "ratio": "16:9"
+                            },
+                            {
+                              "thumbnail_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864783-b0b5de903fac45d99625514eb7715e9f.png?auth_key=1782530866-0-0-acd7369c4564d584fc3a4c845294180a&x-oss-process=image%2Fformat%2Cwebp%2Fresize%2Cs_800",
+                              "i2iIntent": "无",
+                              "url": "http://ai-studio-resource.cn-zhangjiakou.oss.aliyuncs.com/d/qwen/6a21eec991a4a873c62d16609940be6a/1781234864783-b0b5de903fac45d99625514eb7715e9f.png?Expires=1782530866&OSSAccessKeyId=LTAI5tB1ULAmj55yDBf6XJ9T&Signature=aohs8mUicpKz%2FYtQvQe3oRjhU2c%3D",
+                              "is_multi_intent": false,
+                              "ref_image_ids": [],
+                              "cdn_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864783-b0b5de903fac45d99625514eb7715e9f.png?auth_key=1782530866-0-0-acd7369c4564d584fc3a4c845294180a",
+                              "preview_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864783-b0b5de903fac45d99625514eb7715e9f.png?auth_key=1782530866-0-0-acd7369c4564d584fc3a4c845294180a&x-oss-process=image%2Fformat%2Cwebp",
+                              "width": 1280,
+                              "download_url": "https://quark-aistudio-cdn.quark.cn/d%2Fqwen%2F6a21eec991a4a873c62d16609940be6a%2F1781234864973-741ecc3693e14007a1a7002263be1acc.png?auth_key=1782530866-0-0-73a333905f78e42d5a1fc1a0aa0262ed",
+                              "material_id": "eb9193ccbfee430d8f5d0c52c58b9be0",
+                              "prompt": "生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/",
+                              "height": 720,
+                              "ratio": "16:9"
+                            }
+                          ],
+                          "model": "qwen2"
+                        },
+                        "task_id": "0d8e6d3d2b9b4add8fa3e4cbde101ea1",
+                        "title": "生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/",
+                        "gmt_modified": 1781234866094,
+                        "seen": true,
+                        "status": 1
+                      }
+                    },
+                    "retry_description": "请再帮我生成一次",
+                    "display_list": [
+                      {
+                        "image": [
+                          {
+                            "width": 1280,
+                            "id": "2b1649e8cdeb4d5797d07ab905fba186",
+                            "url": "https://workspace-zb-cdn.qianwen.com/547cc8d577f54cf0b9fa1e2ec47932f7%2Fo%2F1781234867183.png?auth_key=1788749340-0-0-6c8337b6c469c1867c3fb343194d3860",
+                            "height": 720
+                          }
+                        ],
+                        "thumbnail": [
+                          {
+                            "width": 1280,
+                            "id": "baee0b4c11344e91883963806f9bcf9a",
+                            "url": "https://workspace-zb-cdn.qianwen.com/b3254a58f3f64646a01bbf6324e8e058%2Fo%2F1781234867215.webp.jpg?auth_key=1788747180-0-0-be330041eeb57523587185817ae0895b",
+                            "height": 720
+                          }
+                        ],
+                        "ref_image_ids": [],
+                        "agent_material_id": "93f30e77de75474c88c5ff06e3cbb544",
+                        "type": "generate_image",
+                        "watermark_image": [
+                          {
+                            "width": 1280,
+                            "id": "1901683ede2e4f6994a9ada9f1fad786",
+                            "url": "https://workspace-zb-cdn.qianwen.com/e4c4a7a28286403fac1109ca3ac0e14b%2Fo%2F1781234867192.png?auth_key=1788747780-0-0-bddd62426b79c09356f8926b4e127781",
+                            "height": 720
+                          }
+                        ],
+                        "resource_fields": [
+                          "image",
+                          "watermark_image",
+                          "thumbnail"
+                        ]
+                      },
+                      {
+                        "image": [
+                          {
+                            "width": 1280,
+                            "id": "c17041eb35e7421693e3488905b7a6c6",
+                            "url": "https://workspace-zb-cdn.qianwen.com/e3544b9b91fa47348f34dea8fec25fae%2Fo%2F1781234867291.png?auth_key=1788748740-0-0-6efe4d3180f31d28982510cb5e972ed3",
+                            "height": 720
+                          }
+                        ],
+                        "thumbnail": [
+                          {
+                            "width": 1280,
+                            "id": "f89880f7912f4dc2a1d37dff8d1a366d",
+                            "url": "https://workspace-zb-cdn.qianwen.com/268d3e98711d4b10aa10957e57c6ae64%2Fo%2F1781234867233.webp.jpg?auth_key=1788750600-0-0-4f2a69a5e7379513c8bbe254220a9fd9",
+                            "height": 720
+                          }
+                        ],
+                        "ref_image_ids": [],
+                        "agent_material_id": "37a5fd5be99148aeb5ea5db48e57b97b",
+                        "type": "generate_image",
+                        "watermark_image": [
+                          {
+                            "width": 1280,
+                            "id": "33d4dc7e0ea7418caa01bb2d21bae69b",
+                            "url": "https://workspace-zb-cdn.qianwen.com/17cce9dcb4244042b986b629ba308567%2Fo%2F1781234867241.png?auth_key=1788748380-0-0-6fb1ee52e1527fcfb9090a7b39293d36",
+                            "height": 720
+                          }
+                        ],
+                        "resource_fields": [
+                          "image",
+                          "watermark_image",
+                          "thumbnail"
+                        ]
+                      },
+                      {
+                        "image": [
+                          {
+                            "width": 1280,
+                            "id": "6030126e7ccd483bb966e9615d7d3ded",
+                            "url": "https://workspace-zb-cdn.qianwen.com/5e550779195043b4895f2f22ba52080c%2Fo%2F1781234867274.png?auth_key=1788747180-0-0-19ca580434d249577b8304bb0194d27a",
+                            "height": 720
+                          }
+                        ],
+                        "thumbnail": [
+                          {
+                            "width": 1280,
+                            "id": "b661c4c9dc1c4171ae6f56b2a933c809",
+                            "url": "https://workspace-zb-cdn.qianwen.com/2d8caa8a027d4640b3edbf71ca8e9c3e%2Fo%2F1781234867245.webp.jpg?auth_key=1788748260-0-0-e756b429887cac4c469f99bff55be65f",
+                            "height": 720
+                          }
+                        ],
+                        "ref_image_ids": [],
+                        "agent_material_id": "fe9f661d9e0c4f42b1b0b33116cd72bc",
+                        "type": "generate_image",
+                        "watermark_image": [
+                          {
+                            "width": 1280,
+                            "id": "1d951f1b7b1f46149f102bd1d2591d2a",
+                            "url": "https://workspace-zb-cdn.qianwen.com/4da7f9690a384488808b967cf2191fc6%2Fo%2F1781234867220.png?auth_key=1788750180-0-0-1153071bffdfd09ef9eb30d95c155b70",
+                            "height": 720
+                          }
+                        ],
+                        "resource_fields": [
+                          "image",
+                          "watermark_image",
+                          "thumbnail"
+                        ]
+                      },
+                      {
+                        "image": [
+                          {
+                            "width": 1280,
+                            "id": "a81b2629bd0b4ed083b8eb398fa99c82",
+                            "url": "https://workspace-zb-cdn.qianwen.com/5318d647416a4f36897df4fd8c620cfd%2Fo%2F1781234867228.png?auth_key=1788747720-0-0-bb4527670d1a5fd224c8a29653a23584",
+                            "height": 720
+                          }
+                        ],
+                        "thumbnail": [
+                          {
+                            "width": 1280,
+                            "id": "e731343fb4b9411b98b66003b360a2cd",
+                            "url": "https://workspace-zb-cdn.qianwen.com/5c23407fffcd48b8812a3d453f79fbb0%2Fo%2F1781234867203.webp.jpg?auth_key=1788748080-0-0-36553017bb55bca4a6ecf7bbe273c3c1",
+                            "height": 720
+                          }
+                        ],
+                        "ref_image_ids": [],
+                        "agent_material_id": "eb9193ccbfee430d8f5d0c52c58b9be0",
+                        "type": "generate_image",
+                        "watermark_image": [
+                          {
+                            "width": 1280,
+                            "id": "3826d6bbc33047dea1e386d5a92eb0b3",
+                            "url": "https://workspace-zb-cdn.qianwen.com/e304b2f4c7a341cebe4156d5725e940c%2Fo%2F1781234867260.png?auth_key=1788748500-0-0-85e2916e9a69f3f6810effe26b750bef",
+                            "height": 720
+                          }
+                        ],
+                        "resource_fields": [
+                          "image",
+                          "watermark_image",
+                          "thumbnail"
+                        ]
+                      }
+                    ],
+                    "prompt": "生成关于站点acgogogo.comd的首页设计图，风格参考https://getdesign.md/",
+                    "status": "complete",
+                    "ratio": "16:9",
+                    "estimated_time": 1781234866094
+                  },
+                  "source_seq": "ai_generate_image_list_1"
+                }
+              ],
+              "ext_info": {
+                "model_extra": {
+                  "video_seed": 952062617,
+                  "is_new_generate": true,
+                  "topic_id": "37270a88-5bba-464f-a0dc-a1c17d1e7129",
+                  "strategy": "",
+                  "is_multi_edit_intent": false
+                }
+              }
+            }
+          },
+          {
+            "content": "",
+            "mime_type": "paa/iframe",
+            "status": "complete",
+            "meta_data": {
+              "paas": [
+                {
+                  "schema": "",
+                  "show_text": "背景换成深蓝色科技感网格",
+                  "item_id": "",
+                  "paa_pass_through": "{\"is_paa\": true}",
+                  "ai_tool_scene": "",
+                  "query_type": "",
+                  "source": "",
+                  "click_action": "ONLY_TEXT",
+                  "show_type": "TEXT",
+                  "paa_query": "背景换成深蓝色科技感网格",
+                  "send_text": "",
+                  "show_img": "",
+                  "attachment": []
+                },
+                {
+                  "schema": "",
+                  "show_text": "按钮换成亮红色",
+                  "item_id": "",
+                  "paa_pass_through": "{\"is_paa\": true}",
+                  "ai_tool_scene": "",
+                  "query_type": "",
+                  "source": "",
+                  "click_action": "ONLY_TEXT",
+                  "show_type": "TEXT",
+                  "paa_query": "按钮换成亮红色",
+                  "send_text": "",
+                  "show_img": "",
+                  "attachment": []
+                },
+                {
+                  "schema": "",
+                  "show_text": "帮我再生成几张",
+                  "item_id": "",
+                  "paa_pass_through": "{\"is_paa\": true}",
+                  "ai_tool_scene": "",
+                  "query_type": "",
+                  "source": "",
+                  "click_action": "ONLY_TEXT",
+                  "show_type": "TEXT",
+                  "paa_query": "帮我再生成几张",
+                  "send_text": "",
+                  "show_img": "",
+                  "attachment": []
+                }
+              ],
+              "image_result_paas": []
+            }
+          }
+        ],
+        "extra_info": {
+          "intent_content": "",
+          "model_extra": {
+            "video_seed": 952062617,
+            "is_new_generate": true,
+            "topic_id": "37270a88-5bba-464f-a0dc-a1c17d1e7129",
+            "strategy": "",
+            "is_multi_edit_intent": false
+          },
+          "intent_scene": "zaodian_image_generate_image",
+          "passthrough_context": "{\"journeyc_trace_id\":\"D45E86F7C5A98B2515A9B1E6355470B6\",\"journeyc_span_id\":\"0F585761C09AB761\",\"chat_intent_info\":\"{\\\"agent_info\\\":{\\\"agent\\\":\\\"AIZaoDianAgent\\\",\\\"image_request\\\":\\\"0\\\",\\\"hit_vlm\\\":false,\\\"intent_request\\\":\\\"0\\\",\\\"scene\\\":\\\"zaodian_image_generate_image\\\",\\\"sub_scene\\\":\\\"\\\"},\\\"agentic_intent\\\":{},\\\"banner_intent\\\":{\\\"need_trigger\\\":false},\\\"confidence_intent\\\":{\\\"document\\\":false,\\\"topic\\\":false},\\\"ef_intent\\\":{},\\\"explicit_intent\\\":{\\\"explicit_memory\\\":false},\\\"intentResults\\\":{},\\\"rag_intent\\\":{},\\\"task_intent\\\":{},\\\"txt_intent\\\":{},\\\"uvl_intent\\\":{},\\\"vl_intent\\\":{},\\\"vqa_ext_intent\\\":{},\\\"writer_intent\\\":{}}\"}",
+          "is_async_card": "1",
+          "prod_id": "tongyi",
+          "scene": "zaodian_image_generate_image"
+        },
+        "request_timestamp": 1781234850896,
+        "response_timestamp": 1781234850896,
+        "created_at": 1781234850896,
+        "updated_at": 1781234868518,
+        "create_time": "2026-06-12T03:27:30.896+00:00",
+        "update_time": "2026-06-12T03:27:48.518+00:00",
+        "error_code": 0,
+        "error_msg": "",
+        "pos": "1781234850896",
+        "communication": {
+          "sessionid": "68fec75828dd4923be7c33d6e60c85c6",
+          "resid": "10000000",
+          "reqid": "a23acaad6613420c855a263e00035de8",
+          "run_id": "",
+          "agent_type": "",
+          "disconnection_signal": "1",
+          "is_async_card": "1"
+        },
+        "event": "complete",
+        "refresh": 1,
+        "ai_tool_scene": "zaodian_generate_image",
+        "biz_data": "{\"req\":{\"rootModel\":\"qwen2\",\"prompt\":\"参考这个 https://getdesign.md/ 帮我生成关于我的站点acgogogo.comd的一张相同风格的首页设计图\",\"originPrompt\":\"参考这个 https://getdesign.md/ 帮我生成关于我的站点acgogogo.comd的一张相同风格的首页设计图\",\"params\":{\"size\":\"3:4\",\"features\":[\"qwen_image_2\"]}},\"bizScene\":\"genImage\"}",
+        "topic_id": "lf83l_AuGmrOSjk6Mbn2og0UjvR1xFmy",
+        "header": "{\"bx-umidtoken\":\"T2gAFSO_MzAN69iYPxnGB162JZNDLBInfJhdrnQ_OKcOsXIFdB_x_83P9l4akQwwDlA=\",\"referer\":\"https://www.qianwen.com/?ch=webtongyi@sem_bdsempinzhuan\",\"eo-clt-sacsft\":\"WXhudWUCdGB3fWBfMjJFcG5hUExAAh1fUFReU39GAQIwNjE0MDQwOA==\",\"clt-acs-caer\":\"vrad\",\"x-wpk-traceid\":\"d2dd6da88d544a2d855af93a13174874\",\"x-remote-ip\":\"118.112.118.163\",\"host\":\"chat2.qianwen.com\",\"x-real-port\":\"60323\",\"x-platform\":\"pc_tongyi\",\"ns-client-ip\":\"118.112.118.163\",\"cache-control\":\"max-age=0\",\"clt-acs-sign\":\"j2k0keY9G/B/lAGeiYTFBrxurGtluWHQzi6mS20JmEU=\",\"eo-clt-snver\":\"lv\",\"x-wpk-reqid\":\"a23acaad6613420c855a263e00035de8\",\"bx_et\":\"gzvZQ4AaItYCvquk43Xqakq8GQXOitu7uK_fmnxcfNbgCRaDTnTZXswsXIReoeC1SK-Y3ixDkcQjXXt9XtBmP49qFhKTDsUS9dy0xWxdqSbmO1m6VxPiP4MS3fqh3VuWcF4fa6jA-G2GSGmFxgSlnifcsD7h0gF0SEXmYDSVDZ2cSRf3KgSGnZYcnD-hJiXcjEXmYHbdmfMMjn2FV1m_3on1E5ZGsaxG-EL8vG1iPhNbh-9FbH5PqwSCApSN_a1fXxwyU3xMeiJxqS72cCY1vEkr89vw7dfF3xydC3RH76RZuJ5pt3pcTB3zw3KM7QfkIvoHuexJwOvikR_9iHvcRdmb3aAW29Sph2eGuBADC1BYSVSeQ3J2gg8bkMmXcKdaoS5GvM7SYD8rLSE-aYSb2SFAtTIFPcs_iS4YO-NwhFNYM6bcYai1f\",\"accept-language\":\"en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7\",\"wl-proxy-client-ip\":\"118.112.118.163\",\"x5-ext-info\":\"{\\\"x5-uuid\\\":\\\"05f733c547275c9429e4034279814c6d\\\",\\\"x5-risk-score\\\":0}\",\"x5-ext-trans\":\"{\\\"bx-flowtype\\\":\\\"PCWeb\\\",\\\"p-flowtype\\\":\\\"ajax\\\"}\",\"x-wua-result\":\"{\\\"s\\\":\\\"FF_WUA_EMPTY\\\",\\\"b\\\":\\\"\\\",\\\"v\\\":\\\"\\\",\\\"g\\\":0,\\\"e\\\":\\\"\\\",\\\"d\\\":\\\"\\\",\\\"h\\\":\\\"\\\"}\",\"x-forwarded-for\":\"118.112.118.163\",\"priority\":\"u=1, i\",\"eagleeye-traceid\":\"213e080217812348508538782e09d5\",\"accept\":\"application/json, text/event-stream, text/plain, */*\",\"eo-clt-dvidn\":\"eCy#AAMh1aLA8dflnjKZ4IzYs0/tQXhvC+uWLthr4vUNRwkjOCKbMxx82DdMGVxH0R/V7lk=\",\"eo-clt-acs-ve\":\"1.0.0\",\"eo-clt-actkn\":\"Epo5lu2MKNrnZjqrfiu+egQPz5GKg8E/kf6oNXCS4BVAKViXWfzv4+ifbheIp74+Z6B0YYyS8SEnk8RQa9yMOA3ef+zgS55rXEbaUIGZRf/kEj8Dcr2pGVOPfNCijO2rPbmfVhVqOE7iBhvU7ewboc4CqUZ82xB2rZnq4LvNrJRfOM9ZF56TxsO2NFzzdQM1\",\"x-accesslayer-ip\":\"33.62.8.2\",\"x-sinfo\":\"on\",\"x-request-from\":\"aserver\",\"eagleeye-rpcid\":\"0.1\",\"content-length\":\"1155\",\"x-device-id\":\"25681b47-9bcb-9372-d55d-767a0b46f467\",\"sec-fetch-site\":\"same-site\",\"x5-uuid\":\"05f733c547275c9429e4034279814c6d\",\"x-client-http2\":\"h2\",\"origin\":\"https://www.qianwen.com\",\"x-wpk-bid\":\"66ur41cs-cntu1744\",\"sec-ch-ua-mobile\":\"?0\",\"x-forwarded-host\":\"chat2.qianwen.com\",\"x-client-scheme\":\"https\",\"content-type\":\"application/json\",\"x-chat-biz\":\"{\\\"chatId\\\":\\\"a23acaad6613420c855a263e00035de8\\\",\\\"agentId\\\":\\\"\\\",\\\"enableWebp\\\":\\\"\\\"}\",\"clt-acs-bfg\":\"d5vWAti7G4bIXS6eXzPEfGyZs7f79NP6qHFuCYRWFgI=\",\"sec-fetch-mode\":\"cors\",\"web-server-type\":\"tengine-ingress\",\"proxy-x-forwarded-for\":\"118.112.118.163\",\"x-real-scheme\":\"https\",\"x-forwarded-proto\":\"https\",\"x-wua-code\":\"FF_WUA_EMPTY\",\"eo-clt-acs-kp\":\"\",\"x-chat-id\":\"a23acaad6613420c855a263e00035de8\",\"x-wpk-rel\":\"\",\"x-real-ip\":\"118.112.118.163\",\"clt-acs-reqt\":\"1781234850709\",\"sec-ch-ua\":\"\\\"Chromium\\\";v=\\\"148\\\", \\\"Google Chrome\\\";v=\\\"148\\\", \\\"Not/A)Brand\\\";v=\\\"99\\\"\",\"sec-ch-ua-platform\":\"\\\"macOS\\\"\",\"x-csrf-token\":\"\",\"x-scheme\":\"https\",\"clt-acs-request-params\":\"biz_id,fe_version,chat_client,device,fr,pr,ut,la,tz,wv,ve,nonce,timestamp\",\"accept-encoding\":\"gzip, deflate, br, zstd\",\"bx-ua\":\"231!vG332kmUalp+jmLA5A3am9/jUq/YvqY2leOxacSC80vTPuB9lMZY9mRWFzrwLEf5DhTCvoHQEdpTOeqqY9zXGGKPgbJd9T23CAE1TGx+knJsWnOHOCtXqHsj1XE9NkU6OFLMXtH/QotD9tdQhToojSbD5/WyE6VdNjyxtRR+36WKXaImRiVLTYzjJOOdrM2RizNzorKNzOo+3kob0Q/oyE+jauHhUCOyi1WGHkE+++3+qCS4+ItZq46bO8sCo+4jAuQ7az6Ix2Iw5ODlORe3VsMRzFMTgLSoMyVWHHXFjVtVO04q/nATbIT4vkKmdg40Ux7Dt/LIs9S8Ps5bJ0FqFMRi2sFhMu/oY34Dbq1cnM5iwoT5iTTTW31EKpAvWGil/k33n8UBmDS6Q45IK+NztSZMLZyjZyS8LxUZiO14nRBN0CvgTzj8RCbg937uo08t5okSNKkBhuCTeAu0xiW6Zb5YQGJqukD50oTiOZx2wXPL2GeNK6L6ANKfBgElsgRdxask9NB9pICalBwhJUHu6HGEpZEuWWIQb01PtvCk5WIdHGnCOjxkOHW8ecYIDxMEwajseULEPXvtDrWDLGgXWvUHMyOq4ErebquIgcDRKg0BBzep6V+Edz4yyY4a0abkzIQSt0I3KNsjcdZDe9oKoSTftdsUh8feByQi727Oqo5RLiu88nBJbgv3/W1hSXmX3+h5jPBHRV05PfmPzh5A16KFXAlLv1XtgWCAFOFQP1IouuWj/jjkskX+qBg+tto+UVhow0ZcrzrNP1uizKFjSrJXXFkkRhopTc4f5hwcs/huoJOGCUpURGM1XGoIU+FgWiapSsF4OP5f7A8wzFtdjl0SAcaFBxeDd2zAiYt9m5bzLPsMfy4jkGXJGUkllvDBsXEryozioIuBNeZg5BrViPcNQ8CkHN7dWA1fNWs5PG9UtPabnoVG8zY+6SnAkacXCKBNQ4AjrRAIVaazLkIli3rpGoyz5FhAbeGWZTaE3mkWjOxOHPhcoh6DbU2WvhUopZnBuikfuOwNMJ0hBmhMXdi3lWmkI0eGukgT+66h6GDHsKfD570QTp6NhKZpqNXF+4F5LcUzOz5xzjPn6L25hlLmUbYq3IpAIuppBcnIAWzTEQQfeFOAz9tYzKdRO1h/gKN+fD9bsrMDJMJtf7RZO6pB95dv/T3DRzwxMbL3a/MvOZ23PP1bUTLNZaRY9r/vxl5ZRH+ZGptJIeK2J+LhUohlSfS+vglYeO+tD8xx7IwVU39CiGmPxeM6G/X7cjiPNHcoFNzU9rwmne8tP2zjZAlVkOeDZx4BAG9d7oQGqGYlkjnB+eVO219IUJuI73DBlNT5nahGf0XhLjlQA49gUQoPJkIaxjq5V7yaiU7ItwvG/KGIDQkp1fwXiIHyQlY5gzE7xwo+shu5FJVefDB4160o9tXcg/mZVX7O/qVpG+e58NbLruSEfhf0GqAhaPg2xq4L4+g1gj7jTyEk+X/xbQVDbTFW1Z8CXAvPMIoXE89YIbwtYpFWHhWQlN4WnRqZfjZ59KrW6bh6Q1/zQS3fEk7zYGPM84NuBkD1cqPFM1Mik4==\",\"user-agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"sec-fetch-dest\":\"empty\"}",
+        "model_name": "Qwen",
+        "deep_search": "0",
+        "message_extra": "{\"outputAnswerParam\":{\"outputChannel\":\"quark\"}}"
+      }
+    ]
+  },
+  "success": true,
+  "httpCode": 200
+}

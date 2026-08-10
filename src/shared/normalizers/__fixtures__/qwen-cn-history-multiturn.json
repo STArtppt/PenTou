@@ -1,0 +1,111 @@
+{
+  "trace_id": "213e037c17861544121575778e0ae8",
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "have_next_page": false,
+    "list": [
+      {
+        "user_type": 0,
+        "session_id": "ba8628bc23dd47aea4c06af3c69032a8",
+        "req_id": "5b1f21baa5944cc887f47e96699de017",
+        "request_messages": [
+          {
+            "content": "田朴珺简历介绍",
+            "mime_type": "text/plain",
+            "meta_data": {
+              "ori_query": "田朴珺简历介绍"
+            }
+          }
+        ],
+        "response_messages": [
+          {
+            "mime_type": "signal/post",
+            "status": "complete"
+          },
+          {
+            "content": "田朴珺是中国的一位知名公众人物，她有着多重身份，包括但不限于演员、制片人、作家等。以下是她的简要介绍：\n\n- 田朴珺出生于1981年，籍贯上海。\n- 她曾就读于中央戏剧学院表演系，之后进入演艺圈发展。\n- 在演艺事业方面，她出演过一些电视剧和电影作品，例如《甄嬛传》等。\n- 除了演艺事业外，田朴珺还涉足房地产开发，并且在商业上有所成就。\n- 同时，她也是一名作家，出版过多本著作，如《习惯决定未来》等书籍。\n- 她还是一个纪录片的制片人，制作了《谢谢你》系列纪录片。\n- 田朴珺与万科集团的创始人王石的关系也广受媒体关注，两人于2012年前后公开恋情，并最终结为夫妇。\n\n以上信息基于公开资料整理，具体情况可能会有变动或更新。如果你需要更详细的资料或者最新的动态，建议查阅最新的新闻报道或官方发布的信息。",
+            "mime_type": "multi_load/iframe",
+            "status": "complete"
+          }
+        ],
+        "extra_info": {},
+        "request_timestamp": 1725373861380,
+        "response_timestamp": 1725373861380,
+        "created_at": 1725373861380,
+        "updated_at": 1725373861380,
+        "create_time": "2024-09-03T14:31:01.380+00:00",
+        "update_time": "2024-09-03T14:31:01.380+00:00",
+        "error_code": 0,
+        "error_msg": "",
+        "pos": "1725373861380",
+        "communication": {},
+        "event": "complete",
+        "message_extra": "{\"outputAnswerParam\":{\"searchProb\":\"possible\",\"showDepthSearchButton\":true}}"
+      },
+      {
+        "user_type": 0,
+        "session_id": "ba8628bc23dd47aea4c06af3c69032a8",
+        "req_id": "dee5a9b3d2f1408c9970cf8533b62107",
+        "request_messages": [
+          {
+            "content": "王石的老婆是谁",
+            "mime_type": "text/plain",
+            "meta_data": {
+              "ori_query": "王石的老婆是谁"
+            }
+          }
+        ],
+        "response_messages": [
+          {
+            "mime_type": "signal/post",
+            "status": "complete"
+          },
+          {
+            "content": "王石的妻子是田朴珺。田朴珺是一位多领域发展的公众人物，她不仅涉足影视行业，还是一位作家和制片人。她在与王石的关系中也受到了不少媒体的关注。两人之间的关系曾经是坊间热议的话题之一。",
+            "mime_type": "multi_load/iframe",
+            "status": "complete"
+          }
+        ],
+        "extra_info": {},
+        "request_timestamp": 1725373817165,
+        "response_timestamp": 1725373817165,
+        "created_at": 1725373817165,
+        "updated_at": 1725373817165,
+        "create_time": "2024-09-03T14:30:17.165+00:00",
+        "update_time": "2024-09-03T14:30:17.165+00:00",
+        "error_code": 0,
+        "error_msg": "",
+        "pos": "1725373817165",
+        "communication": {},
+        "event": "complete",
+        "message_extra": "{\"outputAnswerParam\":{\"searchProb\":\"possible\",\"showDepthSearchButton\":true}}"
+      },
+      {
+        "user_type": 0,
+        "session_id": "ba8628bc23dd47aea4c06af3c69032a8",
+        "req_id": "e5d2667a69304c29bfbecb079fca2d43",
+        "request_messages": [
+          {
+            "content": "王石多大了",
+            "mime_type": "text/plain",
+            "meta_data": {
+              "ori_query": "王石多大了"
+            }
+          }
+        ],
+        "request_timestamp": 1725373793610,
+        "response_timestamp": 1725373793610,
+        "created_at": 1725373793610,
+        "updated_at": 1725373793610,
+        "create_time": "2024-09-03T14:29:53.610+00:00",
+        "update_time": "2024-09-03T14:29:53.610+00:00",
+        "pos": "1725373793610",
+        "event": "complete",
+        "message_extra": "{\"outputAnswerParam\":{\"searchProb\":\"certain\",\"showDepthSearchButton\":true}}"
+      }
+    ]
+  },
+  "success": true,
+  "httpCode": 200
+}

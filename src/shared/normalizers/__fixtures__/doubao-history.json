@@ -1,0 +1,544 @@
+{
+  "cmd": 3100,
+  "sequence_id": "",
+  "downlink_body": {
+    "pull_singe_chain_downlink_body": {
+      "messages": [
+        {
+          "conversation_id": "38435082212974338",
+          "message_id": "50305406917167874",
+          "message_body_version": "1",
+          "sender_id": "<REDACTED_UID>",
+          "user_type": 2,
+          "status": 0,
+          "content_type": 9999,
+          "content": "",
+          "content_status": 0,
+          "index_in_conv": "12",
+          "create_time": "1784258229",
+          "sec_sender": "<REDACTED_SEC_UID>",
+          "thinking_content": "",
+          "content_block": [
+            {
+              "block_type": 10000,
+              "block_id": "40160067940579330",
+              "parent_id": "",
+              "content": {
+                "text_block": {
+                  "text": "\n我会把它做成“能代表 startist 的单字母符号”：保留圆形、黑色、极简科技感，但让 S 本身承担识别核心。\n\n",
+                  "icon_url": "",
+                  "icon_url_dark": "",
+                  "summary": ""
+                },
+                "pc_event_block": ""
+              },
+              "meta_info": [],
+              "is_finish": true,
+              "append_fields": []
+            },
+            {
+              "block_type": 2074,
+              "block_id": "40160067941619970",
+              "parent_id": "",
+              "content": {
+                "creation_block": {
+                  "creations": [
+                    {
+                      "type": 1,
+                      "id": "40160067941620226",
+                      "gen_detail": {
+                        "task_type": 1,
+                        "ref_images": []
+                      },
+                      "can_publish": true,
+                      "image": {
+                        "key": "tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg",
+                        "image_thumb": {
+                          "url": "https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-downsize_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=ze9JSHQCNjslNj7MoSgsZCmaies%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=bMfO4jtRd2CAqiCc9TfCFOc7St0%3D"
+                          }
+                        },
+                        "image_ori": {
+                          "url": "https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_dld_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=nB99Fh%2FA3MDARU%2FMI4BK4w69sy4%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {}
+                        },
+                        "image_preview": {
+                          "url": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=bMfO4jtRd2CAqiCc9TfCFOc7St0%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=vdvhAD8GyKZtJ%2BoBA5n4oaOKaec%3D"
+                          }
+                        },
+                        "image_ori_raw": {
+                          "url": "https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_raw.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=NyLuWAtzPVyl4ODql1PU7bb6zTs%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {}
+                        },
+                        "image_preview_resize": {
+                          "url": "https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=2V8Im4PdZzqYur%2F1rsVRMZqZCt0%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.heic?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=X0Y7HXCMhLGyM%2B7CYozMn4AlGd4%3D"
+                          }
+                        },
+                        "status": 2,
+                        "placeholder": {
+                          "width": 2048,
+                          "height": 2048
+                        },
+                        "tips": "",
+                        "request_id": "5c7322cfdb32b29ed09f1ee1fa97ff03de917b86eb25b2cc168d20610006a14d",
+                        "image_thumb_formats": {},
+                        "image_thumb_ori_formats": {},
+                        "gen_params": {
+                          "prompt": "黑色极简现代单字母标志设计图，白色纯净背景，圆形徽章结构，中心为黑色大写字母“S”，字形采用几何无衬线风格，曲线饱满但克制，粗细均衡，完整圆形细线外框包裹字母，整体留白充足，平面矢量风格，科技感、艺术感、清晰、适合小尺寸识别，无阴影，无渐变，无装饰纹理",
+                          "neg_prompt": "",
+                          "ratio": "1:1",
+                          "img_uris": []
+                        }
+                      }
+                    },
+                    {
+                      "type": 1,
+                      "id": "40160067941620482",
+                      "gen_detail": {
+                        "task_type": 1,
+                        "ref_images": []
+                      },
+                      "can_publish": true,
+                      "image": {
+                        "key": "tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg",
+                        "image_thumb": {
+                          "url": "https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-downsize_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=F7wOmbrPCi5k3Plj65%2FibHLDT9c%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=KYiBYZCGaYebs6w40%2FLfJ5veNsc%3D"
+                          }
+                        },
+                        "image_ori": {
+                          "url": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_dld_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=zAkdb0LGARG68Xt5CTHRCC4Fj58%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {}
+                        },
+                        "image_preview": {
+                          "url": "https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=KYiBYZCGaYebs6w40%2FLfJ5veNsc%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=vaa1LKCiNT7ngMblkycc93pbX2U%3D"
+                          }
+                        },
+                        "image_ori_raw": {
+                          "url": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_raw.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=c1g0wzoEDvxZBzFucqVA7tuq7iY%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {}
+                        },
+                        "image_preview_resize": {
+                          "url": "https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=eOXL622RqKWsDy6QWpsHkJsrDiI%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.heic?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=lshoXX53KhHNgxIfL5cDTrCyI7Y%3D"
+                          }
+                        },
+                        "status": 2,
+                        "placeholder": {
+                          "width": 2048,
+                          "height": 2048
+                        },
+                        "tips": "",
+                        "request_id": "36ff9cf411392eeca7a3e6b13c8a9f77e33a2406c5ed98d7a45e1895542b11a0",
+                        "image_thumb_formats": {},
+                        "image_thumb_ori_formats": {},
+                        "gen_params": {
+                          "prompt": "黑色简约科技单字母品牌标志设计图，白色背景，圆形构图，中心为黑色字母“S”，字母经过几何化改造，上下两端略微切角，带轻微数字界面感，圆形外轮廓与字母形成稳定负形空间，平面矢量风格，黑色单色，极简、现代、锐利，无复杂背景，无渐变，无多余元素",
+                          "neg_prompt": "",
+                          "ratio": "1:1",
+                          "img_uris": []
+                        }
+                      }
+                    },
+                    {
+                      "type": 1,
+                      "id": "40160067941620738",
+                      "gen_detail": {
+                        "task_type": 1,
+                        "ref_images": []
+                      },
+                      "can_publish": true,
+                      "image": {
+                        "key": "tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg",
+                        "image_thumb": {
+                          "url": "https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-downsize_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=zhToM2I%2BjnntkZeEivpvzd7o1ss%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=dd3vmyIMax4MJzwId%2BYN3yn1MUI%3D"
+                          }
+                        },
+                        "image_ori": {
+                          "url": "https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_dld_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=rbBiBijRyGKTdaVgWfDdyswER9o%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {}
+                        },
+                        "image_preview": {
+                          "url": "https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=IvGuXlxFGs%2BUwDqShEWiDOo5o%2Bc%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=3gxrPO7r7pRsSF10Rrxzzg%2FcZeA%3D"
+                          }
+                        },
+                        "image_ori_raw": {
+                          "url": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_raw.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=9ndA8ngi8rgHtsOxmR07pm73uPE%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {}
+                        },
+                        "image_preview_resize": {
+                          "url": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=RHa5Oz1exYPdLVH%2BXCUrmHxruoI%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.heic?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=SBUrmNFyvyjGufOjvbn5Jx3dWo4%3D"
+                          }
+                        },
+                        "status": 2,
+                        "placeholder": {
+                          "width": 2048,
+                          "height": 2048
+                        },
+                        "tips": "",
+                        "request_id": "92dc66bf739067f702f048de038a94376bc6c8a52c5031e55cf873bc34bb052f",
+                        "image_thumb_formats": {},
+                        "image_thumb_ori_formats": {},
+                        "gen_params": {
+                          "prompt": "黑色艺术感极简单字母标志设计图，白色纯净背景，圆形结构，中心为黑色字母“S”，字形具有流动曲线与精密几何比例，局部线条带轻微韵律变化但保持高度清晰，圆形外框使用细线，整体像抽象轨道与字母结合，平面矢量标志，适合网站图标识别，无阴影，无渐变，无纹理",
+                          "neg_prompt": "",
+                          "ratio": "1:1",
+                          "img_uris": []
+                        }
+                      }
+                    },
+                    {
+                      "type": 1,
+                      "id": "40160067941620994",
+                      "gen_detail": {
+                        "task_type": 1,
+                        "ref_images": []
+                      },
+                      "can_publish": true,
+                      "image": {
+                        "key": "tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg",
+                        "image_thumb": {
+                          "url": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-downsize_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=NoDKTu%2Bcs2jkRRMEc%2BsMkX8KkPQ%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=eownOrkncS8tF%2B41zStF279TYqI%3D"
+                          }
+                        },
+                        "image_ori": {
+                          "url": "https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_dld_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=0H79bqQ4XyNCBt9UqjRxOQvkGJ0%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {}
+                        },
+                        "image_preview": {
+                          "url": "https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=f9ihTdxTndqxJs%2FWZ2mxbQa6Ogo%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=f9ihTdxTndqxJs%2FWZ2mxbQa6Ogo%3D"
+                          }
+                        },
+                        "image_ori_raw": {
+                          "url": "https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_raw.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=Xa48DJ6yMtJWhPbzPy4vnt7me6c%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {}
+                        },
+                        "image_preview_resize": {
+                          "url": "https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=Vs0SBkZaPhRs%2BnkgLbzXQaBxdn4%3D",
+                          "width": 2048,
+                          "height": 2048,
+                          "format": "",
+                          "url_formats": {
+                            "heic": "https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.heic?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=xRpfjA02duGOy2y6HDrdBh%2BE%2BcE%3D"
+                          }
+                        },
+                        "status": 2,
+                        "placeholder": {
+                          "width": 2048,
+                          "height": 2048
+                        },
+                        "tips": "",
+                        "request_id": "c2e7a23a3148e66da969468c43f64fb15ef7bf21b9b9ba488c833993ebea9549",
+                        "image_thumb_formats": {},
+                        "image_thumb_ori_formats": {},
+                        "gen_params": {
+                          "prompt": "黑色现代极简单字母品牌标志设计图，白色背景，圆形构图，中心为黑色字母“S”，字母采用低重心稳健几何字体，左右曲线形成轻微对称呼应，圆形外轮廓完整，内部留白均衡，平面矢量风格，科技感、艺术感、克制，适合小尺寸应用，无渐变，无复杂装饰",
+                          "neg_prompt": "",
+                          "ratio": "1:1",
+                          "img_uris": []
+                        }
+                      }
+                    }
+                  ]
+                },
+                "pc_event_block": ""
+              },
+              "meta_info": [],
+              "is_finish": true,
+              "append_fields": []
+            },
+            {
+              "block_type": 10000,
+              "block_id": "40159532293648130",
+              "parent_id": "",
+              "content": {
+                "text_block": {
+                  "text": "\n已生成 4 个单字母 S 方向。\n\n我更建议优先看 **#1 和 #4**：  \n- **#1** 更稳健，适合正式品牌与网站 ico  \n- **#4** 更有科技品牌感，识别也更集中  \n- **#2** 偏锐利科技，适合偏工具/平台属性  \n- **#3** 更艺术，但小尺寸下细节可能损失\n\n如果你选定一个方向，我可以继续帮你做 **ico 强识别精修版**：加粗 S、减少细线、优化 16×16/32×32 显示效果。",
+                  "icon_url": "",
+                  "icon_url_dark": "",
+                  "summary": ""
+                },
+                "pc_event_block": ""
+              },
+              "meta_info": [],
+              "is_finish": true,
+              "append_fields": []
+            }
+          ],
+          "tts_content": "\n我会把它做成“能代表 startist 的单字母符号”：保留圆形、黑色、极简科技感，但让 S 本身承担识别核心。\n\n\n已生成 4 个单字母 S 方向。\n\n我更建议优先看 **#1 和 #4**：  \n- **#1** 更稳健，适合正式品牌与网站 ico  \n- **#4** 更有科技品牌感，识别也更集中  \n- **#2** 偏锐利科技，适合偏工具/平台属性  \n- **#3** 更艺术，但小尺寸下细节可能损失\n\n如果你选定一个方向，我可以继续帮你做 **ico 强识别精修版**：加粗 S、减少细线、优化 16×16/32×32 显示效果。",
+          "update_time": "1784258259",
+          "receiver_id": "<REDACTED_UID>",
+          "send_scene": "5",
+          "ext": {
+            "agent_id": "747548995167490123",
+            "agent_intention": "multi_agent",
+            "agent_name": "Agent-Creation",
+            "ai_create_show_mode": "mixed",
+            "ai_creation_duration_info": "[{\"type\":1,\"task_id\":\"\",\"duration_info\":[{\"step_name\":\"pre\",\"duration\":0},{\"step_name\":\"pre_prompt_review\",\"duration\":0},{\"step_name\":\"pre_prompt_attachment_review\",\"duration\":180},{\"step_name\":\"rag\",\"duration\":0},{\"step_name\":\"plan\",\"duration\":10470,\"round_duration_info\":[{\"round\":1,\"duration\":7188},{\"round\":2,\"duration\":3282}]},{\"step_name\":\"fc\",\"duration\":8588,\"round_duration_info\":[{\"round\":1,\"duration\":8588},{\"round\":2,\"duration\":0}]},{\"step_name\":\"simple_task\",\"duration\":0},{\"step_name\":\"total\",\"duration\":19557}],\"error_code\":0},{\"type\":2,\"task_id\":\"40160067941620226\",\"duration_info\":[{\"step_name\":\"model\",\"duration\":8201}],\"error_code\":0},{\"type\":2,\"task_id\":\"40160067941620482\",\"duration_info\":[{\"step_name\":\"model\",\"duration\":8201}],\"error_code\":0},{\"type\":2,\"task_id\":\"40160067941620738\",\"duration_info\":[{\"step_name\":\"model\",\"duration\":8201}],\"error_code\":0},{\"type\":2,\"task_id\":\"40160067941620994\",\"duration_info\":[{\"step_name\":\"model\",\"duration\":8201}],\"error_code\":0}]",
+            "ai_creation_res_code": "0",
+            "ai_creation_tool_list": "[{\"task_id\":40160067941620226,\"tool_name\":\"image_gen\",\"req_key\":\"seedream_v43_flow\",\"task_type\":1,\"index\":0,\"status\":4,\"tool_name_list\":[],\"dispatcher_agent\":\"\",\"based_task_id_list\":[],\"agent_version\":\"agent_30\",\"is_multi_round\":false,\"fail_code\":0,\"cache\":0,\"based_message_id_list\":[],\"from_agent_round\":1},{\"task_id\":40160067941620482,\"tool_name\":\"image_gen\",\"req_key\":\"seedream_v43_flow\",\"task_type\":1,\"index\":1,\"status\":4,\"tool_name_list\":[],\"dispatcher_agent\":\"\",\"based_task_id_list\":[],\"agent_version\":\"agent_30\",\"is_multi_round\":false,\"fail_code\":0,\"cache\":0,\"based_message_id_list\":[],\"from_agent_round\":1},{\"task_id\":40160067941620738,\"tool_name\":\"image_gen\",\"req_key\":\"seedream_v43_flow\",\"task_type\":1,\"index\":2,\"status\":4,\"tool_name_list\":[],\"dispatcher_agent\":\"\",\"based_task_id_list\":[],\"agent_version\":\"agent_30\",\"is_multi_round\":false,\"fail_code\":0,\"cache\":0,\"based_message_id_list\":[],\"from_agent_round\":1},{\"task_id\":40160067941620994,\"tool_name\":\"image_gen\",\"req_key\":\"seedream_v43_flow\",\"task_type\":1,\"index\":3,\"status\":4,\"tool_name_list\":[],\"dispatcher_agent\":\"\",\"based_task_id_list\":[],\"agent_version\":\"agent_30\",\"is_multi_round\":false,\"fail_code\":0,\"cache\":0,\"based_message_id_list\":[],\"from_agent_round\":1}]",
+            "archive_state": "mask_init",
+            "before_content_type": "9999",
+            "bot_state": "{\"bot_id\":\"7338286299411103781\",\"bot_name\":\"豆包\",\"agent_name\":\"Agent-Creation\",\"agent_id\":\"747548995167490123\",\"intent_agent_name\":\"Agent-Creation\"}",
+            "brief": "[卡片]",
+            "chat_ability": "{}",
+            "chat_id": "50305580445879810",
+            "chat_next": "1",
+            "client_report_scene": "gui",
+            "cot_switch": "0",
+            "creation_full_content": "[{\"PacketMeta\":null,\"BlockInfo\":{\"BlockType\":10000,\"BlockContent\":{\"block_type\":10000,\"block_id\":\"40160067940579330\",\"content\":{\"text_block\":{\"text\":\"\\n我会把它做成“能代表 startist 的单字母符号”：保留圆形、黑色、极简科技感，但让 S 本身承担识别核心。\\n\\n\"}}},\"BlockContentForTTS\":\"\",\"BlockContentForModel\":null,\"BlockMeta\":{\"block_id\":\"40160067940579330\",\"parent_block_id\":\"\",\"is_finish\":false}},\"PacketTxtValue\":\"\",\"Ext\":null,\"CommandContent\":null},{\"PacketMeta\":null,\"BlockInfo\":{\"BlockType\":10101,\"BlockContent\":{\"block_type\":10101,\"block_id\":\"40160067940719106\",\"content\":{\"loading_block\":{\"text\":\"正在创作\",\"scene\":1}}},\"BlockContentForTTS\":\"\",\"BlockContentForModel\":null,\"BlockMeta\":{\"block_id\":\"40160067940719106\",\"parent_block_id\":\"\",\"is_finish\":false,\"delete_block\":true}},\"PacketTxtValue\":\"\",\"Ext\":null,\"CommandContent\":null},{\"PacketMeta\":null,\"BlockInfo\":{\"BlockType\":2074,\"BlockContent\":{\"block_type\":2074,\"block_id\":\"40160067941619970\",\"content\":{\"creation_block\":{\"creations\":[{\"type\":1,\"id\":\"40160067941620226\",\"gen_detail\":{\"task_type\":1},\"can_publish\":true,\"image\":{\"key\":\"tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg\",\"image_thumb\":{\"url\":\"https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-downsize_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=ze9JSHQCNjslNj7MoSgsZCmaies%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=bMfO4jtRd2CAqiCc9TfCFOc7St0%3D\"}},\"image_ori\":{\"url\":\"https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_dld_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=nB99Fh%2FA3MDARU%2FMI4BK4w69sy4%3D\",\"width\":2048,\"height\":2048},\"image_preview\":{\"url\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=bMfO4jtRd2CAqiCc9TfCFOc7St0%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=vdvhAD8GyKZtJ%2BoBA5n4oaOKaec%3D\"}},\"image_ori_raw\":{\"url\":\"https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-image_raw.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=NyLuWAtzPVyl4ODql1PU7bb6zTs%3D\",\"width\":2048,\"height\":2048},\"image_preview_resize\":{\"url\":\"https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=2V8Im4PdZzqYur%2F1rsVRMZqZCt0%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/979c83860b6e4b999165c0b0dd7127c1.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.heic?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=X0Y7HXCMhLGyM%2B7CYozMn4AlGd4%3D\"}},\"status\":2,\"placeholder\":{\"width\":2048,\"height\":2048},\"tips\":\"\",\"request_id\":\"5c7322cfdb32b29ed09f1ee1fa97ff03de917b86eb25b2cc168d20610006a14d\",\"gen_params\":{\"prompt\":\"黑色极简现代单字母标志设计图，白色纯净背景，圆形徽章结构，中心为黑色大写字母“S”，字形采用几何无衬线风格，曲线饱满但克制，粗细均衡，完整圆形细线外框包裹字母，整体留白充足，平面矢量风格，科技感、艺术感、清晰、适合小尺寸识别，无阴影，无渐变，无装饰纹理\",\"ratio\":\"1:1\"}}},{\"type\":1,\"id\":\"40160067941620482\",\"gen_detail\":{\"task_type\":1},\"can_publish\":true,\"image\":{\"key\":\"tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg\",\"image_thumb\":{\"url\":\"https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-downsize_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=F7wOmbrPCi5k3Plj65%2FibHLDT9c%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=KYiBYZCGaYebs6w40%2FLfJ5veNsc%3D\"}},\"image_ori\":{\"url\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_dld_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=zAkdb0LGARG68Xt5CTHRCC4Fj58%3D\",\"width\":2048,\"height\":2048},\"image_preview\":{\"url\":\"https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=KYiBYZCGaYebs6w40%2FLfJ5veNsc%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=vaa1LKCiNT7ngMblkycc93pbX2U%3D\"}},\"image_ori_raw\":{\"url\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-image_raw.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=c1g0wzoEDvxZBzFucqVA7tuq7iY%3D\",\"width\":2048,\"height\":2048},\"image_preview_resize\":{\"url\":\"https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=eOXL622RqKWsDy6QWpsHkJsrDiI%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/1699ad3c38cf4e6c9b2a065f2757b2ac.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.heic?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=lshoXX53KhHNgxIfL5cDTrCyI7Y%3D\"}},\"status\":2,\"placeholder\":{\"width\":2048,\"height\":2048},\"tips\":\"\",\"request_id\":\"36ff9cf411392eeca7a3e6b13c8a9f77e33a2406c5ed98d7a45e1895542b11a0\",\"gen_params\":{\"prompt\":\"黑色简约科技单字母品牌标志设计图，白色背景，圆形构图，中心为黑色字母“S”，字母经过几何化改造，上下两端略微切角，带轻微数字界面感，圆形外轮廓与字母形成稳定负形空间，平面矢量风格，黑色单色，极简、现代、锐利，无复杂背景，无渐变，无多余元素\",\"ratio\":\"1:1\"}}},{\"type\":1,\"id\":\"40160067941620738\",\"gen_detail\":{\"task_type\":1},\"can_publish\":true,\"image\":{\"key\":\"tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg\",\"image_thumb\":{\"url\":\"https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-downsize_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=zhToM2I%2BjnntkZeEivpvzd7o1ss%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=dd3vmyIMax4MJzwId%2BYN3yn1MUI%3D\"}},\"image_ori\":{\"url\":\"https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_dld_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=rbBiBijRyGKTdaVgWfDdyswER9o%3D\",\"width\":2048,\"height\":2048},\"image_preview\":{\"url\":\"https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=IvGuXlxFGs%2BUwDqShEWiDOo5o%2Bc%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=3gxrPO7r7pRsSF10Rrxzzg%2FcZeA%3D\"}},\"image_ori_raw\":{\"url\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-image_raw.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=9ndA8ngi8rgHtsOxmR07pm73uPE%3D\",\"width\":2048,\"height\":2048},\"image_preview_resize\":{\"url\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=RHa5Oz1exYPdLVH%2BXCUrmHxruoI%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/98ed41b735fd497a8eaae1cf8a7cba03.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.heic?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=SBUrmNFyvyjGufOjvbn5Jx3dWo4%3D\"}},\"status\":2,\"placeholder\":{\"width\":2048,\"height\":2048},\"tips\":\"\",\"request_id\":\"92dc66bf739067f702f048de038a94376bc6c8a52c5031e55cf873bc34bb052f\",\"gen_params\":{\"prompt\":\"黑色艺术感极简单字母标志设计图，白色纯净背景，圆形结构，中心为黑色字母“S”，字形具有流动曲线与精密几何比例，局部线条带轻微韵律变化但保持高度清晰，圆形外框使用细线，整体像抽象轨道与字母结合，平面矢量标志，适合网站图标识别，无阴影，无渐变，无纹理\",\"ratio\":\"1:1\"}}},{\"type\":1,\"id\":\"40160067941620994\",\"gen_detail\":{\"task_type\":1},\"can_publish\":true,\"image\":{\"key\":\"tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg\",\"image_thumb\":{\"url\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-downsize_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=NoDKTu%2Bcs2jkRRMEc%2BsMkX8KkPQ%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=eownOrkncS8tF%2B41zStF279TYqI%3D\"}},\"image_ori\":{\"url\":\"https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_dld_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=0H79bqQ4XyNCBt9UqjRxOQvkGJ0%3D\",\"width\":2048,\"height\":2048},\"image_preview\":{\"url\":\"https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=f9ihTdxTndqxJs%2FWZ2mxbQa6Ogo%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_pre_watermark_1_5.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=f9ihTdxTndqxJs%2FWZ2mxbQa6Ogo%3D\"}},\"image_ori_raw\":{\"url\":\"https://p11-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-image_raw.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618241&x-signature=Xa48DJ6yMtJWhPbzPy4vnt7me6c%3D\",\"width\":2048,\"height\":2048},\"image_preview_resize\":{\"url\":\"https://p26-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.png?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=Vs0SBkZaPhRs%2BnkgLbzXQaBxdn4%3D\",\"width\":2048,\"height\":2048,\"url_formats\":{\"heic\":\"https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc_gen_image/e074af1298074e50a3f4c04bdff4e08e.jpeg~tplv-a9rns2rl98-img_pre_watermark_1_5_v1.heic?lk3s=8e244e95&rcl=20260717111707ECF3FCA65E61B5094FCB&rrcfp=755f3169&x-expires=2099618242&x-signature=xRpfjA02duGOy2y6HDrdBh%2BE%2BcE%3D\"}},\"status\":2,\"placeholder\":{\"width\":2048,\"height\":2048},\"tips\":\"\",\"request_id\":\"c2e7a23a3148e66da969468c43f64fb15ef7bf21b9b9ba488c833993ebea9549\",\"gen_params\":{\"prompt\":\"黑色现代极简单字母品牌标志设计图，白色背景，圆形构图，中心为黑色字母“S”，字母采用低重心稳健几何字体，左右曲线形成轻微对称呼应，圆形外轮廓完整，内部留白均衡，平面矢量风格，科技感、艺术感、克制，适合小尺寸应用，无渐变，无复杂装饰\",\"ratio\":\"1:1\"}}}]}}},\"BlockContentForTTS\":\"\",\"BlockContentForModel\":null,\"BlockMeta\":{\"block_id\":\"40160067941619970\",\"parent_block_id\":\"\",\"is_finish\":true}},\"PacketTxtValue\":\"\",\"Ext\":null,\"CommandContent\":null},{\"PacketMeta\":null,\"BlockInfo\":{\"BlockType\":10000,\"BlockContent\":{\"block_type\":10000,\"block_id\":\"40159532293648130\",\"content\":{\"text_block\":{\"text\":\"\\n已生成 4 个单字母 S 方向。\\n\\n我更建议优先看 **#1 和 #4**：  \\n- **#1** 更稳健，适合正式品牌与网站 ico  \\n- **#4** 更有科技品牌感，识别也更集中  \\n- **#2** 偏锐利科技，适合偏工具/平台属性  \\n- **#3** 更艺术，但小尺寸下细节可能损失\\n\\n如果你选定一个方向，我可以继续帮你做 **ico 强识别精修版**：加粗 S、减少细线、优化 16×16/32×32 显示效果。\"}}},\"BlockContentForTTS\":\"\",\"BlockContentForModel\":null,\"BlockMeta\":{\"block_id\":\"40159532293648130\",\"parent_block_id\":\"\",\"is_finish\":false}},\"PacketTxtValue\":\"\",\"Ext\":null,\"CommandContent\":null}]",
+            "inner_app_id": "497858",
+            "inner_log_id": "20260717111707ECF3FCA65E61B5094FCB",
+            "inner_platform": "web",
+            "input_skill": "{\"skill_id\":\"0\",\"skill_type\":0}",
+            "intention": "agent_creation",
+            "is_ext_update_action": "1",
+            "is_finish": "1",
+            "llm_intention": "multi_agent",
+            "llm_intention_detail": "Agent-Creation",
+            "llm_model_type": "38",
+            "model_id": "38",
+            "model_type": "38",
+            "need_deep_think": "0",
+            "pre_read_conv_version": "1784258229232682",
+            "read_conv_version": "1784258229232682",
+            "regen_no_replace": "1",
+            "reply_unique_key": "771e0073-0b88-47c7-8626-b8720f0ee107",
+            "review_scenario_id": "4085066754",
+            "seed_intention": "multi_agent",
+            "speaker_id": "zh_female_wenroutaozi_uranus_bigtts",
+            "tea_tags_time_cost": "{\"ack_cost_time\":\"156\",\"agent_id\":\"747548995167490123\",\"agent_name\":\"Agent-Creation\",\"first_packet_cost_time\":\"1370\",\"llm_intention\":\"multi_agent\",\"llm_intention_detail\":\"Agent-Creation\"}",
+            "text2image_text_finish": "1",
+            "ugc_voice_id": "104",
+            "update_version_code": "0",
+            "use_content_block": "1",
+            "use_creation": "1",
+            "user_creation": "{\"40160067941620226\":{\"creation_id\":\"50304629977882626\",\"private_status\":2,\"prompt\":\"黑色极简现代单字母标志设计图，白色纯净背景，圆形徽章结构，中心为黑色大写字母“S”，字形采用几何无衬线风格，曲线饱满但克制，粗细均衡，完整圆形细线外框包裹字母，整体留白充足，平面矢量风格，科技感、艺术感、清晰、适合小尺寸识别，无阴影，无渐变，无装饰纹理\",\"creation_type\":2,\"material_id\":\"M40160067941620226-1567245131056684\",\"aweme_anchor\":\"{\\\"anchor_id\\\":\\\"50304629977882626\\\",\\\"anchor_name\\\":\\\"AI 图片生成\\\"}\"},\"40160067941620482\":{\"creation_id\":\"50304208559028482\",\"private_status\":2,\"prompt\":\"黑色简约科技单字母品牌标志设计图，白色背景，圆形构图，中心为黑色字母“S”，字母经过几何化改造，上下两端略微切角，带轻微数字界面感，圆形外轮廓与字母形成稳定负形空间，平面矢量风格，黑色单色，极简、现代、锐利，无复杂背景，无渐变，无多余元素\",\"creation_type\":2,\"material_id\":\"M40160067941620482-1567245131056684\",\"aweme_anchor\":\"{\\\"anchor_id\\\":\\\"50304208559028482\\\",\\\"anchor_name\\\":\\\"AI 图片生成\\\"}\"},\"40160067941620738\":{\"creation_id\":\"50298593813043970\",\"private_status\":2,\"prompt\":\"黑色艺术感极简单字母标志设计图，白色纯净背景，圆形结构，中心为黑色字母“S”，字形具有流动曲线与精密几何比例，局部线条带轻微韵律变化但保持高度清晰，圆形外框使用细线，整体像抽象轨道与字母结合，平面矢量标志，适合网站图标识别，无阴影，无渐变，无纹理\",\"creation_type\":2,\"material_id\":\"M40160067941620738-1567245131056684\",\"aweme_anchor\":\"{\\\"anchor_id\\\":\\\"50298593813043970\\\",\\\"anchor_name\\\":\\\"AI 图片生成\\\"}\"},\"40160067941620994\":{\"creation_id\":\"50308718300453378\",\"private_status\":2,\"prompt\":\"黑色现代极简单字母品牌标志设计图，白色背景，圆形构图，中心为黑色字母“S”，字母采用低重心稳健几何字体，左右曲线形成轻微对称呼应，圆形外轮廓完整，内部留白均衡，平面矢量风格，科技感、艺术感、克制，适合小尺寸应用，无渐变，无复杂装饰\",\"creation_type\":2,\"material_id\":\"M40160067941620994-1567245131056684\",\"aweme_anchor\":\"{\\\"anchor_id\\\":\\\"50308718300453378\\\",\\\"anchor_name\\\":\\\"AI 图片生成\\\"}\"}}"
+          },
+          "tags": [],
+          "suggest_questions": [],
+          "local_message_id": "",
+          "section_id": "38435082212974594",
+          "bot_reply_message_id": "50305580445879810",
+          "regen_msg_list": [],
+          "message_action_list": [
+            {
+              "name": "喜欢",
+              "key": "like",
+              "icon": {
+                "type": "action-like",
+                "default_url": "",
+                "active_url": ""
+              },
+              "trigger_url": "",
+              "position": "0"
+            },
+            {
+              "name": "不喜欢",
+              "key": "dislike",
+              "icon": {
+                "type": "action-dislike",
+                "default_url": "",
+                "active_url": ""
+              },
+              "trigger_url": "",
+              "position": "1"
+            }
+          ],
+          "feedback_type": 0,
+          "fetch_token": "50305406917167874",
+          "brief": "[卡片]",
+          "suggest_questions_v2": []
+        },
+        {
+          "conversation_id": "38435082212974338",
+          "message_id": "50305580445879810",
+          "message_body_version": "1",
+          "sender_id": "<REDACTED_UID>",
+          "user_type": 1,
+          "status": 0,
+          "content_type": 9999,
+          "content": "",
+          "content_status": 0,
+          "index_in_conv": "11",
+          "create_time": "1784258228",
+          "sec_sender": "<REDACTED_SEC_UID>",
+          "thinking_content": "",
+          "content_block": [
+            {
+              "block_type": 10000,
+              "block_id": "283e567b-7425-4513-84cb-45502ca6b41a",
+              "parent_id": "",
+              "content": {
+                "text_block": {
+                  "text": "请使用单字母 S 试试",
+                  "icon_url": "",
+                  "icon_url_dark": "",
+                  "summary": ""
+                },
+                "pc_event_block": ""
+              },
+              "meta_info": [],
+              "is_finish": true,
+              "append_fields": []
+            }
+          ],
+          "tts_content": "请使用单字母 S 试试",
+          "update_time": "1784258228",
+          "receiver_id": "<REDACTED_UID>",
+          "send_scene": "5",
+          "ext": {
+            "archive_state": "mask_init",
+            "bot_id": "7338286299411103781",
+            "bot_source": "BotStudio",
+            "chat_ability": "{}",
+            "chat_id": "50305580445879810",
+            "chat_next": "1",
+            "client_report_scene": "gui",
+            "commerce_credit_config_enable": "0",
+            "cot_switch": "0",
+            "fp": "verify_mrk91e8d_jsO0eeVh_9RlI_4W4i_9sw2_4rPEOYvz77MP",
+            "group": "1784258228",
+            "inner_app_id": "497858",
+            "inner_log_id": "20260717111707ECF3FCA65E61B5094FCB",
+            "inner_platform": "web",
+            "input_skill": "{\"skill_id\":\"0\",\"skill_type\":0}",
+            "is_ai_playground": "false",
+            "is_finish": "1",
+            "llm_model_type": "38",
+            "message_from": "InputBox",
+            "model_type": "38",
+            "pre_read_conv_version": "1784258228025139",
+            "read_conv_version": "1784258228025139",
+            "reply_unique_key": "771e0073-0b88-47c7-8626-b8720f0ee107",
+            "search_engine_type": "4",
+            "speaker_id": "zh_female_wenroutaozi_uranus_bigtts",
+            "ugc_voice_id": "104",
+            "update_version_code": "0",
+            "use_content_block": "1",
+            "use_deep_think": "0"
+          },
+          "tags": [],
+          "suggest_questions": [],
+          "local_message_id": "dceadca0-818c-11f1-8cde-ed97850b46af",
+          "section_id": "38435082212974594",
+          "bot_reply_message_id": "0",
+          "regen_msg_list": [],
+          "message_action_list": [
+            {
+              "name": "喜欢",
+              "key": "like",
+              "icon": {
+                "type": "action-like",
+                "default_url": "",
+                "active_url": ""
+              },
+              "trigger_url": "",
+              "position": "0"
+            },
+            {
+              "name": "不喜欢",
+              "key": "dislike",
+              "icon": {
+                "type": "action-dislike",
+                "default_url": "",
+                "active_url": ""
+              },
+              "trigger_url": "",
+              "position": "1"
+            }
+          ],
+          "feedback_type": 0,
+          "fetch_token": "50305580445879810",
+          "suggest_questions_v2": []
+        }
+      ],
+      "has_more": true,
+      "next_index": "10",
+      "regen_messages": {},
+      "msg_cursor": "1"
+    }
+  },
+  "version": "",
+  "status_code": 0,
+  "status_desc": "OK",
+  "ext": {
+    "tt_stable": "1"
+  }
+}
