@@ -136,11 +136,18 @@ while IFS= read -r SHA; do
 
   REMOVED=()
   for p in "${BLACKLIST_PATHS[@]}"; do
-    if git diff --cached --name-only | grep -qE "^$p(/|\$)"; then
-      git reset HEAD -- "$p" >/dev/null 2>&1 || true
-      git checkout HEAD -- "$p" 2>/dev/null || rm -rf "$p"
-      REMOVED+=("$p")
-    fi
+    # 正则里的 . 必须转义：未转义时 `.claude` 会被当成通配符匹配到无关路径
+    STAGED="$(git diff --cached --name-only | grep -E "^${p//./\\.}(/|\$)" || true)"
+    [ -n "$STAGED" ] || continue
+    git reset HEAD -- "$p" >/dev/null 2>&1 || true
+    # 逐文件还原，绝不 rm -rf 整个目录：.claude/ .grok/ .waylog/ 下混着
+    # 不可从 git 恢复的本机生成物（openspec 注入的 openspec-* 技能与 /opsx:* 命令），
+    # 整目录删掉就只能靠 `openspec init --tools claude` 重建。
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      git checkout HEAD -- "$f" 2>/dev/null || rm -f "$f"
+    done < <(printf '%s\n' "$STAGED")
+    REMOVED+=("$p")
   done
   if [ "${#REMOVED[@]}" -gt 0 ]; then
     echo "   剔除黑名单：${REMOVED[*]}"

@@ -66,6 +66,8 @@ pentou-data/
 #   生成物（skills/openspec-*、commands/opsx/*，由 `openspec init --tools claude` 产出）→ 不跟，避免升级 diff 噪音
 #   settings.local.json（本机权限记录）→ 不跟
 #   settings.json（团队共享 hooks / 权限规则，有人类决策含量）→ 跟
+#   ⚠️ settings.json 目前并不存在（负向规则空转）。一旦创建必须**立刻 git add 提交**：
+#      它是 .claude/ 里唯一不被忽略的文件，未提交时属于「未跟踪且未忽略」，会被 `git clean -fd` 删掉。
 .claude/*
 !.claude/settings.json
 .trae/
