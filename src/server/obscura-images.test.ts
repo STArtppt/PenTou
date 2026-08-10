@@ -152,6 +152,7 @@ describe("Qianwen 结构化图片提取", () => {
                   meta_data: {
                     multi_load: [
                       {
+                        type: "ai_generate_image_list",
                         content: {
                           resource_infos: [
                             { refer_id: "res_1", url: "https://img.qianwen.com/res/cat.png" },
@@ -177,6 +178,99 @@ describe("Qianwen 结构化图片提取", () => {
     const aiMsg = conversation.messages.find((m: any) => m.role === "ai");
     expect(aiMsg.content).toBe("![生成图片 1](https://img.qianwen.com/res/cat.png)");
     expect(aiMsg.content).not.toContain("watermark");
+  });
+
+  it("layout_list.image 为 ref 字符串数组时（登录态真源形态）可解析", async () => {
+    const payload = {
+      __QIANWEN_API_PAYLOAD__: {
+        session: {
+          record_list: [
+            {
+              created_at: 1763544465570,
+              request_messages: [{ content: "画" }],
+              response_messages: [
+                {
+                  content: "完成\n\n[(ai_generate_image_list_1)]",
+                  meta_data: {
+                    multi_load: [
+                      {
+                        type: "ai_generate_image_list",
+                        source_seq: "ai_generate_image_list_1",
+                        content: {
+                          resource_infos: [
+                            { refer_id: "ref1", url: "https://img.qianwen.com/a.png" },
+                            { refer_id: "ref2", url: "https://img.qianwen.com/wm.png" },
+                          ],
+                          layout_list: [
+                            {
+                              image: ["ref1"],
+                              watermark_image: ["ref2"],
+                              type: "generate_image",
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    };
+
+    const [conversation] = await parseSharedLinkData(
+      "https://www.qianwen.com/share/chat/live",
+      JSON.stringify(payload),
+    );
+    const aiMsg = conversation.messages.find((m: any) => m.role === "ai");
+    expect(aiMsg.content).toContain("![生成图片 1](https://img.qianwen.com/a.png)");
+    expect(aiMsg.content).not.toContain("wm.png");
+    expect(aiMsg.content).not.toContain("[(ai_generate_image_list_1)]");
+  });
+
+  it("image_waterfall 占位符展开为 markdown 图片", async () => {
+    const payload = {
+      __QIANWEN_API_PAYLOAD__: {
+        session: {
+          record_list: [
+            {
+              created_at: 1763544465570,
+              request_messages: [{ content: "找图" }],
+              response_messages: [
+                {
+                  content: "如图：\n[(image_waterfall_1)]",
+                  meta_data: {
+                    multi_load: [
+                      {
+                        type: "image_waterfall",
+                        source_seq: "image_waterfall_1",
+                        content: {
+                          list: [
+                            { image_url: "https://img.example.com/1.jpg", title: "a" },
+                            { image_url: "https://img.example.com/2.jpg", title: "b" },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    };
+
+    const [conversation] = await parseSharedLinkData(
+      "https://qianwen.my.cn/share/chat/live",
+      JSON.stringify(payload),
+    );
+    const aiMsg = conversation.messages.find((m: any) => m.role === "ai");
+    expect(aiMsg.content).toContain("![生成图片 1](https://img.example.com/1.jpg)");
+    expect(aiMsg.content).toContain("![生成图片 2](https://img.example.com/2.jpg)");
+    expect(aiMsg.content).not.toContain("[(image_waterfall_1)]");
   });
 
   it("图片 URL 缺失时插入占位，文本照常导入", async () => {

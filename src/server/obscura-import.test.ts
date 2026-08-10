@@ -173,6 +173,81 @@ describe("share-link import unavailable pages", () => {
     ]);
   });
 
+  it("extracts Doubao share messages from the mergeLoaderData shell (2026-08 shape)", async () => {
+    // 新壳：载荷被串成 JSON 字符串塞进 routerDataFnArgs，且 index / create_time 都是字符串，
+    // 分享载荷只有 index_in_conv 没有 index。
+    const shareInfo = JSON.stringify({
+      isMobileShareId: true,
+      data: {
+        share_info: { share_name: "潜水员戴夫iOS版食材改名" },
+        message_snapshot: {
+          message_list: [
+            {
+              index_in_conv: "1",
+              user_type: 1,
+              create_time: "1786095405",
+              content_block: [{ content: JSON.stringify({ text_block: { text: "店铺等级对应每晚客人最多是多少" } }) }],
+            },
+            {
+              index_in_conv: "2",
+              user_type: 2,
+              create_time: "1786095408",
+              content_block: [{ content: JSON.stringify({ text_block: { text: "钻石 45 人。" } }) }],
+            },
+          ],
+        },
+      },
+    });
+    const routerArgs = JSON.stringify([
+      "thread_(token)/page",
+      [{ key: "shareInfo", routerDataFnName: "p", routerDataFnArgs: [shareInfo] }],
+    ]);
+    const html = `
+      <html>
+        <body>
+          <script data-fn-name="mergeLoaderData" data-fn-args='${routerArgs}'></script>
+        </body>
+      </html>
+    `;
+
+    const [conversation] = await parseSharedLinkData("https://www.doubao.com/thread/x5379fIAmQ9uedjAw", html);
+
+    expect(conversation.platform).toBe("Doubao");
+    expect(conversation.title).toBe("潜水员戴夫iOS版食材改名");
+    expect(conversation.messages).toMatchObject([
+      { role: "user", content: "店铺等级对应每晚客人最多是多少", timestamp: "2026-08-07T09:36:45.000Z" },
+      { role: "ai", content: "钻石 45 人。", timestamp: "2026-08-07T09:36:48.000Z" },
+    ]);
+  });
+
+  it("accepts qianwen.my.cn share URLs the same as qianwen.com (API payload path)", async () => {
+    const payload = {
+      __QIANWEN_API_PAYLOAD__: {
+        title: "梅西",
+        session: {
+          record_list: [
+            {
+              created_at: 1763544465570,
+              request_messages: [{ content: "求证" }],
+              response_messages: [{ content: "是的。" }],
+            },
+          ],
+        },
+      },
+    };
+
+    const [conversation] = await parseSharedLinkData(
+      "https://qianwen.my.cn/share/chat/be535e7d32c549dea8672a681e7fc7d1",
+      JSON.stringify(payload),
+    );
+
+    expect(conversation.platform).toBe("Qianwen");
+    expect(conversation.messages).toMatchObject([
+      { role: "user", content: "求证" },
+      { role: "ai", content: "是的。" },
+    ]);
+  });
+
   it("rejects expired Qianwen shares instead of importing the empty-state text", async () => {
     const html = `
       <html>
@@ -185,6 +260,9 @@ describe("share-link import unavailable pages", () => {
     `;
 
     await expect(parseSharedLinkData("https://www.qianwen.com/share/chat/dead", html))
+      .rejects.toThrow("Qianwen share content is unavailable or expired");
+
+    await expect(parseSharedLinkData("https://qianwen.my.cn/share/chat/dead", html))
       .rejects.toThrow("Qianwen share content is unavailable or expired");
   });
 

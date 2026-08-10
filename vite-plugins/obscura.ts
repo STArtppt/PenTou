@@ -5,6 +5,12 @@ import os from "node:os";
 import { Readable } from "node:stream";
 import * as cheerio from "cheerio";
 import { parseDeepSeekExport, parseChatGPTExport } from "../src/app/parsers.js";
+import { conversationsFromDoubaoShareData } from "../src/shared/share-parsers/doubao.js";
+import { parseQianwenApiPayload } from "../src/shared/share-parsers/qwen.js";
+import {
+  parseGeminiApiPayload,
+  parseGeminiBatchExecuteResponse,
+} from "../src/shared/share-parsers/gemini.js";
 
 const DEFAULT_BIN_DIR = path.resolve(process.cwd(), "bin");
 const OBSCURA_FILE = process.platform === "win32" ? "obscura.exe" : "obscura";
@@ -16,6 +22,36 @@ const BROWSER_HEADERS = {
   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
   "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
 };
+
+/** 千问分享页：www.qianwen.com / qianwen.my.cn 等（API 同源 chat2-api.qianwen.com）。 */
+function isQianwenShareUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+    const isHost =
+      host === "qianwen.com" ||
+      host.endsWith(".qianwen.com") ||
+      host === "qianwen.my.cn" ||
+      host.endsWith(".qianwen.my.cn");
+    return isHost && /\/share\/chat\//.test(u.pathname);
+  } catch {
+    return /qianwen\.(com|my\.cn)\/share\/chat\//i.test(url);
+  }
+}
+
+function isQianwenHostUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    return (
+      host === "qianwen.com" ||
+      host.endsWith(".qianwen.com") ||
+      host === "qianwen.my.cn" ||
+      host.endsWith(".qianwen.my.cn")
+    );
+  } catch {
+    return /qianwen\.(com|my\.cn)/i.test(url);
+  }
+}
 
 function appendTail(current: string, chunk: Buffer, maxBytes: number): string {
   const next = current + chunk.toString("utf-8");
@@ -152,18 +188,19 @@ export async function fetchHtmlWithObscura(url: string, options?: ObscuraOptions
     }
   }
 
-  if (url.includes("qianwen.com/share/chat/")) {
+  if (isQianwenShareUrl(url)) {
     const shareId = url.match(/\/share\/chat\/([^/?#]+)/)?.[1];
     if (shareId) {
       try {
         const apiUrl = "https://chat2-api.qianwen.com/api/v1/share/info?pr=qwen&fr=mac";
+        // Origin 用官方主站；Referer 保留用户粘贴的分享 URL（含 qianwen.my.cn）。
         const res = await fetch(apiUrl, {
           method: "POST",
           headers: {
             ...BROWSER_HEADERS,
             "Content-Type": "application/json",
-            "Origin": "https://www.qianwen.com",
-            "Referer": url,
+            Origin: "https://www.qianwen.com",
+            Referer: url,
           },
           body: JSON.stringify({ share_id: shareId, biz_id: "ai_qwen" }),
         });
@@ -171,7 +208,16 @@ export async function fetchHtmlWithObscura(url: string, options?: ObscuraOptions
         if (res.ok && data?.data?.session?.record_list) {
           return JSON.stringify({ __QIANWEN_API_PAYLOAD__: data.data });
         }
+        // API 明确无 record_list（失效/空分享）时不要掉 DOM 抓「分享内容已失效」脏文案。
+        if (res.ok) {
+          throw new Error(
+            `Qianwen share content is unavailable or expired: share_id=${shareId}`,
+          );
+        }
       } catch (e) {
+        if (e instanceof Error && e.message.includes("Qianwen share content is unavailable")) {
+          throw e;
+        }
         console.warn("Native Qianwen API fetch failed", e);
       }
     }
@@ -489,91 +535,29 @@ function tryParseJson(text: string): any | null {
   }
 }
 
-/** 从图片对象按优先级取 URL（spec media-assets §4.5：原图 → 预览图 → 缩略图）。 */
-function pickImageUrl(image: any, keys: string[]): string {
-  for (const key of keys) {
-    const url = image?.[key]?.url;
-    if (typeof url === "string" && url) return url;
-  }
-  return "";
-}
-
 /**
- * Doubao 结构化图片 → markdown 图片（spec media-assets §4.5 / 决策 11）。
- * attachment_block 上传图、creation_block 生成图与参考图；URL 缺失插入占位（解析期兜底）。
+ * 从 data-fn-args 里深挖出 `{ share_info, message_snapshot }`。
+ * 豆包换过壳：老形态 `data-fn-name="r"` 的 `args[2].data`；2026-08 起是
+ * `mergeLoaderData(["thread_(token)/page", [{ routerDataFnArgs: ["<JSON 字符串>"] }]])`，
+ * 载荷又被串成字符串多包了一层。按结构找而非按路径找，换壳不再失配。
  */
-function extractDoubaoBlockImages(parsed: any): string[] {
-  const parts: string[] = [];
-  const seen = new Set<string>();
-  const push = (url: string, alt: string, missingText: string) => {
-    if (!url) { parts.push(missingText); return; }
-    if (seen.has(url)) return; // 同一消息内按展示顺序去重
-    seen.add(url);
-    parts.push(`![${alt}](${url})`);
-  };
+function findDoubaoShareData(value: any, depth = 0): any | null {
+  if (value == null || depth > 12) return null;
 
-  for (const att of parsed?.attachment_block?.attachments ?? []) {
-    push(pickImageUrl(att?.image, ["image_ori", "image_preview", "image_thumb"]), "附件图片", "[图片缺失]");
+  if (typeof value === "string") {
+    if (!value.includes("message_snapshot")) return null;
+    const parsed = tryParseJson(value);
+    return parsed ? findDoubaoShareData(parsed, depth + 1) : null;
   }
+  if (typeof value !== "object") return null;
 
-  let genIndex = 0;
-  for (const creation of parsed?.creation_block?.creations ?? []) {
-    genIndex++;
-    push(
-      pickImageUrl(creation?.image, ["image_raw_b", "image_ori", "image_preview", "image_thumb"]),
-      `生成图片 ${genIndex}`,
-      "[生成图片缺失]",
-    );
-    for (const ref of creation?.gen_detail?.ref_images ?? []) {
-      const refUrl = pickImageUrl(ref, ["image_ori", "image_preview", "image_thumb"])
-        || pickImageUrl(ref?.image, ["image_ori", "image_preview", "image_thumb"]);
-      if (refUrl && !seen.has(refUrl)) {
-        seen.add(refUrl);
-        parts.push(`![参考图](${refUrl})`);
-      }
-    }
+  if (!Array.isArray(value) && Array.isArray(value?.message_snapshot?.message_list)) return value;
+
+  for (const item of Array.isArray(value) ? value : Object.values(value)) {
+    const hit = findDoubaoShareData(item, depth + 1);
+    if (hit) return hit;
   }
-
-  return parts;
-}
-
-function extractDoubaoBlockText(block: any): string {
-  const candidates = [block?.content_v2, block?.content];
-
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    const parsed = typeof candidate === "string" ? tryParseJson(candidate) : candidate;
-    if (!parsed) continue;
-
-    const segments: string[] = [];
-    const text = parsed?.text_block?.text || parsed?.text;
-    if (typeof text === "string" && text.trim()) segments.push(text.trim());
-    segments.push(...extractDoubaoBlockImages(parsed));
-    if (segments.length > 0) return segments.join("\n\n");
-  }
-
-  return "";
-}
-
-function extractDoubaoMessageText(message: any): string {
-  const texts: string[] = [];
-
-  for (const block of message?.content_block || []) {
-    const text = extractDoubaoBlockText(block);
-    if (text) texts.push(text);
-  }
-
-  if (texts.length === 0 && typeof message?.content === "string") {
-    const blocks = tryParseJson(message.content);
-    if (Array.isArray(blocks)) {
-      for (const block of blocks) {
-        const text = extractDoubaoBlockText(block);
-        if (text) texts.push(text);
-      }
-    }
-  }
-
-  return Array.from(new Set(texts)).join("\n\n").trim();
+  return null;
 }
 
 function parseDoubaoShare($: cheerio.CheerioAPI): any[] | null {
@@ -581,136 +565,14 @@ function parseDoubaoShare($: cheerio.CheerioAPI): any[] | null {
 
   $("script[data-fn-args]").each((_, script) => {
     if (shareData) return;
-    const fnName = $(script).attr("data-fn-name");
     const argsText = $(script).attr("data-fn-args") || "";
-    if (fnName !== "r" || !argsText.includes("message_snapshot")) return;
+    if (!argsText.includes("message_snapshot")) return;
 
     const args = tryParseJson(argsText);
-    const data = Array.isArray(args) ? args[2]?.data : null;
-    if (data?.message_snapshot?.message_list) shareData = data;
+    if (args) shareData = findDoubaoShareData(args);
   });
 
-  const messageList = shareData?.message_snapshot?.message_list;
-  if (!Array.isArray(messageList) || messageList.length === 0) return null;
-
-  const date = new Date().toISOString();
-  const messages = messageList
-    .slice()
-    .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0))
-    .map((message: any) => {
-      const content = extractDoubaoMessageText(message);
-      if (!content) return null;
-      const timestamp = typeof message.create_time === "number"
-        ? new Date(message.create_time * 1000).toISOString()
-        : date;
-      return makeMsg(message.user_type === 1 ? "user" : "ai", content, timestamp);
-    })
-    .filter(Boolean);
-
-  if (messages.length === 0) return null;
-
-  return [{
-    id: makeId(),
-    title: shareData.share_info?.share_name || "Doubao Shared Conversation",
-    platform: "Doubao",
-    date,
-    folderId: null,
-    messages,
-  }];
-}
-
-/**
- * Qianwen 结构化图片 → markdown 图片（spec media-assets §4.5）。
- * 优先 result_images 原图；layout_list 经 refer_id 指向 resource_infos，避免重复抓 watermark 资源。
- */
-function extractQianwenMessageImages(message: any): string[] {
-  const images: string[] = [];
-  const seen = new Set<string>();
-  let genIndex = 0;
-  const push = (url: string) => {
-    genIndex++;
-    if (!url) { images.push("[生成图片缺失]"); return; }
-    if (seen.has(url)) return;
-    seen.add(url);
-    images.push(`![生成图片 ${genIndex}](${url})`);
-  };
-  const resourceUrl = (resource: any) =>
-    resource?.download_url || resource?.cdn_url || resource?.url || resource?.preview_url || resource?.thumbnail_url || "";
-
-  for (const load of message?.meta_data?.multi_load ?? []) {
-    const resultImages = load?.extra_info?.content?.extra?.result_images;
-    if (Array.isArray(resultImages) && resultImages.length > 0) {
-      for (const img of resultImages) {
-        push(img?.download_url || img?.cdn_url || img?.preview_url || img?.thumbnail_url || "");
-      }
-      continue;
-    }
-
-    const resources = load?.content?.resource_infos;
-    const layouts = load?.content?.layout_list;
-    if (Array.isArray(layouts) && layouts.length > 0 && Array.isArray(resources)) {
-      for (const layout of layouts) {
-        const image = layout?.image;
-        if (!image) continue;
-        const referId = image?.refer_id ?? image?.referId;
-        const resource = resources.find(
-          (r: any) => r?.refer_id === referId || r?.id === referId || r?.resource_id === referId,
-        );
-        push(resourceUrl(resource) || (typeof image?.url === "string" ? image.url : ""));
-      }
-      continue;
-    }
-
-    if (Array.isArray(resources)) {
-      for (const resource of resources) push(resourceUrl(resource));
-    }
-  }
-
-  return images;
-}
-
-function parseQianwenApiPayload(data: any): any[] {
-  const date = new Date().toISOString();
-  const records = data?.session?.record_list;
-  if (!Array.isArray(records) || records.length === 0) {
-    throw new Error("Qianwen API payload did not contain any messages.");
-  }
-
-  const messages: any[] = [];
-  for (const record of records) {
-    const timestamp = typeof record.created_at === "number"
-      ? new Date(record.created_at).toISOString()
-      : date;
-
-    for (const request of record.request_messages || []) {
-      if (typeof request.content === "string" && request.content.trim()) {
-        messages.push(makeMsg("user", request.content.trim(), timestamp));
-      }
-    }
-
-    const responseText = (record.response_messages || [])
-      .map((message: any) => {
-        const text = typeof message.content === "string" ? message.content.trim() : "";
-        // 生成图紧随对应说明文字之后（spec media-assets §4.5）
-        return [text, ...extractQianwenMessageImages(message)].filter(Boolean).join("\n\n");
-      })
-      .filter(Boolean)
-      .join("\n\n");
-    if (responseText) messages.push(makeMsg("ai", responseText, timestamp));
-  }
-
-  if (messages.length === 0) {
-    throw new Error("Qianwen API payload did not contain any message text.");
-  }
-
-  return [{
-    id: makeId(),
-    title: data.title || data.session?.title || "Qianwen Shared Conversation",
-    platform: "Qianwen",
-    date,
-    folderId: null,
-    messages,
-  }];
+  return conversationsFromDoubaoShareData(shareData);
 }
 
 function extractMetasoMessageText(message: any): string {
@@ -762,141 +624,6 @@ function parseMetasoApiPayload(data: any): any[] {
     id: makeId(),
     title: data.title && data.title !== "新对话" ? data.title : messages[0].content.slice(0, 80).split("\n")[0],
     platform: "Metaso",
-    date,
-    folderId: null,
-    messages,
-  }];
-}
-
-function parseGeminiBatchExecuteResponse(text: string): any | null {
-  for (const line of text.split("\n")) {
-    if (!line.startsWith("[[")) continue;
-
-    try {
-      const envelope = JSON.parse(line);
-      for (const entry of envelope) {
-        if (entry?.[0] === "wrb.fr" && entry?.[1] === "ujx1Bf" && typeof entry?.[2] === "string") {
-          return JSON.parse(entry[2]);
-        }
-      }
-    } catch {}
-  }
-
-  return null;
-}
-
-function geminiTimestamp(value: any, fallback: string): string {
-  if (!Array.isArray(value) || typeof value[0] !== "number") return fallback;
-  const millis = value[0] * 1000 + Math.floor((typeof value[1] === "number" ? value[1] : 0) / 1_000_000);
-  return new Date(millis).toISOString();
-}
-
-function extractGeminiUserText(request: any): string {
-  const parts = request?.[0];
-  if (!Array.isArray(parts)) return "";
-
-  return parts
-    .map((part: any) => typeof part === "string" ? part.trim() : "")
-    .filter(Boolean)
-    .join("\n\n")
-    .trim();
-}
-
-function extractGeminiResponseText(response: any): string {
-  const candidates = [
-    response?.[0]?.[0]?.[1],
-    response?.[0]?.[1],
-    response?.[0]?.[11]?.[0],
-    response?.[11]?.[0],
-  ];
-
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      const text = candidate
-        .map((part: any) => typeof part === "string" ? part.trim() : "")
-        .filter(Boolean)
-        .join("\n\n")
-        .trim();
-      if (text) return text;
-    }
-
-    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-  }
-
-  return "";
-}
-
-/** 深扫响应节点收集 lh3.googleusercontent.com 生成图 URL，按数组顺序去重（spec media-assets §4.5）。 */
-function collectGeminiImageUrls(node: any, out: string[] = [], seen = new Set<string>()): string[] {
-  if (typeof node === "string") {
-    if (/^https:\/\/lh3\.googleusercontent\.com\//.test(node) && !seen.has(node)) {
-      seen.add(node);
-      out.push(node);
-    }
-  } else if (Array.isArray(node)) {
-    for (const child of node) collectGeminiImageUrls(child, out, seen);
-  } else if (node && typeof node === "object") {
-    for (const child of Object.values(node)) collectGeminiImageUrls(child, out, seen);
-  }
-  return out;
-}
-
-/**
- * Gemini 正文内联 image_generation_content/<id> 占位 token → lh3 生成图 markdown。
- * <id> 是 opaque content id（实测如 368/354），不是 imageUrls 数组下标；
- * 按 token 首次出现顺序映射到 collectGeminiImageUrls 的去重数组下标。
- * 无对应图片时删除 token 并插入占位；未被 token 占用的生成图按序补在正文末尾（spec §4.5）。
- */
-function applyGeminiInlineImages(text: string, imageUrls: string[]): string {
-  const tokenRe = /https?:\/\/googleusercontent\.com\/image_generation_content\/(\d+)/g;
-  const idToOrd = new Map<string, number>();
-  for (const match of text.matchAll(tokenRe)) {
-    if (!idToOrd.has(match[1])) idToOrd.set(match[1], idToOrd.size);
-  }
-
-  const usedOrds = new Set<number>();
-  let result = text.replace(tokenRe, (_match, id: string) => {
-    const ord = idToOrd.get(id) ?? 0;
-    usedOrds.add(ord);
-    const url = imageUrls[ord];
-    return url ? `![生成图片 ${ord + 1}](${url})` : "[生成图片缺失]";
-  });
-  const extra = imageUrls
-    .map((url, i) => (usedOrds.has(i) ? null : `![生成图片 ${i + 1}](${url})`))
-    .filter(Boolean) as string[];
-  if (extra.length > 0) result = [result.trim(), ...extra].filter(Boolean).join("\n\n");
-  return result;
-}
-
-function parseGeminiApiPayload(data: any): any[] {
-  const date = new Date().toISOString();
-  const conversation = data?.[0];
-  const turns = conversation?.[1];
-  if (!Array.isArray(turns) || turns.length === 0) {
-    throw new Error("Gemini API payload did not contain any messages.");
-  }
-
-  const messages: any[] = [];
-  for (const turn of turns) {
-    const timestamp = geminiTimestamp(turn?.[4], date);
-    const userText = extractGeminiUserText(turn?.[2]);
-    const aiText = applyGeminiInlineImages(
-      extractGeminiResponseText(turn?.[3]),
-      collectGeminiImageUrls(turn?.[3]),
-    );
-
-    if (userText) messages.push(makeMsg("user", userText, timestamp));
-    if (aiText) messages.push(makeMsg("ai", aiText, timestamp));
-  }
-
-  if (messages.length === 0) {
-    throw new Error("Gemini API payload did not contain any message text.");
-  }
-
-  return [{
-    id: makeId(),
-    title: conversation?.[2]?.[1] || messages[0].content.slice(0, 80).split("\n")[0],
-    platform: "Gemini",
     date,
     folderId: null,
     messages,
@@ -985,7 +712,7 @@ function assertNoKnownUnavailablePage(url: string, $: cheerio.CheerioAPI): void 
   const bodyText = $("body").text().replace(/\s+/g, " ").trim();
   const pageTitle = getPageTitle($);
 
-  if (url.includes("qianwen.com") && bodyText.includes("分享内容已失效")) {
+  if (isQianwenHostUrl(url) && bodyText.includes("分享内容已失效")) {
     throw new Error(`Qianwen share content is unavailable or expired: ${pageTitle || url}`);
   }
 
