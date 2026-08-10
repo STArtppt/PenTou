@@ -1,10 +1,10 @@
 # PenTou 发布说明
 
-## v0.1.0
+## v0.1.1
 
-> 发布日期：2026-08-07
+> 发布日期：2026-08-10
 
-本版的主题是 **「从归档工具走向会动手的工作台」**：AI 侧栏从一个问答框变成技能编排入口——点名主题它跨全库汇总成文，点一下它为满库文档起草归类计划，而每一步都摊开可查、每一次改库都先问过你。同时**浏览器插件已上架 Chrome 应用商店**，网页端采集不再需要克隆仓库、构建、开发者模式加载。
+本版的主题是 **「从归档工具走向会动手的工作台」**：AI 侧栏从一个问答框变成技能编排入口——点名主题它跨全库汇总成文，点一下它为满库文档起草归类计划，而每一步都摊开可查、每一次改库都先问过你。同时**浏览器插件已上架 Chrome 应用商店**，网页端采集不再需要克隆仓库、构建、开发者模式加载；采集面进一步铺到**豆包 / 通义千问（国内 + 国际）/ Gemini**，模型的搜索链与思考链也从正文里剥了出来。
 
 ### 新特性
 
@@ -15,7 +15,10 @@
 - **AI 侧栏常驻布局与意图 chip**：桌面端常驻 dock；输入框下方的 chip 一点即跑，chip 选中后回车即执行；条件不满足时给出明确前置提示（未配模型 / 未选会话 / 无带评论批注 / 未输入主题）；上下文头常驻显示当前挂的是哪一篇。
 - **计划文档执行状态**：行动计划正文上方常驻状态条——未执行 / 已执行 / 中断 / 失败，附执行时间与「已落 N 条」，并可查看执行轨迹与失败原因。状态存 frontmatter `aiPlanRun`，不写进正文，解决「这份计划到底跑没跑」的误导。
 - **正文末元数据面板**：可折叠的两段式面板——固定字段（平台 / 采集方式 / 会话时间 / 更新时间 / 目录 / 来源项目 / 消息数…）与文档自带的 YAML frontmatter **原样区**并列，可一键复制；展示层与真源剥离，面板只读不改盘。
+- **消息推理过程独立成面板**：豆包的搜索链、DeepSeek / 通义千问的思考链不再混在正文里——采集侧就把它拆进 `Message.reasoning`，会话页以**默认收起**的「搜索链、思考链等文本」面板承载，正文只留最终回答。会话 `.md` 用成对 HTML 注释往返，**复制 / 摘录 / 全文检索都不含推理过程**。
 - **浏览器插件上架 Chrome 应用商店**：[Pentou Collector](https://chromewebstore.google.com/detail/pentou-collector/kfepbkfbnminfhcenaookdnikccdfmip) 已发布，安装后在选项页填「Pentou 地址 + 采集令牌」即可采集 ChatGPT / DeepSeek 网页对话；同时移除了不必要的 `tabs` 权限，权限说明一并优化。
+- **网页采集扩展到豆包 / 通义千问双站 / Gemini**：服务端新增 `doubao`、`qwen`、`qwen-intl`、`gemini` 四路登录态 raw normalizer（`Platform` 枚举补入 Doubao、Qwen），插件同步新增四份 adapter 与域名权限，选项页按支持平台动态渲染开关。通义千问两站拆 slug 防 `externalKey` 串档，归类层仍统一为一个 `Qwen` 文件夹。插件版本升至 **0.2.1，已提交 Chrome 商店送审**。
+- **关于页版本号按 git tag 解析**：设置-关于经 `/api/health` 展示 `resolveAppVersion` 结果（环境变量 → 发版注入的 `package.json` → 最新 `v*` tag，开发态带 `-dev`），CLI `--version` 与 dev 服务端同源，不再需要手改版本常量。导入面板也补上了 Chrome 应用商店的安装指引。
 - **Pi coding agent 采集支持**：新增 adapter 与 normalizer，CLI 采集器可用来源增至 9 个。
 - **面向用户的 Agent Skill**：`docs/agent-skills/` 下交付 `pentou-setup` / `pentou-collect` / `pentou-docs-push` 三份可整夹复制的技能，让任意 AI Agent 用自然语言替你完成安装、采集配置与文档推送。
 - **文档推送标题按路径拼串**：同名 `README.md` 不再互相覆盖或难以分辨，标题带上路径段。
@@ -25,6 +28,7 @@
 ### 修复
 
 - 文档刷新丢失选中、计划执行失败态展示、AI 侧栏若干体验问题。
+- **通义千问分享导入**：消息按 list 倒序错乱、`image_waterfall` / `layout` ref 数组里的图片丢失、`qianwen.my.cn` 分享域名未命中。
 - Markdown 单个波浪号被误解析为删除线。
 - Base UI Tooltip / Button 的 `nativeButton` 误用。
 - i18n 重复 key 触发的 Vite Duplicate key 警告。
@@ -32,6 +36,7 @@
 
 ### 工程
 
+- **分享解析真源下沉**：豆包 / 通义千问 / Gemini 的分享页映射从 obscura 内联代码抽到 `src/shared/share-parsers/`，分享链接导入与插件登录态 normalizer 共用同一份实现，两条采集路径的输出契约由等价性测试守住。
 - **typecheck 零容忍**：清零存量类型错误并将 typecheck 提为交付闸门。
 - **lint:ui 加固**：基线改用行号无关的分组计数键消除误报；规则前导守卫改零宽 lookbehind，修掉紧邻违规的漏检。
 
@@ -39,10 +44,12 @@
 
 - README / 英文 README / [pentou-introduction.md](./pentou-introduction.md) 新增「AI 技能」章节并更新三张演示截图。
 - [auto-collect-guide.md](./auto-collect-guide.md) §3 改为「商店安装」，源码构建降级为折叠的开发者备选。
-- 浏览器插件规划补入豆包、通义千问（国内版 / 国际版）与 Gemini 的支持路线。
+- 浏览器插件规划补入豆包、通义千问（国内版 / 国际版）与 Gemini 的支持路线，并按真实勘测结果落成 R3 平台接口表（页面形态、会话 ID、最小请求形态、鉴权口径）。
+- [PRIVACY.md](../PRIVACY.md) 补充四个新采集域名与对应权限说明。
 
 ### 说明
 
+- **浏览器插件自带版本号，与 Pentou 版本号无关**：商店在架的是插件 v0.1.1（仅 ChatGPT / DeepSeek）；含豆包 / 通义千问 / Gemini 的插件 v0.2.1 **正在商店审核中**，四平台的端到端采集已实机验收通过，商店审核通过后由 Chrome 自动更新；急用可用 `extension/pentou-collector-chrome-v0.2.1.zip` 开发者模式加载。
 - 技能的 LLM 调用走 **BYOK**：未在设置里配好模型时，意图 chip 为禁用态并提示「请先配置模型」。
 - 技能 runner 目前只支持**线性工作流**（无分支 / 循环）。
 - 行动计划**不支持中断续跑**：中断后请让 AI 重新起草一份。
