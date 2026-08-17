@@ -226,6 +226,12 @@ Prefer doing it yourself? [`docs/user-guide.md`](./docs/user-guide.md) (Chinese)
 
 ---
 
+## Acknowledgements
+
+Thanks to [LINUX DO](https://linux.do/) — a sincere, friendly, united and professional tech community. Quite a few problems hit while building PenTou were solved by digging through threads there.
+
+---
+
 ## License
 
 [MIT](./LICENSE) © 2026 STArtppt

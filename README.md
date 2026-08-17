@@ -221,6 +221,12 @@ npx -y @startist/pentou@latest
 
 ---
 
+## 致谢
+
+感谢 [LINUX DO](https://linux.do/) —— 一个真诚、友善、团结、专业的技术社区。PenTou 开发过程中的不少坑，是在这里翻帖子解决的。
+
+---
+
 ## 协议
 
 [MIT](./LICENSE) © 2026 STArtppt
