@@ -44,6 +44,34 @@ nothing to commit, working tree clean
     expect(stripAgentNoise("<user_info>\nx\n</user_info>")).toBe("");
   });
 
+  it("strips Grok <rules> workspace/user rule dump so leftover is empty", () => {
+    // 2026-08 Grok CLI 首轮：user_info/git_status 之外再注入 <rules>（AGENTS.md + user_rules）。
+    const raw = `<user_info>
+OS Version: macos
+Workspace Path: /tmp/pentou
+</user_info>
+
+<git_status>
+## main
+</git_status>
+
+<rules>
+The rules section has a number of possible rules/memories/context that you should consider.
+
+<always_applied_workspace_rules description="workspace-level rules">
+<always_applied_workspace_rule name="Agents.md"># AGENTS.md
+Pentou 是本地优先的 AI 对话管理器。
+</always_applied_workspace_rule>
+</always_applied_workspace_rules>
+
+<user_rules>
+<user_rule>When implementing UI, verify in the browser.</user_rule>
+</user_rules>
+</rules>`;
+    expect(stripAgentNoise(raw)).toBe("");
+    expect(cleanUserMessageContent(raw)).toBe("");
+  });
+
   it("leaves clean user text unchanged", () => {
     expect(stripAgentNoise("帮我排查这个 bug")).toBe("帮我排查这个 bug");
   });

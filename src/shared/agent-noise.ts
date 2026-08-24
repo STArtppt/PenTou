@@ -2,7 +2,7 @@
  * 剥离 CLI / Agent 注入到「用户消息」里的元信息与本地命令痕迹。
  *
  * 典型来源：
- * - Grok CLI 首轮：`<user_info>` / `<git_status>` / `<system-reminder>`（无 synthetic_reason 的也会混入）
+ * - Grok CLI 首轮：`<user_info>` / `<git_status>` / `<rules>`（AGENTS.md / user_rules）/ `<system-reminder>`（无 synthetic_reason 的也会混入）
  * - Claude Code / waylog：`<local-command-caveat>`、斜杠命令回显 `> /model`、`> ⎿ …`
  * - Claude JSONL：`<command-name>` / `<local-command-stdout>` 等
  * - Codex：`<dynamic_context>` 外壳 + 可选 `<user_message>` 内层；整段 `# Instructions…` 技能注入
@@ -15,6 +15,7 @@
 const AGENT_BLOCK_TAGS = [
   "user_info",
   "git_status",
+  "rules",
   "system-reminder",
   "local-command-caveat",
   "local-command-stdout",

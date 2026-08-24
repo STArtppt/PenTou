@@ -75,6 +75,57 @@ describe("grok-cli normalizer (US-02)", () => {
     expect(conv.messages[0].content).not.toContain("git_status");
   });
 
+  it("drops Grok <rules> injection so U1/title are the real user_query", () => {
+    // 2026-08 起 Grok CLI 把 AGENTS.md / user_rules 包进 <rules>，无 synthetic_reason；
+    // 旧清洗剥完 user_info/git_status 后 leftover 非空，U1 变成系统提示词。
+    const data = [
+      JSON.stringify({ type: "system", content: "You are Grok 4.6 released by xAI." }),
+      JSON.stringify({
+        type: "user",
+        content: [{
+          type: "text",
+          text: `<user_info>
+OS Version: macos
+Workspace Path: /tmp/pentou
+</user_info>
+
+<git_status>
+## main
+</git_status>
+
+<rules>
+The rules section has a number of possible rules/memories/context that you should consider.
+
+<always_applied_workspace_rules description="workspace-level rules">
+<always_applied_workspace_rule name="Agents.md"># AGENTS.md
+Pentou 是本地优先的 AI 对话管理器。
+</always_applied_workspace_rule>
+</always_applied_workspace_rules>
+
+<user_rules>
+<user_rule>When implementing UI, verify in the browser.</user_rule>
+</user_rules>
+</rules>`,
+        }],
+      }),
+      JSON.stringify({
+        type: "user",
+        prompt_index: 0,
+        content: [{ type: "text", text: "<user_query>\ncli 采集器会把系统提示词带进用户首条消息\n</user_query>" }],
+      }),
+      JSON.stringify({ type: "assistant", content: "先查 grok-cli normalizer。" }),
+    ].join("\n");
+    const [conv] = normalizeGrokCli(data);
+    expect(conv.messages.map((m) => [m.role, m.content])).toEqual([
+      ["user", "cli 采集器会把系统提示词带进用户首条消息"],
+      ["ai", "先查 grok-cli normalizer。"],
+    ]);
+    expect(conv.title).toBe("cli 采集器会把系统提示词带进用户首条消息");
+    expect(conv.messages[0].content).not.toContain("rules");
+    expect(conv.messages[0].content).not.toContain("AGENTS.md");
+    expect(conv.messages[0].content).not.toContain("You are Grok");
+  });
+
   it("uses grok-cli-v1 envelope session.created_at when no turns (session-level fallback)", () => {
     const history = [
       JSON.stringify({ type: "user", content: [{ type: "text", text: "<user_query>\n旧会话\n</user_query>" }] }),

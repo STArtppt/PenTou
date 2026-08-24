@@ -3,7 +3,7 @@
  * 行格式：{ type: "system"|"user"|"assistant"|"reasoning", content }；
  * - user 的 content 为 [{type:"text",text}] 数组，真实提问包在 <user_query> 内；
  * - 带 synthetic_reason 的 user 行是注入的系统提醒，不是用户发言；
- * - 无 synthetic_reason 的纯 <user_info>/<git_status> 等注入行也丢弃（cleanUserMessageContent）；
+ * - 无 synthetic_reason 的纯 <user_info>/<git_status>/<rules> 等注入行也丢弃（cleanUserMessageContent）；
  * - assistant 的 content 可能为空串（纯工具调用轮）。
  *
  * 载荷两种形态：
