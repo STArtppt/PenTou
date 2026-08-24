@@ -239,3 +239,59 @@ describe("embedding config + key security (§4.7)", () => {
     }
   });
 });
+
+/**
+ * 混合模式的注意力加权（spec content-favorites）：与 lex 路径同一出口、同一口径，
+ * 不能出现「换个 mode 收藏就不算数了」。
+ */
+describe("hybrid 模式的收藏加权", () => {
+  const writeFavDoc = (id: string, title: string, body: string, favorite: boolean) => {
+    fs.writeFileSync(
+      path.join(dir, "documents", `${id}.md`),
+      `---\nid: ${id}\ntitle: ${title}\nfolderId: null\ncreatedAt: 2026-05-28T00:00:00.000Z\nupdatedAt: 2026-05-29T00:00:00.000Z\ncurrentVersionId: ver_1\n${favorite ? "favorite: true\n" : ""}---\n\n${body}\n`,
+    );
+  };
+
+  it("hybrid 与 lex 一致地回显 favorite / weight", async () => {
+    configureSearch(dir);
+    writeFavDoc("d_fav", "Cat A", "the cat is fast", true);
+    writeFavDoc("d_plain", "Cat B", "the cat is slow", false);
+    refreshNow();
+    await enableAndWait();
+
+    const hybrid = await searchHybrid("cat", 30);
+    expect(hybrid.mode).toBe("hybrid");
+    const byIdHybrid = Object.fromEntries(hybrid.hits.map((h) => [h.id, h]));
+    expect(byIdHybrid.d_fav.favorite).toBe(true);
+    expect(byIdHybrid.d_fav.weight).toBe(1);
+    expect(byIdHybrid.d_plain.favorite).toBe(false);
+
+    const lex = search("cat", 30);
+    const byIdLex = Object.fromEntries(lex.hits.map((h) => [h.id, h]));
+    expect(byIdLex.d_fav.favorite).toBe(byIdHybrid.d_fav.favorite);
+    expect(byIdLex.d_fav.weight).toBe(byIdHybrid.d_fav.weight);
+  });
+
+  it("hybrid 下 favoriteOnly 同样只留收藏项", async () => {
+    configureSearch(dir);
+    writeFavDoc("d_fav", "Cat A", "the cat is fast", true);
+    writeFavDoc("d_plain", "Cat B", "the cat is slow", false);
+    refreshNow();
+    await enableAndWait();
+
+    const r = await searchHybrid("cat", 30, { favoriteOnly: true });
+    expect(r.hits.map((h) => h.id)).toEqual(["d_fav"]);
+  });
+
+  it("降级回 lex 时加权照常生效（不因降级丢掉收藏信号）", async () => {
+    configureSearch(dir);
+    writeFavDoc("d_fav", "Cat A", "the cat is fast", true);
+    refreshNow();
+    _setEmbedFnForTest(async () => { throw new Error("boom"); });
+    updateEmbeddingConfig({ enabled: true, endpoint: CFG.endpoint, model: "m", apiKey: CFG.apiKey });
+
+    const r = await searchHybrid("cat", 30);
+    expect(r.mode).toBe("lex");
+    expect(r.hits[0].favorite).toBe(true);
+  });
+});

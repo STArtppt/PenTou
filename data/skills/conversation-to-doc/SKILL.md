@@ -47,11 +47,23 @@ description: 用户点「把这个会话转成文档」时使用。读会话原�
 | 端点 | 用途 |
 | --- | --- |
 | `GET /api/health` | 探活 |
-| `GET /api/conversations/:id` | 读会话原文 |
+| `GET /api/conversations/:id` | 读会话原文（带 `favorite`） |
+| `GET /api/conversations?fields=meta&favorite=1` | 批量场景下只取**我收藏的**那批候选（可选） |
 | `GET /api/documents?fields=meta` | 找同一会话的既有产物 |
 | `POST /api/documents` | 新建文档 |
 | `POST /api/documents/:id/commit-version` | 覆盖既有产物（落新版本） |
 | `PUT /api/documents/:id` | 更新标题与生成血缘 |
+
+## 注意力权重（spec content-favorites）
+
+会话与文档都带 `favorite`（缺键即未收藏）。它的语义是「用户常看 / 关注」，在本技能里有两处用法：
+
+- **批量挑选候选时**：列表接口支持 `?favorite=1`，可直接把范围收敛到用户收藏的那批，
+  而不是让模型在几十条里自己猜哪些重要。
+- **给模型的候选清单**：收藏条目 MUST 标 `★` 并附一句「★ = 我收藏的，优先阅读」。
+  **只标「有」不标「无」** —— 给未收藏项挂一句否定说明纯属噪声。
+
+权重只影响**读的优先级**，MUST NOT 影响产物的落位、覆盖判定或版本策略。
 
 ## 边界
 

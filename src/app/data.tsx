@@ -74,6 +74,9 @@ export interface Conversation {
   currentVersionId?: string;
   // 采集溯源（spec collector-source-expansion US-07）："cli:<form-slug>" 时顶栏渲染形态徽章
   ingestSource?: string;
+  // 收藏（spec content-favorites）：缺此键即未收藏。列表置顶与检索加权都经 attentionWeight 读它，
+  // 消费方不要直接读这个布尔 —— 后续接访问热度时只改权重函数。
+  favorite?: boolean;
   // 来源项目（spec conversation-project-attribution）：采集时由会话的工作目录 basename 推导，
   // 判定不了就留空。本次只落数据层，界面上不产生任何可见变化。
   sourceProject?: string;
@@ -137,6 +140,8 @@ export interface Document {
    * 承载不了一个程序还要回读的状态。
    */
   aiPlanRun?: string;
+  /** 收藏（spec content-favorites）：缺此键即未收藏，语义与会话侧一致。 */
+  favorite?: boolean;
 }
 
 export interface DocumentFolder {
@@ -284,6 +289,8 @@ interface AppContextType {
   moveConversation: (convId: string, folderId: string | null) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, title: string) => Promise<void>;
+  /** 收藏切换（spec content-favorites）：乐观更新，失败回滚后抛出，由调用方提示。 */
+  toggleConversationFavorite: (id: string, favorite: boolean) => Promise<void>;
   // 会话版本历史（对齐文档；spec 决策5）
   versionsByConv: Record<string, ConversationVersion[]>;
   loadConversationVersions: (convId: string) => Promise<void>;
@@ -336,6 +343,7 @@ interface AppContextType {
   saveEmbeddingConfig: (patch: { enabled?: boolean; endpoint?: string; model?: string; apiKey?: string }) => Promise<EmbeddingClientConfig>;
   addDocuments: (docs: Document[]) => Promise<void>;
   updateDocument: (id: string, patch: Partial<Document>) => Promise<void>;
+  toggleDocumentFavorite: (id: string, favorite: boolean) => Promise<void>;
   saveDocumentBody: (id: string, newBody: string) => Promise<DocumentVersion>;
   /**
    * 预览界面里勾选任务复选框（spec interactive-task-checkbox）：翻转第 `line` 行并保存，
@@ -1154,6 +1162,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /**
+   * 收藏切换（spec content-favorites）：走**专用端点**而非通用 PUT ——
+   * 收藏不动 updatedAt、不建版本。失败时回滚到切换前的状态并抛出，由调用方提示。
+   */
+  const toggleConversationFavorite = useCallback(async (id: string, favorite: boolean) => {
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, favorite } : c)));
+    try {
+      await apiFetch(`/api/conversations/${id}/favorite`, {
+        method: "PUT",
+        body: JSON.stringify({ favorite }),
+      });
+    } catch (e) {
+      setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, favorite: !favorite } : c)));
+      throw e;
+    }
+  }, []);
+
   // ── Document operations ─────────────────────────────────────────────────────
 
   const addDocuments = useCallback(async (docs: Document[]) => {
@@ -1200,6 +1225,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateDocument = useCallback(async (id: string, patch: Partial<Document>) => {
     setDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
     await apiFetch(`/api/documents/${id}`, { method: "PUT", body: JSON.stringify(patch) });
+  }, []);
+
+  /** 与 toggleConversationFavorite 同约束（spec content-favorites）。 */
+  const toggleDocumentFavorite = useCallback(async (id: string, favorite: boolean) => {
+    setDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, favorite } : d)));
+    try {
+      await apiFetch(`/api/documents/${id}/favorite`, {
+        method: "PUT",
+        body: JSON.stringify({ favorite }),
+      });
+    } catch (e) {
+      setDocuments((prev) => prev.map((d) => (d.id === id ? { ...d, favorite: !favorite } : d)));
+      throw e;
+    }
   }, []);
 
   const saveDocumentBody = useCallback(async (id: string, newBody: string): Promise<DocumentVersion> => {
@@ -1532,6 +1571,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         moveConversation,
         deleteConversation,
         renameConversation,
+        toggleConversationFavorite,
         versionsByConv,
         loadConversationVersions,
         rollbackConversation,
@@ -1572,6 +1612,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         saveEmbeddingConfig,
         addDocuments,
         updateDocument,
+        toggleDocumentFavorite,
         saveDocumentBody,
         toggleDocumentTask,
         openInAppLink,

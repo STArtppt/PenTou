@@ -19,6 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { stripReasoningBlocks } from "../shared/reasoning.js";
+import { attentionWeight, sortByEffectiveRank } from "../shared/attention.js";
 import { embed as providerEmbed, EmbeddingError } from "./embedding-provider.js";
 import type { EmbeddingConfig } from "./embedding-provider.js";
 
@@ -37,6 +38,15 @@ export interface SearchHit {
   score: number;
   // Phase 2：命中来源。缺省（Phase 1 / lex 路径）视作 "lex"，不破坏现有形状（spec §4.3/§4.7）。
   matchReason?: MatchReason;
+  // 注意力信号回显（spec content-favorites）：favorite 给 UI 画星标，weight 给消费方按数值用。
+  // 两者皆可选，缺省不破坏既有形状（与 matchReason 同一处理方式）。
+  favorite?: boolean;
+  weight?: number;
+}
+
+/** 检索的可选开关。favoriteOnly 时结果集只保留收藏项（spec content-favorites）。 */
+export interface SearchOptions {
+  favoriteOnly?: boolean;
 }
 
 export interface SearchResult {
@@ -91,6 +101,8 @@ const EMBED_BATCH = 16;       // 分批限流
 const EMBED_PAUSE_MS = 50;    // 批间停顿（限流）
 const RRF_K = 60;
 const RRF_TOPN = 50;
+// 只取收藏时的预取上限（spec content-favorites）：先多捞一批再过滤，避免限额被未收藏项占满。
+const FAVORITE_SCAN_LIMIT = 500;
 
 /** CJK 逐字加空格，拉丁/数字保持成串 —— 喂给 unicode61 后 CJK 成单字 token。 */
 function segment(text: string): string {
@@ -154,14 +166,14 @@ export function getStatus(): "ready" | "building" {
  * - 索引未就绪（首次预热未完成）→ {status:"building", hits:[]}，前端轮询。
  * - 就绪 → 若 stale 先增量刷新，再查询，返回 ready + hits。
  */
-export function search(q: string, limit: number): SearchResult {
+export function search(q: string, limit: number, opts: SearchOptions = {}): SearchResult {
   const match = buildMatch(q);
   if (!match) return { status: "ready", hits: [], mode: "lex" };
 
   const status = ensureFresh();
   if (status === "building") return { status, hits: [], mode: "lex" };
 
-  return { status: "ready", hits: lexHits(match, q, limit), mode: "lex" };
+  return { status: "ready", hits: lexHits(match, q, limit, opts), mode: "lex" };
 }
 
 /**
@@ -171,7 +183,7 @@ export function search(q: string, limit: number): SearchResult {
  * - embedding / partial / ready → FTS ∪ 向量 RRF 融合；非 ready 时 partial:true。
  * - 查询期 provider 失败 → 降级 lex + degraded:true。
  */
-export async function searchHybrid(q: string, limit: number): Promise<SearchResult> {
+export async function searchHybrid(q: string, limit: number, opts: SearchOptions = {}): Promise<SearchResult> {
   const match = buildMatch(q);
   if (!match) return { status: "ready", hits: [], mode: "lex" };
 
@@ -179,15 +191,15 @@ export async function searchHybrid(q: string, limit: number): Promise<SearchResu
   if (status === "building") return { status, hits: [], mode: "lex" };
 
   if (embPhase === "disabled") {
-    return { status: "ready", hits: lexHits(match, q, limit), mode: "lex" };
+    return { status: "ready", hits: lexHits(match, q, limit, opts), mode: "lex" };
   }
   if (embPhase === "configuring" || embPhase === "error") {
-    return { status: "ready", hits: lexHits(match, q, limit), mode: "lex", degraded: true };
+    return { status: "ready", hits: lexHits(match, q, limit, opts), mode: "lex", degraded: true };
   }
 
   // embedding / partial / ready → 混合
   try {
-    const hits = await hybridHits(match, q, limit);
+    const hits = await hybridHits(match, q, limit, opts);
     return {
       status: "ready",
       hits,
@@ -197,7 +209,7 @@ export async function searchHybrid(q: string, limit: number): Promise<SearchResu
   } catch (e) {
     embPhase = "error";
     embError = e instanceof Error ? e.message : String(e);
-    return { status: "ready", hits: lexHits(match, q, limit), mode: "lex", degraded: true };
+    return { status: "ready", hits: lexHits(match, q, limit, opts), mode: "lex", degraded: true };
   }
 }
 
@@ -282,6 +294,11 @@ export function refreshNow(): void {
   const upFile = conn.prepare(
     "INSERT INTO files(path, mtime, rowref) VALUES (?,?,?) ON CONFLICT(path) DO UPDATE SET mtime=excluded.mtime, rowref=excluded.rowref",
   );
+  // 注意力信号随重扫同步（spec content-favorites）：收藏改动必改 mtime，故必走这里。
+  const upFlag = conn.prepare(
+    "INSERT INTO flags(docid, type, favorite) VALUES (?,?,?) ON CONFLICT(docid, type) DO UPDATE SET favorite=excluded.favorite",
+  );
+  const delFlag = conn.prepare("DELETE FROM flags WHERE docid = ? AND type = ?");
 
   let chunksChanged = false;
   const tx = conn.transaction(() => {
@@ -291,9 +308,10 @@ export function refreshNow(): void {
       if (prev && prev.mtime === f.mtime) continue; // 未变，跳过
       if (prev) delDoc.run(prev.rowref);
       const raw = fs.readFileSync(f.path, "utf-8");
-      const { title, date, body } = readMd(raw, f.type);
+      const { title, date, body, favorite } = readMd(raw, f.type);
       const info = insDoc.run(segment(title), segment(body), f.type, f.docid, title, body, date);
       upFile.run(f.path, f.mtime, info.lastInsertRowid);
+      upFlag.run(f.docid, f.type, favorite ? 1 : 0);
       if (chunkEnabled) { rechunkDoc(conn, f.docid, f.type, body, f.mtime); chunksChanged = true; }
     }
     // 已删除的文件：清理索引行（及其分块/向量）
@@ -302,8 +320,11 @@ export function refreshNow(): void {
     for (const row of all) {
       if (!seen.has(row.path)) {
         const docid = path.basename(row.path).slice(0, -3);
+        const type: "conversation" | "document" =
+          path.basename(path.dirname(row.path)) === "conversations" ? "conversation" : "document";
         delDoc.run(row.rowref);
         delFile.run(row.path);
+        delFlag.run(docid, type); // flags 与文件同生命周期，别留孤儿行
         if (chunkEnabled) { deleteChunksForDoc(conn, docid); chunksChanged = true; }
       }
     }
@@ -337,17 +358,46 @@ function ensureFresh(): "ready" | "building" {
 
 interface DocRow { type: SearchHit["type"]; docid: string; title: string; body: string; date: string; }
 
-function lexHits(match: string, q: string, limit: number): SearchHit[] {
+/** 当前收藏集合（`type:docid`）。量级小，一次查询即可，不必逐条 JOIN。 */
+function favoriteKeys(conn: ReturnType<typeof openDb>): Set<string> {
+  const rows = conn.prepare("SELECT docid, type FROM flags WHERE favorite = 1").all() as Array<{
+    docid: string;
+    type: string;
+  }>;
+  return new Set(rows.map((r) => `${r.type}:${r.docid}`));
+}
+
+/**
+ * 注意力加权的**唯一出口**（spec content-favorites D5）：lex 与 hybrid 两条路径都经这里，
+ * 保证两种模式加权口径一致。
+ *
+ * 加权做在**名次**上而非分数上：bm25 是负值升序、RRF 是正值降序，没有一个乘法因子对两者都安全。
+ * `favoriteOnly` 时先过滤再排序 —— 过滤是显式请求，与加权的「排序偏置」性质无关。
+ */
+function applyAttention(conn: ReturnType<typeof openDb>, hits: SearchHit[], opts: SearchOptions = {}): SearchHit[] {
+  const favorites = favoriteKeys(conn);
+  const annotated = hits.map((hit) => {
+    const favorite = favorites.has(`${hit.type}:${hit.id}`);
+    return { ...hit, favorite, weight: attentionWeight({ favorite }) };
+  });
+  const scoped = opts.favoriteOnly ? annotated.filter((hit) => hit.favorite) : annotated;
+  return sortByEffectiveRank(scoped);
+}
+
+function lexHits(match: string, q: string, limit: number, opts: SearchOptions = {}): SearchHit[] {
   const conn = openDb();
   const runs = tokens(q);
+  // 只取收藏时先按 FAVORITE_SCAN_LIMIT 多取一批再过滤：否则限额会被未收藏的强相关项占满，
+  // 用户明确要的那批反而一条都进不来。
+  const fetch = opts.favoriteOnly ? Math.max(limit, FAVORITE_SCAN_LIMIT) : limit;
   const rows = conn
     .prepare(
       `SELECT type, docid, title, body, date, bm25(docs, 10.0, 1.0) AS score
        FROM docs WHERE docs MATCH ? ORDER BY score LIMIT ?`,
     )
-    .all(match, limit) as Array<DocRow & { score: number }>;
+    .all(match, fetch) as Array<DocRow & { score: number }>;
 
-  return rows.map((r) => {
+  const hits = rows.map((r) => {
     const snippet = buildSnippet(r.body || r.title, runs);
     return {
       type: r.type,
@@ -359,11 +409,12 @@ function lexHits(match: string, q: string, limit: number): SearchHit[] {
       score: r.score,
     };
   });
+  return applyAttention(conn, hits, opts).slice(0, limit);
 }
 
 // ── 内部实现：混合检索（RRF） ────────────────────────────────────────────────
 
-async function hybridHits(match: string, q: string, limit: number): Promise<SearchHit[]> {
+async function hybridHits(match: string, q: string, limit: number, opts: SearchOptions = {}): Promise<SearchHit[]> {
   const conn = openDb();
   const runs = tokens(q);
 
@@ -395,7 +446,7 @@ async function hybridHits(match: string, q: string, limit: number): Promise<Sear
       return { docid, score };
     })
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    .slice(0, opts.favoriteOnly ? Math.max(limit, FAVORITE_SCAN_LIMIT) : limit);
 
   const hits: SearchHit[] = [];
   for (const { docid, score } of fused) {
@@ -429,7 +480,7 @@ async function hybridHits(match: string, q: string, limit: number): Promise<Sear
       matchReason: reason,
     });
   }
-  return hits;
+  return applyAttention(conn, hits, opts).slice(0, limit);
 }
 
 interface SemHit { docid: string; sim: number; chunkText: string; off: number; }
@@ -689,6 +740,16 @@ function openDb(): Database.Database {
       file_mtime INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_chunks_docid ON chunks(docid);
+    -- 注意力信号（spec content-favorites D4）：独立表而非给 FTS docs 加列 ——
+    -- CREATE VIRTUAL TABLE IF NOT EXISTS 对老库是 no-op，加列拿不到；独立表则是纯追加。
+    -- 收藏只能经专用端点写入，写入必改 .md 的 mtime，因此重扫必然把 flags 补齐，
+    -- 不存在「存量收藏索引不知道」的空窗。
+    CREATE TABLE IF NOT EXISTS flags (
+      docid TEXT NOT NULL,
+      type TEXT NOT NULL,
+      favorite INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (docid, type)
+    );
     CREATE TABLE IF NOT EXISTS vectors (
       chunk_id INTEGER PRIMARY KEY REFERENCES chunks(chunk_id),
       dim INTEGER NOT NULL,
@@ -729,14 +790,17 @@ function pickMeta(meta: string, key: string): string {
 }
 
 /** 最小 .md 读取：取 title/date 与正文（剥离 frontmatter 与 `---` 分隔行）。 */
-function readMd(raw: string, type: "conversation" | "document"): { title: string; date: string; body: string } {
+function readMd(raw: string, type: "conversation" | "document"): { title: string; date: string; body: string; favorite: boolean } {
   const fm = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   let title = "";
   let date = "";
+  let favorite = false;
   let body = raw;
   if (fm) {
     const meta = fm[1];
     title = pickMeta(meta, "title");
+    // 收藏（spec content-favorites）：仅 "true" 视作已收藏，缺键/脏值一律未收藏
+    favorite = pickMeta(meta, "favorite") === "true";
     date = type === "conversation"
       ? pickMeta(meta, "date")
       : (pickMeta(meta, "updatedAt") || pickMeta(meta, "createdAt"));
@@ -753,7 +817,7 @@ function readMd(raw: string, type: "conversation" | "document"): { title: string
     body = stripReasoningBlocks(body);
   }
   body = body.replace(/^---\s*$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
-  return { title, date, body };
+  return { title, date, body, favorite };
 }
 
 /**

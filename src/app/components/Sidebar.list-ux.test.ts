@@ -45,3 +45,18 @@ describe("sidebar list UX (spec sidebar-list-ux)", () => {
     expect(uncategorizedSticky).toBeGreaterThan(-1);
   });
 });
+
+describe("收藏优先分组（spec content-favorites）", () => {
+  it("两条列表都把 sortByAttention 叠在时间排序之上", () => {
+    expect(sidebar).toContain('import { sortByAttention } from "@/shared/attention"');
+    expect(sidebar).toContain("return sortByAttention(byTime);");
+    expect(sidebar).toContain("sortByAttention(sortDocumentsByTime(");
+  });
+
+  it("列表项渲染收藏星标（会话与文档各一处）", () => {
+    const stars = sidebar.match(/fill-current text-amber-500/g) ?? [];
+    expect(stars).toHaveLength(2);
+    expect(sidebar).toContain("conversation.favorite && (");
+    expect(sidebar).toContain("doc.favorite && (");
+  });
+});

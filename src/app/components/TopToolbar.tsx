@@ -33,6 +33,7 @@ import { resolveDocumentOrigin } from "./topBarAttribution";
 import { isAiGenerated } from "../skills/agent-write-policy";
 import { formatDisplayDateTime } from "../utils/dateFormat";
 import { isImeComposing } from "../ime";
+import { FavoriteButton } from "./FavoriteButton";
 
 
 export function TopToolbar() {
@@ -47,6 +48,7 @@ export function TopToolbar() {
     setEditMode,
     previewingVersionId,
     setVersionPanelOpen,
+    toggleDocumentFavorite,
   } = useAppContext();
   const { t, language } = useTranslation();
 
@@ -159,6 +161,12 @@ export function TopToolbar() {
         <div className="flex-1" />
 
         {/* Action Buttons — 仅图标（spec ai-sidebar-layout） */}
+        {/* 收藏（spec content-favorites）：置于编辑/历史/导出之前，无选中文档时禁用 */}
+        <FavoriteButton
+          favorite={!!activeDoc?.favorite}
+          disabled={!activeDocId}
+          onToggle={(next) => toggleDocumentFavorite(activeDocId!, next)}
+        />
         {editActive ? (
           <>
             <ToolButton

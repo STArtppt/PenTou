@@ -11,6 +11,7 @@ import {
   sortDocumentsByTime,
   uncategorizedInProject,
 } from "./document-projects";
+import { sortByAttention } from "@/shared/attention";
 import type { Document, DocumentFolder, DocumentProject } from "./data";
 
 const doc = (id: string, extra: Partial<Document> = {}): Document => ({
@@ -147,5 +148,55 @@ describe("sorting documents by time", () => {
   it("does not throw on missing or unparsable timestamps", () => {
     const broken = [doc("later", { updatedAt: "2026-06-01T00:00:00.000Z" }), doc("junk", { updatedAt: "not-a-date" })];
     expect(sortDocumentsByTime(broken, true).map((d) => d.id)).toEqual(["junk", "later"]);
+  });
+});
+
+/**
+ * 收藏优先分组（spec content-favorites）：侧栏把 `sortByAttention` 叠在时间排序**之上**，
+ * 各文件夹再按 folderId 过滤。这里验证的是这套组合的性质，而非某个函数单独的行为。
+ */
+describe("收藏优先分组叠加时间排序", () => {
+  const listFor = (docs: Document[], ascending: boolean) =>
+    sortByAttention(sortDocumentsByTime(docs, ascending));
+
+  const docs = [
+    doc("old-fav", { updatedAt: "2026-05-01T00:00:00.000Z", favorite: true }),
+    doc("mid", { updatedAt: "2026-06-01T00:00:00.000Z" }),
+    doc("new-fav", { updatedAt: "2026-07-01T00:00:00.000Z", favorite: true }),
+    doc("newest", { updatedAt: "2026-08-01T00:00:00.000Z" }),
+  ];
+
+  it("收藏整体前置，组内维持时间序", () => {
+    expect(listFor(docs, true).map((d) => d.id)).toEqual(["old-fav", "new-fav", "mid", "newest"]);
+  });
+
+  it("切换排序方向只反转组内顺序，不打散分组", () => {
+    expect(listFor(docs, false).map((d) => d.id)).toEqual(["new-fav", "old-fav", "newest", "mid"]);
+  });
+
+  it("同时间以标题稳定兜底的口径在组内依然成立", () => {
+    const sameTime = [
+      doc("zeta", { updatedAt: "2026-06-01T00:00:00.000Z", favorite: true }),
+      doc("alpha", { updatedAt: "2026-06-01T00:00:00.000Z", favorite: true }),
+      doc("plain", { updatedAt: "2026-06-01T00:00:00.000Z" }),
+    ];
+    expect(listFor(sameTime, true).map((d) => d.id)).toEqual(["alpha", "zeta", "plain"]);
+  });
+
+  it("不跨文件夹提升：按 folderId 过滤保序，收藏项只浮到本文件夹内部的首位", () => {
+    const inFolders = [
+      doc("a-plain", { folderId: "df_a", updatedAt: "2026-05-01T00:00:00.000Z" }),
+      doc("b-fav", { folderId: "df_b", updatedAt: "2026-06-01T00:00:00.000Z", favorite: true }),
+      doc("a-fav", { folderId: "df_a", updatedAt: "2026-07-01T00:00:00.000Z", favorite: true }),
+      doc("b-plain", { folderId: "df_b", updatedAt: "2026-08-01T00:00:00.000Z" }),
+    ];
+    const ordered = listFor(inFolders, true);
+    expect(ordered.filter((d) => d.folderId === "df_a").map((d) => d.id)).toEqual(["a-fav", "a-plain"]);
+    expect(ordered.filter((d) => d.folderId === "df_b").map((d) => d.id)).toEqual(["b-fav", "b-plain"]);
+  });
+
+  it("全未收藏时与纯时间排序逐项一致（缺省行为不变）", () => {
+    const plain = [doc("x", { updatedAt: "2026-06-01T00:00:00.000Z" }), doc("y", { updatedAt: "2026-05-01T00:00:00.000Z" })];
+    expect(listFor(plain, true).map((d) => d.id)).toEqual(sortDocumentsByTime(plain, true).map((d) => d.id));
   });
 });

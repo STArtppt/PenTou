@@ -10,12 +10,16 @@
  * 对明确指向当前视图的措辞（`wantsCurrentViewBody`）再在派发层直接预取，把回归风险压掉。
  */
 
+import { attentionWeight } from "@/shared/attention";
+
 export interface ViewContext {
   kind: "doc" | "chat";
   title: string;
   /** 完整正文，**不做任何截断** —— 它只在按需取用时才进提示词。 */
   text: string;
   hasUnsavedEdit: boolean;
+  /** 收藏（spec content-favorites）：经 attentionWeight 折算成权重后决定要不要标注。 */
+  favorite?: boolean;
 }
 
 const MAX_OUTLINE_ENTRIES = 12;
@@ -65,6 +69,8 @@ export function buildContextHeader(view: ViewContext | null): string {
     for (const entry of shown) lines.push(`${entry.level === 1 ? "- " : "  - "}${entry.title}`);
     if (outline.length > shown.length) lines.push(`  …（共 ${outline.length} 节，其余略）`);
   }
+  // 注意力标注（spec content-favorites）：只标「有」不标「无」，避免每轮都塞一句无信息量的否定。
+  if (attentionWeight(view) > 0) lines.push("★ 已收藏（用户常看的内容，优先阅读）");
   if (view.hasUnsavedEdit) lines.push("注意：有未保存的编辑，你看到的是已保存的正文。");
   lines.push("正文没有直接给你 —— 需要时用 read_current_view 取，可以只取某一节。");
   return lines.join("\n");

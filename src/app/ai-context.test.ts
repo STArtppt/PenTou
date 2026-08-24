@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildContextHeader, countWords, outlineOf, sectionOf, wantsCurrentViewBody } from "./ai-context";
+import { formatContextBlock } from "./skills/ask-ai-context";
 
 const LONG_DOC = [
   "# 设计稿",
@@ -143,5 +144,61 @@ describe("字数估算", () => {
     expect(countWords("你好世界")).toBe(4);
     expect(countWords("hello world")).toBe(2);
     expect(countWords("你好 world")).toBe(3);
+  });
+});
+
+/**
+ * 注意力标注（spec content-favorites）：标「有」不标「无」；标注由 attentionWeight 派生，
+ * 而非在字符串里直接判 favorite 布尔。
+ */
+describe("上下文里的收藏标注", () => {
+  const view = { kind: "doc" as const, title: "设计稿", text: "# 背景\n\n一段。\n", hasUnsavedEdit: false };
+
+  it("当前视图已收藏时，头部带优先阅读标注", () => {
+    const header = buildContextHeader({ ...view, favorite: true });
+    expect(header).toContain("★ 已收藏");
+    expect(header).toContain("优先阅读");
+  });
+
+  it("未收藏时不产生任何冗余标注", () => {
+    const header = buildContextHeader(view);
+    expect(header).not.toContain("★");
+    expect(header).not.toContain("收藏");
+  });
+
+  it("会话视图同样适用", () => {
+    expect(buildContextHeader({ ...view, kind: "chat", favorite: true })).toContain("★ 已收藏");
+  });
+});
+
+describe("检索片段清单的收藏标注", () => {
+  const hit = (id: string, favorite?: boolean) => ({
+    type: "document" as const,
+    id,
+    title: `文档 ${id}`,
+    snippetText: `片段 ${id}`,
+    favorite,
+  });
+
+  it("收藏条目带 ★ 前缀并附一句取舍指引", () => {
+    const block = formatContextBlock([hit("a", true), hit("b")]);
+    expect(block).toContain("[1] ★ 文档 a");
+    expect(block).toContain("[2] 文档 b");
+    expect(block).toContain("★ = 我收藏的，优先阅读");
+  });
+
+  it("全部未收藏时不加任何标注与指引", () => {
+    const block = formatContextBlock([hit("a"), hit("b")]);
+    expect(block).not.toContain("★");
+    expect(block).toBe("[1] 文档 a\n片段 a\n\n[2] 文档 b\n片段 b");
+  });
+
+  it("顺序沿用服务端返回的顺序（客户端不另排）", () => {
+    const block = formatContextBlock([hit("plain"), hit("fav", true)]);
+    expect(block.indexOf("文档 plain")).toBeLessThan(block.indexOf("文档 fav"));
+  });
+
+  it("无命中仍返回明确标记", () => {
+    expect(formatContextBlock([])).toBe("（无检索命中）");
   });
 });

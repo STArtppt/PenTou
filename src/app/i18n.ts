@@ -170,6 +170,12 @@ export const translations = {
     "import.doc.uploading": "Uploading and parsing...",
     "import.doc.unsupported": "Unsupported file type",
 
+    // Favorites (spec content-favorites)
+    "favorite.add": "Favorite",
+    "favorite.remove": "Unfavorite",
+    "favorite.marked": "Favorited",
+    "favorite.failed": "Could not update favorite",
+
     // Toolbar
     "toolbar.convertToDoc": "To Doc",
     "toolbar.editDoc": "Edit Doc",
@@ -709,6 +715,12 @@ export const translations = {
     "import.doc.uploadBtn": "上传文档",
     "import.doc.uploading": "上传并解析中...",
     "import.doc.unsupported": "不支持的文件类型",
+
+    // 收藏（spec content-favorites）
+    "favorite.add": "收藏",
+    "favorite.remove": "取消收藏",
+    "favorite.marked": "已收藏",
+    "favorite.failed": "收藏没能保存",
 
     // Toolbar
     "toolbar.convertToDoc": "转文档",

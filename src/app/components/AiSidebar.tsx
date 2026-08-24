@@ -328,6 +328,7 @@ export function AiSidebar() {
     let retrievalBlock = "";
     try {
       const hits = await fetchRetrievalHits(question, { apiBase: "", fetchImpl: fetch.bind(window) });
+      // 顺序沿用服务端（已按注意力权重加权）；超出注入上限时被截掉的必是低权重的那批。
       citations = hits.map((h) => ({ type: h.type, id: h.id, title: h.title }));
       if (hits.length) retrievalBlock = formatContextBlock(hits);
     } catch {
@@ -1270,12 +1271,12 @@ function buildViewContext(params: {
   if (params.activeView === "chat") {
     const conv = params.conversations.find((item) => item.id === params.activeConversationId);
     if (!conv) return null;
-    return { kind: "chat", title: conv.title, text: serializeConversation(conv), hasUnsavedEdit: false };
+    return { kind: "chat", title: conv.title, text: serializeConversation(conv), hasUnsavedEdit: false, favorite: conv.favorite };
   }
   const doc = params.documents.find((item) => item.id === params.activeDocId);
   if (!doc) return null;
   // 编辑模式下取的是**已保存**正文（与既有语义一致），因此明确告知模型有未保存的编辑
-  return { kind: "doc", title: doc.title, text: doc.body ?? "", hasUnsavedEdit: params.editMode === "edit" };
+  return { kind: "doc", title: doc.title, text: doc.body ?? "", hasUnsavedEdit: params.editMode === "edit", favorite: doc.favorite };
 }
 
 /**

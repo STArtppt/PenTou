@@ -55,6 +55,7 @@ import {
   mergeReasoning,
 } from "../shared/reasoning.js";
 import { EmptyPayloadError, parseRawConversations } from "../shared/raw-dispatch.js";
+import { favoriteOnlyMode } from "../shared/attention.js";
 import {
   DOCS_PLATFORM,
   deriveDocsPathTitleFromExternalId,
@@ -170,6 +171,8 @@ function toConversationMeta(conv: any) {
     ingestSource: conv.ingestSource,
     // 顶栏项目徽章消费（spec content-topbar-attribution）：与完整会话一致，无需水合消息体
     sourceProject: conv.sourceProject,
+    // 侧栏置顶与顶栏星标都读它（spec content-favorites），meta 模式必须带上
+    favorite: conv.favorite,
     messageCount: conv.messages?.length ?? 0,
     messages: [],
   };
@@ -223,6 +226,8 @@ export function conversationToMd(conv: any): string {
   if (conv.ingestSource) fmLines.push(`ingestSource: ${escapeFrontmatterValue(conv.ingestSource)}`);
   // 来源项目（spec conversation-project-attribution）：仅数据层，判定不了就不写
   if (conv.sourceProject) fmLines.push(`sourceProject: ${escapeFrontmatterValue(conv.sourceProject)}`);
+  // 收藏（spec content-favorites）：真值才写键，缺键即未收藏 —— 存量文件零迁移。
+  if (conv.favorite) fmLines.push(`favorite: true`);
 
   return `---
 ${fmLines.join("\n")}
@@ -346,6 +351,8 @@ export function parseMdFile(id: string, content: string): any {
     externalKey: meta.externalKey || undefined,
     ingestSource: meta.ingestSource || undefined,
     sourceProject: meta.sourceProject || undefined,
+    // 仅 "true" 视作已收藏；其余（含缺键与脏值）一律未收藏且不报错（spec content-favorites）
+    favorite: meta.favorite === "true" ? true : undefined,
     messages: mergeConsecutiveMessages(messages),
   };
 }
@@ -573,6 +580,8 @@ function mergeConversation(convDir: string, existing: any, incoming: any): Upser
     externalKey: incoming.externalKey ?? existing.externalKey,
     ingestSource: incoming.ingestSource ?? existing.ingestSource,
     sourceProject: incoming.sourceProject ?? existing.sourceProject,
+    // 收藏是用户的关注标记，采集端从不携带它 —— 合并 MUST NOT 把它抹掉（spec content-favorites）
+    favorite: existing.favorite,
     updatedAt: now,
   });
   const v = appendConvVersion(convDir, existing.id, { body: conversationToMd(merged), type: "import" });
@@ -1260,8 +1269,11 @@ export async function handleApiRequest(
       // mode：lex | hybrid；非法值回落 lex（§4.4）。Phase 2 解除「强制 lex」。
       const mode = params.get("mode") === "hybrid" ? "hybrid" : "lex";
 
+      // favorite=1：只在收藏范围内检索（spec content-favorites）。缺省时行为不变。
+      const opts = { favoriteOnly: favoriteOnlyMode(url) };
+
       const t0 = Date.now();
-      const result = mode === "hybrid" ? await searchHybrid(q, limit) : search(q, limit);
+      const result = mode === "hybrid" ? await searchHybrid(q, limit, opts) : search(q, limit, opts);
       json(res, 200, {
         status: result.status,
         hits: result.hits,
@@ -1399,12 +1411,15 @@ export async function handleApiRequest(
   if ((url === "/api/conversations" || url.startsWith("/api/conversations?")) && method === "GET") {
     try {
       const meta = isMetaMode(url);
+      const favoriteOnly = favoriteOnlyMode(url); // spec content-favorites：技能可只取收藏的这批
       const files = fs.readdirSync(convDir).filter((f: string) => f.endsWith(".md"));
-      const conversations = files.map((filename: string) => {
-        const content = fs.readFileSync(path.join(convDir, filename), "utf-8");
-        const full = parseMdFile(filename.replace(".md", ""), content);
-        return meta ? toConversationMeta(full) : full;
-      });
+      const conversations = files
+        .map((filename: string) => {
+          const content = fs.readFileSync(path.join(convDir, filename), "utf-8");
+          return parseMdFile(filename.replace(".md", ""), content);
+        })
+        .filter((full: any) => !favoriteOnly || full.favorite === true)
+        .map((full: any) => (meta ? toConversationMeta(full) : full));
       json(res, 200, conversations);
       return true;
     } catch (e) {
@@ -1447,6 +1462,25 @@ export async function handleApiRequest(
         return true;
       }
 
+      // PUT /api/conversations/:id/favorite（spec content-favorites D3）
+      // 专用端点而非通用 PUT：收藏是旁路的元数据动作 —— 不动 updatedAt、不建版本、不碰正文。
+      if (sub === "favorite" && method === "PUT") {
+        const filePath = path.join(convDir, `${cid}.md`);
+        if (!fs.existsSync(filePath)) { json(res, 404, { error: "Not found" }); return true; }
+        try {
+          const { favorite } = JSON.parse(await readBody(req));
+          if (typeof favorite !== "boolean") {
+            json(res, 400, { error: "favorite must be a boolean" }); // 磁盘零变更
+            return true;
+          }
+          const existing = parseMdFile(cid, fs.readFileSync(filePath, "utf-8"));
+          writeConversationFile(convDir, { ...existing, favorite: favorite || undefined });
+          markStale(); // 索引失效：收藏参与检索加权（spec content-favorites）
+          json(res, 200, { ok: true, favorite });
+        } catch (e) { json(res, 500, { error: String(e) }); }
+        return true;
+      }
+
       // POST /api/conversations/:id/rollback
       if (sub === "rollback" && method === "POST") {
         try {
@@ -1463,7 +1497,8 @@ export async function handleApiRequest(
 
           // 当前内容先存为 pre-rollback，再用目标版本覆盖（rolled-back-from）
           appendConvVersion(convDir, cid, { body: conversationToMd(existing), type: "pre-rollback" });
-          const merged = { ...targetConv, id: cid, folderId: existing.folderId, updatedAt: new Date().toISOString() };
+          // favorite 显式沿用现状（spec content-favorites）：回滚的是内容，不是用户的关注标记
+          const merged = { ...targetConv, id: cid, folderId: existing.folderId, favorite: existing.favorite, updatedAt: new Date().toISOString() };
           const newV = appendConvVersion(convDir, cid, {
             body: conversationToMd(merged),
             type: "rolled-back-from",

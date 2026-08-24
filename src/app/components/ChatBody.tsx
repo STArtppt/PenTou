@@ -30,6 +30,7 @@ import {
   remarkPlugins,
 } from "./chatMarkdown";
 import { ReasoningPanel } from "./ReasoningPanel";
+import { FavoriteButton } from "./FavoriteButton";
 
 export function ChatBody() {
   const {
@@ -50,6 +51,7 @@ export function ChatBody() {
     searchJump,
     setSearchJump,
     aiSidebarOpen,
+    toggleConversationFavorite,
   } = useAppContext();
   const { t, language } = useTranslation();
 
@@ -247,6 +249,11 @@ export function ChatBody() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+            {/* 收藏（spec content-favorites）：点亮即在侧栏置顶，并被 AI 工作流优先阅读 */}
+            <FavoriteButton
+              favorite={!!conversation.favorite}
+              onToggle={(next) => toggleConversationFavorite(conversation.id, next)}
+            />
             <IconTooltip label={t("toolbar.versionHistory")}>
               <Button
                 variant="ghost"

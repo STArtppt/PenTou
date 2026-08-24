@@ -16,6 +16,9 @@ export interface RetrievalHit {
   /** 命中时间与相关度评分（topic-digest 的统计与排序要用；侧栏问答不消费）。 */
   date?: string;
   score?: number;
+  /** 注意力信号回显（spec content-favorites）：服务端已按权重排过序，客户端不再另排。 */
+  favorite?: boolean;
+  weight?: number;
 }
 
 const DEFAULT_TOP_K_INTERNAL = 6;
@@ -36,11 +39,19 @@ export async function fetchRetrievalHits(
   return data.hits ?? [];
 }
 
-/** 把命中片段格式化为可注入上下文的文本块；无命中返回明确标记。 */
+/**
+ * 把命中片段格式化为可注入上下文的文本块；无命中返回明确标记。
+ *
+ * 收藏项标 `★`（spec content-favorites）：**只标「有」不标「无」** —— 给每条挂一句
+ * 「未收藏」纯属 token 噪声，还会让模型把未收藏读成负面信号。
+ * 顺序直接沿用服务端返回的顺序（已按权重加权），客户端 MUST NOT 另立一套权重规则。
+ */
 export function formatContextBlock(hits: RetrievalHit[]): string {
-  return hits.length
-    ? hits.map((h, i) => `[${i + 1}] ${h.title}\n${h.snippetText}`).join("\n\n")
-    : "（无检索命中）";
+  if (!hits.length) return "（无检索命中）";
+  const block = hits
+    .map((h, i) => `[${i + 1}]${h.favorite ? " ★" : ""} ${h.title}\n${h.snippetText}`)
+    .join("\n\n");
+  return hits.some((h) => h.favorite) ? `${block}\n\n（★ = 我收藏的，优先阅读）` : block;
 }
 
 export interface AskAiCitation {

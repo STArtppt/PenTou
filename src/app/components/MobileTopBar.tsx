@@ -3,6 +3,7 @@ import { IconTooltip } from "@/components/IconTooltip";
 import { useAppContext } from "../data";
 import { useTranslation } from "../i18n";
 import { formatDisplayDateTime } from "../utils/dateFormat";
+import { FavoriteButton } from "./FavoriteButton";
 
 /**
  * 移动端唯一顶栏（spec mobile-responsive US-03，决策 7）：左菜单 / 中标题+更新时间 / 右导入。
@@ -18,6 +19,8 @@ export function MobileTopBar() {
     activeDocId,
     setMobileNavOpen,
     setDrawerOpen,
+    toggleConversationFavorite,
+    toggleDocumentFavorite,
   } = useAppContext();
   const { t, language } = useTranslation();
 
@@ -48,6 +51,18 @@ export function MobileTopBar() {
           </span>
         )}
       </div>
+
+      {/* 收藏（spec content-favorites）：与桌面顶栏同一状态源，桌面/移动行为一致 */}
+      <FavoriteButton
+        form="mobile"
+        favorite={!!(isDoc ? activeDoc?.favorite : activeConv?.favorite)}
+        disabled={isDoc ? !activeDoc : !activeConv}
+        onToggle={(next) =>
+          isDoc
+            ? toggleDocumentFavorite(activeDoc!.id, next)
+            : toggleConversationFavorite(activeConv!.id, next)
+        }
+      />
 
       <IconTooltip label={t("mobile.import")}>
         <button

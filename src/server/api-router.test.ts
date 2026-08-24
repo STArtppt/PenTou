@@ -1106,3 +1106,218 @@ describe("/api/tools 工具目录（spec skill-runtime）", () => {
     expect(a.body).toEqual(b.body);
   });
 });
+
+describe("会话收藏（spec content-favorites）", () => {
+  const base = (over: any = {}) => ({
+    id: `conv_fav_${Math.random().toString(36).slice(2, 7)}`,
+    title: "Favorite me",
+    platform: "ChatGPT",
+    date: "2026-06-01T00:00:00.000Z",
+    folderId: null,
+    messages: [
+      { id: "m1", role: "user", content: "unique-favorite-question", timestamp: "2026-06-01T00:00:00.000Z" },
+      { id: "m2", role: "ai", content: "unique-favorite-answer", timestamp: "2026-06-01T00:00:01.000Z" },
+    ],
+    ...over,
+  });
+
+  it("真值才写 frontmatter 键；缺键读回为未收藏", () => {
+    const md = conversationToMd(base({ favorite: true }));
+    expect(md).toContain("favorite: true");
+    expect(parseMdFile("conv_x", md).favorite).toBe(true);
+
+    const plain = conversationToMd(base());
+    expect(plain).not.toMatch(/^favorite:/m);
+    expect(parseMdFile("conv_x", plain).favorite).toBeUndefined();
+  });
+
+  it("脏值一律视作未收藏且不报错", () => {
+    const md = conversationToMd(base()).replace("title:", "favorite: yes\ntitle:");
+    expect(parseMdFile("conv_x", md).favorite).toBeUndefined();
+  });
+
+  it("专用端点切换收藏，不动 updatedAt、不建版本", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const conv = base();
+    const created = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: conv });
+    expect(created.status).toBe(201);
+    const id = created.body.id ?? conv.id;
+
+    const before = await callApi({ dataDir: rel, url: `/api/conversations/${id}` });
+    const versionsBefore = await callApi({ dataDir: rel, url: `/api/conversations/${id}/versions` });
+
+    for (const favorite of [true, false, true, false, true]) {
+      const res = await callApi({
+        dataDir: rel,
+        method: "PUT",
+        url: `/api/conversations/${id}/favorite`,
+        body: { favorite },
+      });
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ ok: true, favorite });
+    }
+
+    const after = await callApi({ dataDir: rel, url: `/api/conversations/${id}` });
+    expect(after.body.favorite).toBe(true);
+    expect(after.body.updatedAt).toBe(before.body.updatedAt);
+    expect(after.body.messages).toHaveLength(before.body.messages.length);
+
+    const versionsAfter = await callApi({ dataDir: rel, url: `/api/conversations/${id}/versions` });
+    expect(versionsAfter.body.versions).toHaveLength(versionsBefore.body.versions.length);
+  });
+
+  it("取消收藏后 frontmatter 里不再有该键", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const conv = base();
+    const created = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: conv });
+    const id = created.body.id ?? conv.id;
+    await callApi({ dataDir: rel, method: "PUT", url: `/api/conversations/${id}/favorite`, body: { favorite: true } });
+    await callApi({ dataDir: rel, method: "PUT", url: `/api/conversations/${id}/favorite`, body: { favorite: false } });
+    const raw = fs.readFileSync(path.join(process.cwd(), rel, "conversations", `${id}.md`), "utf-8");
+    expect(raw).not.toMatch(/^favorite:/m);
+  });
+
+  it("非法入参 400 且磁盘零变更；不存在的 id 404", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const conv = base();
+    const created = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: conv });
+    const id = created.body.id ?? conv.id;
+    const file = path.join(process.cwd(), rel, "conversations", `${id}.md`);
+    const before = fs.readFileSync(file, "utf-8");
+
+    const bad = await callApi({
+      dataDir: rel,
+      method: "PUT",
+      url: `/api/conversations/${id}/favorite`,
+      body: { favorite: "yes" },
+    });
+    expect(bad.status).toBe(400);
+    expect(fs.readFileSync(file, "utf-8")).toBe(before);
+
+    const missing = await callApi({
+      dataDir: rel,
+      method: "PUT",
+      url: "/api/conversations/conv_does_not_exist/favorite",
+      body: { favorite: true },
+    });
+    expect(missing.status).toBe(404);
+  });
+
+  it("favorite=1 只返回收藏项，可与 fields=meta 叠加；不传参数时行为不变", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const favored = base({ id: "conv_fav_yes", messages: [
+      { id: "m1", role: "user", content: "kyoto-itinerary-favored", timestamp: "2026-06-01T00:00:00.000Z" },
+      { id: "m2", role: "ai", content: "ack favored", timestamp: "2026-06-01T00:00:01.000Z" },
+    ] });
+    const plain = base({ id: "conv_fav_no", messages: [
+      { id: "m1", role: "user", content: "osaka-itinerary-plain", timestamp: "2026-06-01T00:00:00.000Z" },
+      { id: "m2", role: "ai", content: "ack plain", timestamp: "2026-06-01T00:00:01.000Z" },
+    ] });
+    const a = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: favored });
+    const b = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: plain });
+    const idA = a.body.id ?? favored.id;
+    const idB = b.body.id ?? plain.id;
+    await callApi({ dataDir: rel, method: "PUT", url: `/api/conversations/${idA}/favorite`, body: { favorite: true } });
+
+    const all = await callApi({ dataDir: rel, url: "/api/conversations" });
+    expect((all.body as any[]).map((c) => c.id).sort()).toEqual([idA, idB].sort());
+
+    const onlyFav = await callApi({ dataDir: rel, url: "/api/conversations?favorite=1" });
+    expect((onlyFav.body as any[]).map((c) => c.id)).toEqual([idA]);
+
+    const favMeta = await callApi({ dataDir: rel, url: "/api/conversations?fields=meta&favorite=1" });
+    expect((favMeta.body as any[]).map((c) => c.id)).toEqual([idA]);
+    expect(favMeta.body[0].favorite).toBe(true);
+    expect(favMeta.body[0].messages).toEqual([]);
+  });
+
+  it("重复采集合并不清收藏", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const conv = base();
+    const created = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: conv });
+    const id = created.body.id ?? conv.id;
+    await callApi({ dataDir: rel, method: "PUT", url: `/api/conversations/${id}/favorite`, body: { favorite: true } });
+
+    // 同一会话追加一轮后再次导入 → 走 merge 分支
+    const again = {
+      ...conv,
+      messages: [
+        ...conv.messages,
+        { id: "m3", role: "user", content: "one more turn", timestamp: "2026-06-01T00:00:02.000Z" },
+      ],
+    };
+    const merged = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: again });
+    expect(merged.body.action).toBe("merged");
+
+    const after = await callApi({ dataDir: rel, url: `/api/conversations/${id}` });
+    expect(after.body.favorite).toBe(true);
+  });
+
+  it("回滚版本不清收藏", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const conv = base();
+    const created = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: conv });
+    const id = created.body.id ?? conv.id;
+    await callApi({ dataDir: rel, method: "PUT", url: `/api/conversations/${id}/favorite`, body: { favorite: true } });
+
+    const again = {
+      ...conv,
+      messages: [...conv.messages, { id: "m3", role: "ai", content: "extra", timestamp: "2026-06-01T00:00:02.000Z" }],
+    };
+    await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: again });
+    const versions = await callApi({ dataDir: rel, url: `/api/conversations/${id}/versions` });
+    const target = versions.body.versions[0];
+
+    const rolled = await callApi({
+      dataDir: rel,
+      method: "POST",
+      url: `/api/conversations/${id}/rollback`,
+      body: { targetVersionId: target.id },
+    });
+    expect(rolled.status).toBe(200);
+    const after = await callApi({ dataDir: rel, url: `/api/conversations/${id}` });
+    expect(after.body.favorite).toBe(true);
+  });
+
+  it("通用 PUT 只改标题时不误清收藏", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const conv = base();
+    const created = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: conv });
+    const id = created.body.id ?? conv.id;
+    await callApi({ dataDir: rel, method: "PUT", url: `/api/conversations/${id}/favorite`, body: { favorite: true } });
+    await callApi({ dataDir: rel, method: "PUT", url: `/api/conversations/${id}`, body: { title: "Renamed" } });
+    const after = await callApi({ dataDir: rel, url: `/api/conversations/${id}` });
+    expect(after.body.title).toBe("Renamed");
+    expect(after.body.favorite).toBe(true);
+  });
+});
+
+describe("/api/search 的 favorite=1（spec content-favorites）", () => {
+  afterEach(() => _resetForTest());
+
+  it("只返回收藏项，可与 mode / limit 叠加；不传参数时结果不变", async () => {
+    const { rel, abs } = makeRelativeTempDataDir();
+    _resetForTest();
+    fs.mkdirSync(path.join(abs, "documents"), { recursive: true });
+    const writeDoc = (id: string, favorite: boolean) =>
+      fs.writeFileSync(
+        path.join(abs, "documents", `${id}.md`),
+        `---\nid: ${id}\ntitle: ${id}\nfolderId: null\ncreatedAt: 2026-05-28T00:00:00.000Z\nupdatedAt: 2026-05-29T00:00:00.000Z\ncurrentVersionId: ver_1\n${favorite ? "favorite: true\n" : ""}---\n\nkyoto travel notes\n`,
+      );
+    writeDoc("doc_fav_hit", true);
+    writeDoc("doc_plain_hit", false);
+
+    // 首次调用只配置目录（返回 building）；同步建索引后再查
+    await callApi({ dataDir: rel, url: "/api/search?q=kyoto" });
+    refreshNow();
+
+    const all = await callApi({ dataDir: rel, url: "/api/search?q=kyoto" });
+    expect(all.status).toBe(200);
+    expect(all.body.hits.map((h: any) => h.id).sort()).toEqual(["doc_fav_hit", "doc_plain_hit"]);
+    expect(all.body.hits.find((h: any) => h.id === "doc_fav_hit").favorite).toBe(true);
+    expect(all.body.hits.find((h: any) => h.id === "doc_fav_hit").weight).toBe(1);
+
+    const onlyFav = await callApi({ dataDir: rel, url: "/api/search?q=kyoto&favorite=1&limit=10&mode=lex" });
+    expect(onlyFav.body.hits.map((h: any) => h.id)).toEqual(["doc_fav_hit"]);
+  });
+});

@@ -37,8 +37,16 @@ description: 用户点名一个主题（「整理我聊过的检索方案」）�
 | 用途 | 取多少 |
 | --- | --- |
 | 多维统计 | 本次检索的全部命中（上限 50） |
-| 深读 | 相关度前 3 |
+| 深读 | 相关度前 3（收藏项优先，见下） |
 | 来源清单 | 相关度前 10 |
+
+### 注意力权重（spec content-favorites）
+
+命中带 `favorite`（布尔）与 `weight`（数值，收藏 = 1）。服务端已按权重加权排过序，
+**深读挑选沿用返回顺序即可**，MUST NOT 在客户端另立一套权重规则。产出的「深读」小节
+对收藏条目 MUST 标出 `★`，让用户看得出为什么是这三条被读了。
+
+统计小节 MUST NOT 因收藏而改口径 —— 加权只影响读哪几条，不影响数谁。
 
 命中不足时按**实际数量**输出，MUST NOT 补空位或编造。
 
@@ -58,7 +66,8 @@ description: 用户点名一个主题（「整理我聊过的检索方案」）�
 | 端点 | 用途 |
 | --- | --- |
 | `GET /api/health` | 探活 |
-| `GET /api/search?q&mode=hybrid&limit` | 语义/混合检索片段 |
+| `GET /api/search?q&mode=hybrid&limit` | 语义/混合检索片段（命中回显 `favorite` / `weight`，并已按权重加权排序） |
+| `GET /api/search?…&favorite=1` | 只在**我收藏的**范围内检索（可选） |
 | `GET /api/conversations?fields=meta` | 合并统计维度（平台 / 采集来源 / 所属项目 / 时间） |
 | `GET /api/conversations/:id` | 深读会话全文 |
 | `GET /api/documents/:id` | 深读文档全文 |

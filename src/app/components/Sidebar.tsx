@@ -52,6 +52,7 @@ import {
   LogOut,
   Send,
   Sparkles,
+  Star,
   Upload,
   X,
 } from "lucide-react";
@@ -69,6 +70,7 @@ import {
   type MoveTargetGroup,
 } from "../document-projects";
 import { isAiWorkspaceFolderId, sortAiWorkspaceFirst, sortMemoryFirst } from "@/shared/ai-workspace";
+import { sortByAttention } from "@/shared/attention";
 import { isAiGenerated } from "../skills/agent-write-policy";
 import logoUrl from "../../../assets/images/logo.png";
 import logoDarkUrl from "../../../assets/images/logo_dark.png";
@@ -732,7 +734,7 @@ export function Sidebar() {
   // 侧栏列表不再按 searchQuery 实时过滤，直接展示全量。
   const filteredConversations = useMemo(() => {
     const dir = convSortAsc ? 1 : -1;
-    return [...conversations].sort((a, b) => {
+    const byTime = [...conversations].sort((a, b) => {
       const ta = new Date(a.date ?? "").getTime();
       const tb = new Date(b.date ?? "").getTime();
       const va = Number.isNaN(ta) ? 0 : ta;
@@ -741,12 +743,16 @@ export function Sidebar() {
       if (va === vb) return (a.title ?? "").localeCompare(b.title ?? "");
       return (va - vb) * dir;
     });
+    // 收藏优先分组叠在时间排序**之上**（spec content-favorites）：组内维持时间序与标题兜底，
+    // 正/倒序开关只作用于组内。分组在整表做、各文件夹再按 folderId 过滤 —— 过滤保序，
+    // 因此收藏项只会浮到**其所属文件夹内部**的首位，不会被提到文件夹之外。
+    return sortByAttention(byTime);
   }, [conversations, convSortAsc]);
   // 文档按当前项目过滤（spec document-projects §切换项目过滤列表）：
   // projectId 为空 = 默认目录，其余按项目 id 精确匹配。排序与会话列表同口径：
   // 时间相同以标题稳定兜底，避免同一秒批量入库的文档在列表里抖动。
   const filteredDocuments = useMemo(
-    () => sortDocumentsByTime(filterDocumentsByProject(documents, activeProjectId), docSortAsc),
+    () => sortByAttention(sortDocumentsByTime(filterDocumentsByProject(documents, activeProjectId), docSortAsc)),
     [documents, activeProjectId, docSortAsc],
   );
   const projectFolders = useMemo(
@@ -1701,6 +1707,12 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
           )}
           <PlatformIcon platform={conversation.platform} />
           <span className="truncate font-medium">{conversation.title}</span>
+          {/* 收藏标记（spec content-favorites）：让「为什么它排在最上面」看得见 */}
+          {conversation.favorite && (
+            <IconTooltip label={t("favorite.marked")}>
+              <Star size={12} className="shrink-0 fill-current text-amber-500" aria-label={t("favorite.marked")} />
+            </IconTooltip>
+          )}
         </div>
 
         {/* Floating Menu Trigger (hidden in selection mode / on mobile) */}
@@ -2389,6 +2401,12 @@ function DocumentItem({ document: doc }: { document: Document }) {
           )}
           <FileText size={14} className="text-zinc-400 shrink-0" />
           <span className="truncate font-medium">{doc.title}</span>
+          {/* 收藏标记（spec content-favorites）：让「为什么它排在最上面」看得见 */}
+          {doc.favorite && (
+            <IconTooltip label={t("favorite.marked")}>
+              <Star size={12} className="shrink-0 fill-current text-amber-500" aria-label={t("favorite.marked")} />
+            </IconTooltip>
+          )}
           {/* AI 生成的可见标记：权限按出身划，这个标记让「出身」重新看得见（spec agent-write-policy） */}
           {isAiGenerated(doc) && (
             <IconTooltip label={t("doc.aiGenerated")}>

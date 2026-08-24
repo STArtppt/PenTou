@@ -27,6 +27,7 @@ import {
   memoryDocId,
   sortAiWorkspaceFirst,
 } from "../src/shared/ai-workspace.js";
+import { favoriteOnlyMode } from "../src/shared/attention.js";
 
 // Module-level state: prod entry / vite plugin should call setDocsDataDir() at startup.
 // We use a mutable module variable rather than threading dataDir through ~30 helper
@@ -343,6 +344,8 @@ function documentToMd(doc: any): string {
   if (doc.aiPlan) lines.push(`aiPlan: ${escapeFrontmatterValue(doc.aiPlan)}`);
   // 该计划的执行终态（spec plan-run-status）：缺此键即「未执行」。
   if (doc.aiPlanRun) lines.push(`aiPlanRun: ${escapeFrontmatterValue(doc.aiPlanRun)}`);
+  // 收藏（spec content-favorites）：真值才写键，缺键即未收藏 —— 存量文件零迁移。
+  if (doc.favorite) lines.push(`favorite: true`);
   lines.push("---");
   lines.push("");
   lines.push(doc.body ?? "");
@@ -392,6 +395,8 @@ function parseDocumentMd(id: string, content: string): any {
     importedAt: meta.importedAt || undefined,
     aiPlan: meta.aiPlan || undefined,
     aiPlanRun: meta.aiPlanRun || undefined,
+    // 仅 "true" 视作已收藏；其余（含缺键与脏值）一律未收藏且不报错（spec content-favorites）
+    favorite: meta.favorite === "true" ? true : undefined,
   };
 }
 
@@ -585,6 +590,8 @@ function mergeDocument(existing: any, incoming: any): UpsertDocumentResult {
     // 指纹命中的老文档没有 externalKey，合并时补写，此后走一级查找。
     externalKey: existing.externalKey ?? incoming.externalKey,
     ingestSource: incoming.ingestSource ?? existing.ingestSource,
+    // 收藏是用户的关注标记，采集/推送端从不携带它 —— 覆盖 MUST NOT 抹掉（spec content-favorites）
+    favorite: existing.favorite,
     currentVersionId: v.id,
     updatedAt: new Date().toISOString(),
   };
@@ -817,13 +824,12 @@ export async function documentsApiHandler(
   if ((url === "/api/documents" || url.startsWith("/api/documents?")) && method === "GET") {
     try {
       const meta = /[?&]fields=meta(\b|&|$)/.test(url);
+      const favoriteOnly = favoriteOnlyMode(url); // spec content-favorites：技能可只取收藏的这批
       const files = fs.readdirSync(DOCS_DIR).filter((f) => f.endsWith(".md"));
-      const docs = files.map((fname) => {
-        const id = fname.replace(".md", "");
-        const content = fs.readFileSync(path.join(DOCS_DIR, fname), "utf-8");
-        const full = parseDocumentMd(id, content);
-        return meta ? { ...full, body: "" } : full;
-      });
+      const docs = files
+        .map((fname) => parseDocumentMd(fname.replace(".md", ""), fs.readFileSync(path.join(DOCS_DIR, fname), "utf-8")))
+        .filter((full) => !favoriteOnly || full.favorite === true)
+        .map((full) => (meta ? { ...full, body: "" } : full));
       json(res, 200, docs);
     } catch (e) {
       json(res, 500, { error: String(e) });
@@ -896,6 +902,25 @@ export async function documentsApiHandler(
     if (!fs.existsSync(docPath)) { json(res, 404, { error: "Not found" }); return true; }
     try {
       json(res, 200, parseDocumentMd(docId, fs.readFileSync(docPath, "utf-8")));
+    } catch (e) { json(res, 500, { error: String(e) }); }
+    return true;
+  }
+
+  // ── PUT /api/documents/:id/favorite（spec content-favorites D3）────────────
+  // 专用端点而非通用 PUT：通用 PUT 无条件刷新 updatedAt，拿它切收藏会让「更新于」谎报、
+  // 并把条目在时间排序里弹到顶部。收藏是旁路的元数据动作 —— 不动 updatedAt、不建版本。
+  if (sub === "favorite" && method === "PUT") {
+    const docPath = path.join(DOCS_DIR, `${docId}.md`);
+    if (!fs.existsSync(docPath)) { json(res, 404, { error: "Not found" }); return true; }
+    try {
+      const { favorite } = JSON.parse(await readBody(req));
+      if (typeof favorite !== "boolean") {
+        json(res, 400, { error: "favorite must be a boolean" }); // 磁盘零变更
+        return true;
+      }
+      const existing = parseDocumentMd(docId, fs.readFileSync(docPath, "utf-8"));
+      fs.writeFileSync(docPath, documentToMd({ ...existing, favorite: favorite || undefined }), "utf-8");
+      json(res, 200, { ok: true, favorite });
     } catch (e) { json(res, 500, { error: String(e) }); }
     return true;
   }
@@ -1087,7 +1112,8 @@ export async function documentsApiHandler(
       const docPath = path.join(DOCS_DIR, `${docId}.md`);
       if (fs.existsSync(docPath)) {
         const existing = parseDocumentMd(docId, fs.readFileSync(docPath, "utf-8"));
-        const updated = { ...existing, body: targetBody, currentVersionId: newV.id, updatedAt: new Date().toISOString() };
+        // favorite 显式沿用现状（spec content-favorites）：回滚的是内容，不是用户的关注标记
+        const updated = { ...existing, body: targetBody, favorite: existing.favorite, currentVersionId: newV.id, updatedAt: new Date().toISOString() };
         fs.writeFileSync(docPath, documentToMd(updated), "utf-8");
       }
 
