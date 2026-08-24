@@ -11,8 +11,9 @@ import {
   sortDocumentsByTime,
   uncategorizedInProject,
 } from "./document-projects";
+import { filterByProject, uncategorizedInProject as uncategorizedItems } from "./projects";
 import { sortByAttention } from "@/shared/attention";
-import type { Document, DocumentFolder, DocumentProject } from "./data";
+import type { Conversation, Document, DocumentFolder, DocumentProject, Folder } from "./data";
 
 const doc = (id: string, extra: Partial<Document> = {}): Document => ({
   id,
@@ -95,6 +96,38 @@ describe("two-level move target tree", () => {
     expect(moveGroupRowCount(groups)).toBe(3 + 2 + 2 + 3);
     // 对话视图那种无标题的单组不计标题行
     expect(moveGroupRowCount([{ key: "chat", projectId: null, targets: [{ id: null, name: "未分类" }] }])).toBe(1);
+  });
+});
+
+describe("conversation plane uses the same project helpers", () => {
+  const convFolders: Folder[] = [
+    { id: "f_legacy", name: "ChatGPT" },
+    { id: "f_claude", name: "Claude Code", projectId: "dp_pentou" },
+    { id: "f_notes", name: "归档", projectId: "dp_other" },
+  ];
+  const conversations: Conversation[] = [
+    { id: "c_default", title: "d", platform: "ChatGPT", date: "", folderId: null, messages: [] },
+    { id: "c_pentou", title: "p", platform: "Claude", date: "", folderId: null, messages: [], projectId: "dp_pentou" },
+    { id: "c_filed", title: "f", platform: "Claude", date: "", folderId: "f_claude", messages: [], projectId: "dp_pentou" },
+  ];
+
+  it("filters conversations and folders the same way as documents", () => {
+    expect(filterByProject(conversations, "dp_pentou").map((c) => c.id)).toEqual(["c_pentou", "c_filed"]);
+    expect(filterFoldersByProject(convFolders, "dp_pentou").map((f) => f.id)).toEqual(["f_claude"]);
+    expect(uncategorizedItems(conversations, convFolders, "dp_pentou").map((c) => c.id)).toEqual(["c_pentou"]);
+  });
+
+  it("builds a conversation move tree that only lists conversation folders", () => {
+    const groups = buildMoveTargetGroups({
+      folders: convFolders,
+      projects,
+      defaultProjectLabel: "默认目录",
+      uncategorizedLabel: "未分类",
+    });
+    const ids = groups.flatMap((g) => g.targets.map((t) => t.id));
+    expect(ids).toContain("f_claude");
+    expect(ids).not.toContain("df_guides");
+    expect(ids).not.toContain("df_notes");
   });
 });
 

@@ -37,7 +37,9 @@ export function readFolderBundle(dataDir: string): FolderBundle {
   return {
     folders: readJsonArray(path.join(dataDir, "folders.json")),
     documentFolders: readJsonArray(path.join(dataDir, "document-folders.json")),
-    // 项目清单与文件夹同批搬运：文档的 projectId 指向它，漏了就等于把那些文档藏起来
+    // 项目清单与文件夹同批搬运。wire 字段名保持 documentProjects：它承载的是
+    // 两平面共用的项目表（物理文件名是历史命名债），改名会让旧版本对端静默丢项目。
+    // 对话文件夹条目里的 projectId 随 folders 数组一并搬运，不单独拆字段。
     documentProjects: readJsonArray(path.join(dataDir, "document-projects.json")),
   };
 }

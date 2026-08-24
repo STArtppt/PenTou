@@ -8,7 +8,7 @@ import {
 import { generateDocId, generateAnnotationId } from "./doc-utils";
 import { toggleTaskLine } from "./task-checkbox";
 import type { InAppLink } from "./in-app-links";
-import { resolveMoveProjectId } from "./document-projects";
+import { resolveMoveProjectId } from "./projects";
 import { isAiWorkspaceFolderId, sortAiWorkspaceFirst } from "../shared/ai-workspace";
 import {
   AiChatSession,
@@ -78,8 +78,13 @@ export interface Conversation {
   // 消费方不要直接读这个布尔 —— 后续接访问热度时只改权重函数。
   favorite?: boolean;
   // 来源项目（spec conversation-project-attribution）：采集时由会话的工作目录 basename 推导，
-  // 判定不了就留空。本次只落数据层，界面上不产生任何可见变化。
+  // 判定不了就留空。原始溯源字符串，不承担分组指针职责。
   sourceProject?: string;
+  /**
+   * 项目归属（spec conversation-projects）：缺省 = 默认目录。
+   * 扁平一层，projectId 是归属维度不是父级；folderId 为空表示项目内未分类。
+   */
+  projectId?: string | null;
   // date 取自解析源自带的会话创建时间（而非导入时刻兜底）。仅在导入管线内传递、不落盘：
   // upsert 据此不再用"最早消息时间"回退修正 date（spec conversation-time-and-sort US-02
   // "解析源含会话创建时间时优先用之"）。
@@ -103,6 +108,11 @@ export interface Folder {
   id: string;
   name: string;
   platform?: Platform;
+  /**
+   * 所属项目（spec conversation-projects）：缺省 = 默认目录。
+   * 扁平一层，projectId 是归属维度不是父级。
+   */
+  projectId?: string | null;
 }
 
 // ── Document types ──────────────────────────────────────────────────────────
@@ -286,7 +296,7 @@ interface AppContextType {
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
   addConversations: (convs: Conversation[]) => Promise<ImportSummary>;
-  moveConversation: (convId: string, folderId: string | null) => Promise<void>;
+  moveConversation: (convId: string, folderId: string | null, projectId?: string | null) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, title: string) => Promise<void>;
   /** 收藏切换（spec content-favorites）：乐观更新，失败回滚后抛出，由调用方提示。 */
@@ -298,6 +308,11 @@ interface AppContextType {
   addFolder: (name: string, platform?: Platform) => Promise<void>;
   renameFolder: (id: string, name: string) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
+  /**
+   * 对话视图当前选中的项目；null = 默认目录。与文档视图各自记忆、互不牵连。
+   */
+  activeConversationProjectId: string | null;
+  setActiveConversationProjectId: (id: string | null) => void;
   // ── Document ──
   activeView: ActiveView;
   setActiveView: (view: ActiveView) => void;
@@ -308,6 +323,8 @@ interface AppContextType {
   /** 当前选中的项目；null = 默认目录。跨刷新持久化（localStorage），切换视图再切回不重置。 */
   activeProjectId: string | null;
   setActiveProjectId: (id: string | null) => void;
+  refreshProjects: () => Promise<void>;
+  /** @deprecated 兼容别名，等同 refreshProjects */
   refreshDocumentProjects: () => Promise<void>;
   /**
    * 手动新建项目：`sourceKey` 取项目名，日后同名 `--doc-project` 推送会落进这里。
@@ -497,6 +514,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [documentProjects, setDocumentProjects] = useState<DocumentProject[]>([]);
   // 选中项目跨刷新持久化（pentou-active-project）；挂载后用 resolveInitialProjectId 校验
   const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
+  // 对话视图独立记忆（pentou-active-conversation-project），与文档视图互不牵连
+  const [activeConversationProjectId, setActiveConversationProjectIdState] = useState<string | null>(null);
   // 选中文档跨刷新持久化（pentou-active-document）；挂载后用 resolveInitialDocumentId 校验
   const [activeDocId, setActiveDocIdState] = useState<string | null>(null);
   const [annotationsByDoc, setAnnotationsByDoc] = useState<Record<string, Annotation[]>>({});
@@ -584,7 +603,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       apiFetch("/api/conversations?fields=meta").catch(() => []),
       apiFetch("/api/documents?fields=meta").catch(() => []),
       apiFetch("/api/document-folders").catch(() => []),
-      apiFetch("/api/document-projects").catch(() => []),
+      apiFetch("/api/projects").catch(() => []),
     ]).then(([foldersData, convsData, docsData, docFoldersData, docProjectsData]) => {
       setFolders(foldersData as Folder[]);
       const convs = convsData as Conversation[];
@@ -599,6 +618,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDocumentProjects(projects);
       setActiveProjectIdState(
         resolveInitialProjectId(projects, localStorage.getItem("pentou-active-project")),
+      );
+      setActiveConversationProjectIdState(
+        resolveInitialProjectId(projects, localStorage.getItem("pentou-active-conversation-project")),
       );
       setActiveDocIdState(
         resolveInitialDocumentId(docs, localStorage.getItem("pentou-active-document")),
@@ -683,6 +705,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActiveProjectIdState(id);
     if (id) localStorage.setItem("pentou-active-project", id);
     else localStorage.removeItem("pentou-active-project");
+  }, []);
+
+  const setActiveConversationProjectId = useCallback((id: string | null) => {
+    setActiveConversationProjectIdState(id);
+    if (id) localStorage.setItem("pentou-active-conversation-project", id);
+    else localStorage.removeItem("pentou-active-conversation-project");
   }, []);
 
   const setActiveDocId = useCallback((id: string | null) => {
@@ -1020,9 +1048,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addFolder = useCallback(async (name: string, platform?: Platform) => {
-    const folder: Folder = { id: generateId("f"), name, platform };
+    const folder: Folder = {
+      id: generateId("f"),
+      name,
+      platform,
+      ...(activeConversationProjectId ? { projectId: activeConversationProjectId } : {}),
+    };
     await saveFolders([...folders, folder]);
-  }, [folders, saveFolders]);
+  }, [folders, saveFolders, activeConversationProjectId]);
 
   const renameFolder = useCallback(async (id: string, name: string) => {
     await saveFolders(folders.map((f) => (f.id === id ? { ...f, name } : f)));
@@ -1135,15 +1168,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [loadConversationVersions]);
 
-  const moveConversation = useCallback(async (convId: string, folderId: string | null) => {
+  const moveConversation = useCallback(async (
+    convId: string,
+    folderId: string | null,
+    projectId?: string | null,
+  ) => {
+    const nextProjectId = resolveMoveProjectId({
+      folders,
+      folderId,
+      requestedProjectId: projectId,
+      currentProjectId: conversations.find((c) => c.id === convId)?.projectId ?? null,
+    });
     setConversations((prev) =>
-      prev.map((c) => (c.id === convId ? { ...c, folderId } : c))
+      prev.map((c) => (c.id === convId ? { ...c, folderId, projectId: nextProjectId } : c))
     );
     await apiFetch(`/api/conversations/${convId}`, {
       method: "PUT",
-      body: JSON.stringify({ folderId }),
+      body: JSON.stringify({ folderId, projectId: nextProjectId }),
     });
-  }, []);
+  }, [folders, conversations]);
 
   const deleteConversation = useCallback(async (id: string) => {
     setConversations((prev) => prev.filter((c) => c.id !== id));
@@ -1395,51 +1438,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [activeDocId]);
 
-  const refreshDocumentProjects = useCallback(async () => {
+  const refreshProjects = useCallback(async () => {
     try {
-      setDocumentProjects((await apiFetch("/api/document-projects")) as DocumentProject[]);
+      setDocumentProjects((await apiFetch("/api/projects")) as DocumentProject[]);
     } catch (e) {
-      console.error({ module: "data", op: "refreshDocumentProjects", err: e });
+      console.error({ module: "data", op: "refreshProjects", err: e });
     }
   }, []);
+  const refreshDocumentProjects = refreshProjects;
 
   const createDocumentProject = useCallback(async (
     input: { name: string; description?: string },
   ): Promise<DocumentProject> => {
-    const data = await apiFetch("/api/document-projects", {
+    const data = await apiFetch("/api/projects", {
       method: "POST",
       body: JSON.stringify({ name: input.name, description: input.description ?? "" }),
     }) as { project: DocumentProject };
     const project = data.project;
     setDocumentProjects((prev) => [...prev, project]);
-    // 新建即切过去：用户刚起的项目是空的，留在原目录看不出发生了什么
-    setActiveProjectId(project.id);
     return project;
-  }, [setActiveProjectId]);
+  }, []);
 
   const updateDocumentProject = useCallback(async (
     id: string,
     patch: { name?: string; description?: string },
   ) => {
     setDocumentProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    await apiFetch(`/api/document-projects/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    await apiFetch(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
   }, []);
 
   const deleteDocumentProject = useCallback(async (id: string) => {
-    await apiFetch(`/api/document-projects/${id}`, { method: "DELETE" });
-    // 服务端级联：删该项目下的文件夹，受影响文档落默认目录未分类（文档一律保留）
-    const removedFolderIds = new Set(
+    await apiFetch(`/api/projects/${id}`, { method: "DELETE" });
+    // 服务端级联：删两平面的文件夹，受影响文档与对话落默认目录未分类（内容一律保留）
+    const removedDocFolderIds = new Set(
       documentFolders.filter((folder) => folder.projectId === id).map((folder) => folder.id),
+    );
+    const removedConvFolderIds = new Set(
+      folders.filter((folder) => folder.projectId === id).map((folder) => folder.id),
     );
     setDocumentProjects((prev) => prev.filter((p) => p.id !== id));
     setDocumentFolders((prev) => prev.filter((folder) => folder.projectId !== id));
+    setFolders((prev) => prev.filter((folder) => folder.projectId !== id));
     setDocuments((prev) => prev.map((doc) =>
-      doc.projectId === id || (doc.folderId && removedFolderIds.has(doc.folderId))
+      doc.projectId === id || (doc.folderId && removedDocFolderIds.has(doc.folderId))
         ? { ...doc, projectId: null, folderId: null }
         : doc,
     ));
+    setConversations((prev) => prev.map((conv) =>
+      conv.projectId === id || (conv.folderId && removedConvFolderIds.has(conv.folderId))
+        ? { ...conv, projectId: null, folderId: null }
+        : conv,
+    ));
     if (activeProjectId === id) setActiveProjectId(null);
-  }, [documentFolders, activeProjectId, setActiveProjectId]);
+    if (activeConversationProjectId === id) setActiveConversationProjectId(null);
+  }, [documentFolders, folders, activeProjectId, activeConversationProjectId, setActiveProjectId, setActiveConversationProjectId]);
 
   const renameDocumentFolder = useCallback(async (id: string, name: string) => {
     if (isAiWorkspaceFolderId(id)) return; // 受保护（spec ai-workspace）；UI 也不提供入口
@@ -1578,6 +1630,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addFolder,
         renameFolder,
         deleteFolder,
+        activeConversationProjectId,
+        setActiveConversationProjectId,
         activeView,
         setActiveView,
         documents,
@@ -1585,6 +1639,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         documentProjects,
         activeProjectId,
         setActiveProjectId,
+        refreshProjects,
         refreshDocumentProjects,
         createDocumentProject,
         updateDocumentProject,

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { defaultCodexRoot, resolveUserPath } from "../config.js";
 import type { CollectorAdapter, IngestItem, SessionFile } from "../types.js";
+import { cwdFromJsonlHead } from "../cwd.js";
 import { walkFiles } from "./walk.js";
 
 /** rollout-<ISO时间>-<会话UUID>.jsonl，UUID 即 externalId（spec collector-source-expansion US-01） */
@@ -39,6 +40,11 @@ export function createCodexAdapter(root = defaultCodexRoot()): CollectorAdapter 
         data,
         filename: path.basename(file),
       };
+    },
+    async resolveCwd(file: string): Promise<string | undefined> {
+      return cwdFromJsonlHead(file, (obj) =>
+        obj?.type === "session_meta" ? obj?.payload?.cwd : obj?.cwd,
+      );
     },
   };
 }

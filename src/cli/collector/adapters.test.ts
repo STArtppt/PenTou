@@ -208,6 +208,31 @@ describe("collector adapters", () => {
     });
   });
 
+  it("claude-code resolveCwd reads cwd from the jsonl head and never throws", async () => {
+    const root = tmpDir("pentou-claude-cwd-");
+    const file = path.join(root, "s.jsonl");
+    fs.writeFileSync(file, '{"type":"user","cwd":"/Users/x/proj/pentou"}\n{"type":"assistant"}\n');
+    const adapter = createClaudeCodeAdapter(root);
+    expect(await adapter.resolveCwd?.(file)).toBe("/Users/x/proj/pentou");
+    expect(await adapter.resolveCwd?.(path.join(root, "missing.jsonl"))).toBeUndefined();
+  });
+
+  it("codex resolveCwd reads session_meta.payload.cwd", async () => {
+    const root = tmpDir("pentou-codex-cwd-");
+    const file = path.join(root, "rollout-2026-01-01T00-00-00-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl");
+    fs.writeFileSync(file, '{"type":"session_meta","payload":{"cwd":"/repo"}}\n');
+    expect(await createCodexAdapter(root).resolveCwd?.(file)).toBe("/repo");
+  });
+
+  it("grok-cli resolveCwd decodes the URI-encoded parent directory", async () => {
+    const root = tmpDir("pentou-grok-cwd-");
+    const session = path.join(root, encodeURIComponent("/Users/x/proj/pentou"), "uuid");
+    fs.mkdirSync(session, { recursive: true });
+    const file = path.join(session, "chat_history.jsonl");
+    fs.writeFileSync(file, "{}\n");
+    expect(await createGrokCliAdapter(root).resolveCwd?.(file)).toBe("/Users/x/proj/pentou");
+  });
+
   it("pi: filename without the timestamp prefix falls back to the whole basename", () => {
     expect(piExternalId("/x/019fa2f4.jsonl")).toBe("019fa2f4");
     // 时间戳前缀里本身带 `-` 不带 `_`，切在首个 `_` 上不会误伤 UUID

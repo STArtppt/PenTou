@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { createClaudeCodeAdapter } from "./adapters/claude-code";
 import { createDocsAdapter } from "./adapters/docs";
 import { CollectorWatchEngine, backoffDelay, createExcludeMatcher, degradeOversizeItem, pullOnce, snapshotChanged } from "./engine";
@@ -439,5 +440,52 @@ describe("collector engine with the docs adapter", () => {
     expect(summary.truncated).toBe(0);
     expect(summary.errors[0].error).toMatch(/not truncated/);
     expect(config.snapshots[path.join(root, "big.md")]).toBeUndefined();
+  });
+});
+
+describe("conversation git project payload", () => {
+  function claudeConfig(root: string) {
+    return makeCollectorConfig({
+      server: "http://x",
+      token: "t",
+      adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
+    });
+  }
+
+  it("attaches the git root as project.key for a nested cwd", async () => {
+    const repo = path.join(tmpDir("pentou-git-"), "pentou");
+    fs.mkdirSync(path.join(repo, "src", "server"), { recursive: true });
+    execFileSync("git", ["init", "-q"], { cwd: repo, stdio: "ignore" });
+    const root = tmpDir("pentou-cwd-");
+    writeJsonl(
+      path.join(root, "a.jsonl"),
+      JSON.stringify({ type: "user", cwd: path.join(repo, "src", "server"), message: { role: "user", content: "hi" } }) + "\n",
+    );
+    const client = new FakeClient();
+    await pullOnce(claudeConfig(root), [createClaudeCodeAdapter(root)], { client: client as any });
+    expect(client.calls[0][0].project).toMatchObject({ key: "pentou", name: "pentou" });
+    expect(path.basename(client.calls[0][0].project?.rootPath ?? "")).toBe("pentou");
+  });
+
+  it("omits project when cwd is not a git repo", async () => {
+    const cwd = tmpDir("pentou-nongit-");
+    const root = tmpDir("pentou-cwd-");
+    writeJsonl(
+      path.join(root, "a.jsonl"),
+      JSON.stringify({ type: "user", cwd, message: { role: "user", content: "hi" } }) + "\n",
+    );
+    const client = new FakeClient();
+    const summary = await pullOnce(claudeConfig(root), [createClaudeCodeAdapter(root)], { client: client as any });
+    expect(summary.counts.error).toBe(0);
+    expect(client.calls[0][0].project).toBeUndefined();
+  });
+
+  it("omits project when the session has no cwd", async () => {
+    const root = tmpDir("pentou-nocwd-");
+    writeJsonl(path.join(root, "a.jsonl"));
+    const client = new FakeClient();
+    const summary = await pullOnce(claudeConfig(root), [createClaudeCodeAdapter(root)], { client: client as any });
+    expect(summary.counts.error).toBe(0);
+    expect(client.calls[0][0].project).toBeUndefined();
   });
 });

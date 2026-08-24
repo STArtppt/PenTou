@@ -667,6 +667,84 @@ describe("two-level raw dispatch", () => {
     const conv = parseMdFile(created.id, fs.readFileSync(path.join(dataDir, "conversations", `${created.id}.md`), "utf-8"));
     expect(conv.folderId).toBe(folders[0].id);
   });
+
+  it("consumes project payload into a shared sourceKey project", async () => {
+    const dataDir = makeDataDir();
+    fs.writeFileSync(path.join(dataDir, "folders.json"), JSON.stringify([]));
+    const first = await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: {
+        source: "cli",
+        items: [ingestItem({
+          project: { key: "pentou", name: "pentou", rootPath: "/Users/x/proj/pentou" },
+        })],
+      },
+      headers: authed(dataDir),
+    });
+    expect(first.status).toBe(200);
+    const created = first.body.results[0].conversations[0];
+    const conv = parseMdFile(created.id, fs.readFileSync(path.join(dataDir, "conversations", `${created.id}.md`), "utf-8"));
+    expect(conv.projectId).toMatch(/^dp_/);
+    const folders = JSON.parse(fs.readFileSync(path.join(dataDir, "folders.json"), "utf-8"));
+    expect(folders[0].projectId).toBe(conv.projectId);
+
+    const again = await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: {
+        source: "cli",
+        items: [ingestItem({
+          externalId: "sess-99",
+          data: CLAUDE_JSONL_OTHER,
+          project: { key: "pentou", name: "pentou-renamed", rootPath: "/tmp/other" },
+        })],
+      },
+      headers: authed(dataDir),
+    });
+    const second = parseMdFile(
+      again.body.results[0].conversations[0].id,
+      fs.readFileSync(path.join(dataDir, "conversations", `${again.body.results[0].conversations[0].id}.md`), "utf-8"),
+    );
+    expect(second.projectId).toBe(conv.projectId);
+    const projects = JSON.parse(fs.readFileSync(path.join(dataDir, "document-projects.json"), "utf-8"));
+    expect(projects).toHaveLength(1);
+    expect(projects[0].name).toBe("pentou");
+  });
+
+  it("does not move a conversation the user already filed", async () => {
+    const dataDir = makeDataDir();
+    fs.writeFileSync(path.join(dataDir, "folders.json"), JSON.stringify([
+      { id: "f_keep", name: "归档", projectId: "dp_keep" },
+    ]));
+    const filed = {
+      id: "conv_filed",
+      title: "filed",
+      platform: "Claude",
+      date: "2026-07-01T00:00:00.000Z",
+      folderId: "f_keep",
+      projectId: "dp_keep",
+      externalKey: "claude-code:sess-42",
+      messages: [
+        { id: "m1", role: "user", content: "hello world", timestamp: "2026-07-01T00:00:00.000Z" },
+        { id: "m2", role: "ai", content: "hi there", timestamp: "2026-07-01T00:00:05.000Z" },
+      ],
+    };
+    fs.writeFileSync(path.join(dataDir, "conversations", `${filed.id}.md`), conversationToMd(filed));
+    await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: {
+        source: "cli",
+        items: [ingestItem({
+          format: "conversation",
+          data: { ...filed, projectId: undefined, folderId: null },
+          project: { key: "other", name: "other" },
+        })],
+      },
+      headers: authed(dataDir),
+    });
+    const after = parseMdFile(filed.id, fs.readFileSync(path.join(dataDir, "conversations", `${filed.id}.md`), "utf-8"));
+    expect(after.projectId).toBe("dp_keep");
+    expect(after.folderId).toBe("f_keep");
+  });
 });
 
 // ── 脱敏集成（US-06）──────────────────────────────────────────────────────────

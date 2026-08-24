@@ -70,6 +70,8 @@ export interface QueryAdapterSpec {
   listSessions(db: SqliteDatabase): QuerySessionMeta[];
   /** 组装单会话 JSON 信封（SqliteSessionEnvelope）；无有效消息返回 null */
   buildEnvelope(db: SqliteDatabase, sessionId: string): object | null;
+  /** 从已查出的会话行取 directory / cwd；取不到返回 undefined，绝不抛错 */
+  resolveCwd?(db: SqliteDatabase, sessionId: string): string | undefined;
 }
 
 const LIST_CACHE_TTL_MS = 5_000;
@@ -127,6 +129,17 @@ export function createQueryAdapter(spec: QueryAdapterSpec): CollectorAdapter {
         format: "raw",
         data: JSON.stringify(envelope),
       };
+    },
+    async resolveCwd(fileOrKey: string): Promise<string | undefined> {
+      if (!spec.resolveCwd) return undefined;
+      try {
+        const parsed = parseSessionKey(fileOrKey);
+        if (!parsed || !fs.existsSync(spec.dbPath)) return undefined;
+        const cwd = withDb((db) => spec.resolveCwd!(db, parsed.sessionId));
+        return typeof cwd === "string" && cwd.trim() ? cwd.trim() : undefined;
+      } catch {
+        return undefined;
+      }
     },
   };
 }

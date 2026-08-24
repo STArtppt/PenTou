@@ -28,6 +28,7 @@ import {
   sortAiWorkspaceFirst,
 } from "../src/shared/ai-workspace.js";
 import { favoriteOnlyMode } from "../src/shared/attention.js";
+import { clearConversationsForDeletedProject } from "../src/server/conversation-folders.js";
 
 // Module-level state: prod entry / vite plugin should call setDocsDataDir() at startup.
 // We use a mutable module variable rather than threading dataDir through ~30 helper
@@ -127,7 +128,7 @@ function aiWorkspaceViolation(payload: unknown): string | null {
   return null;
 }
 
-// ── Document projects（spec document-projects：文件夹之上的分组维度）──────────
+// ── Projects（两平面共用的项目表；物理文件名 document-projects.json 与 dp_ 前缀是历史命名债）──
 
 /** 内置默认目录：不落盘为可写条目，沿用 df_default 的过滤约定。 */
 export const DEFAULT_PROJECT_ID = "dp_default";
@@ -146,6 +147,11 @@ function normalizeDocumentProjects(data: unknown): any[] {
     }));
 }
 
+/**
+ * 读共用项目表。物理文件仍是 `data/document-projects.json`、id 仍是 `dp_` 前缀——
+ * 这是历史命名债：存量文档的 projectId 直接指向这些 id，改名要连带重写全部存量数据。
+ * 语义上这张表现在同时被文档平面与对话平面引用。
+ */
 export function readDocumentProjects(): any[] {
   try {
     if (!fs.existsSync(DOC_PROJECTS_FILE)) return [];
@@ -155,12 +161,13 @@ export function readDocumentProjects(): any[] {
   }
 }
 
+/** 写共用项目表（文件名是历史命名债，见 readDocumentProjects）。 */
 function writeDocumentProjects(projects: any[]): void {
   fs.writeFileSync(DOC_PROJECTS_FILE, JSON.stringify(normalizeDocumentProjects(projects), null, 2), "utf-8");
 }
 
 /**
- * 按不可变身份键 sourceKey 复用或创建项目（spec document-projects §项目重命名与身份稳定性）。
+ * 按不可变身份键 sourceKey 复用或创建项目（两平面共用同一张表）。
  * 命中时**不回写** name / description —— 载荷里的展示字段只在创建那一刻被消费，
  * 否则用户改过的名字与描述会被下一次推送覆盖回去。
  */
@@ -230,6 +237,16 @@ function parseDocId(url: string, prefix: string): string | null {
   const rest = url.slice(prefix.length);
   const id = rest.split(/[/?]/)[0];
   return id || null;
+}
+
+function isProjectCollection(url: string): boolean {
+  return url === "/api/projects" || url === "/api/document-projects";
+}
+
+function projectItemId(url: string): string | null {
+  if (url.startsWith("/api/projects/")) return parseDocId(url, "/api/projects/");
+  if (url.startsWith("/api/document-projects/")) return parseDocId(url, "/api/document-projects/");
+  return null;
 }
 
 const DOC_ID_RE = /^doc_[a-zA-Z0-9_]+$/;
@@ -726,8 +743,8 @@ export async function documentsApiHandler(
     return true;
   }
 
-  // ── GET /api/document-projects （spec document-projects §项目管理 API）─────
-  if (url === "/api/document-projects" && method === "GET") {
+  // ── GET /api/projects （同源别名 /api/document-projects）─────────────────
+  if (isProjectCollection(url) && method === "GET") {
     try {
       json(res, 200, readDocumentProjects());
     } catch (e) {
@@ -736,11 +753,11 @@ export async function documentsApiHandler(
     return true;
   }
 
-  // ── POST /api/document-projects （spec document-projects §手动新建项目）────
+  // ── POST /api/projects （同源别名 /api/document-projects）────────────────
   // 手动建的项目与 CLI 推送出来的项目共用同一张表：`sourceKey` 取项目名，
   // 这样日后用同名 `--doc-project` 推送时 findOrCreateProjectByKey 命中的正是
   // 这个项目，而不是再建一个同名副本。同名冲突直接 409，不做静默复用。
-  if (url === "/api/document-projects" && method === "POST") {
+  if (isProjectCollection(url) && method === "POST") {
     try {
       const body = JSON.parse(await readBody(req));
       const name = typeof body?.name === "string" ? body.name.trim() : "";
@@ -770,9 +787,9 @@ export async function documentsApiHandler(
     return true;
   }
 
-  // ── PATCH / DELETE /api/document-projects/:id ─────────────────────────────
-  if (url.startsWith("/api/document-projects/") && (method === "PATCH" || method === "DELETE")) {
-    const projectId = parseDocId(url, "/api/document-projects/");
+  // ── PATCH / DELETE /api/projects/:id（同源别名 /api/document-projects/:id）─
+  if ((url.startsWith("/api/projects/") || url.startsWith("/api/document-projects/")) && (method === "PATCH" || method === "DELETE")) {
+    const projectId = projectItemId(url);
     // 默认目录是内置条目，不可改名/改描述/删除（spec §默认目录）
     if (projectId === DEFAULT_PROJECT_ID) {
       json(res, 400, { error: "Default project cannot be modified" });
@@ -801,7 +818,8 @@ export async function documentsApiHandler(
         return true;
       }
 
-      // DELETE：删文件夹、不删文档（design 决策 6）。受影响文档落默认目录的未分类。
+      // DELETE：删两平面的文件夹、不删内容（spec conversation-projects 决策 9）。
+      // 受影响文档与对话落默认目录的未分类。
       const folders = readDocumentFolders();
       const removedFolderIds = new Set(
         folders.filter((folder: any) => folder.projectId === projectId).map((folder: any) => folder.id),
@@ -812,6 +830,7 @@ export async function documentsApiHandler(
         fs.writeFileSync(path.join(DOCS_DIR, `${doc.id}.md`), documentToMd(updated), "utf-8");
       }
       writeDocumentFolders(folders.filter((folder: any) => folder.projectId !== projectId));
+      clearConversationsForDeletedProject(DATA_DIR, projectId);
       writeDocumentProjects(projects.filter((project) => project.id !== projectId));
       json(res, 200, { ok: true });
     } catch (e) {

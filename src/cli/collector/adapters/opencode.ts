@@ -54,6 +54,10 @@ export function createOpencodeAdapter(db = defaultOpencodeDb()): CollectorAdapte
       }));
       return { schema: "opencode-v1", session, messages };
     },
+    resolveCwd(database, sessionId) {
+      const session = database.prepare("select directory from session where id = ?").get(sessionId) as { directory?: unknown } | undefined;
+      return typeof session?.directory === "string" ? session.directory : undefined;
+    },
   });
 }
 

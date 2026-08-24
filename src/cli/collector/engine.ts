@@ -16,6 +16,7 @@ import type {
 import { IngestClient, describeIngestError, isAuthIngestError, isRateLimitedIngestError, isRetryableIngestError } from "./ingest-client.js";
 import { writeConfig } from "./config.js";
 import { isVirtualKey, parseSessionKey } from "./sqlite.js";
+import { gitProjectInfo } from "./project-key.js";
 import { EmptyPayloadError, parseRawConversations } from "../../shared/raw-dispatch.js";
 import { shrinkConversation } from "./shrink.js";
 
@@ -142,6 +143,31 @@ function adapterForFile(adapters: CollectorAdapter[], file: string): CollectorAd
   return best?.adapter ?? null;
 }
 
+/**
+ * CLI 侧 git 探测：取 adapter 的 cwd，命中仓库根才附 project 载荷。
+ * 文档 item 已自带 project，不覆盖。失败安静降级，不产生警告噪声。
+ */
+async function attachGitProject(
+  adapter: CollectorAdapter,
+  file: string,
+  item: IngestItem,
+): Promise<IngestItem> {
+  if (item.format === "document" || item.project) return item;
+  if (!adapter.resolveCwd) return item;
+  try {
+    const cwd = await adapter.resolveCwd(file);
+    if (!cwd) return item;
+    const info = gitProjectInfo(cwd);
+    if (!info) return item;
+    return {
+      ...item,
+      project: { key: info.key, name: info.key, rootPath: info.rootPath },
+    };
+  } catch {
+    return item;
+  }
+}
+
 function uniqueFiles(files: SessionFile[]): SessionFile[] {
   const seen = new Set<string>();
   const out: SessionFile[] = [];
@@ -228,6 +254,7 @@ export function degradeOversizeItem(entry: PreparedItem): DegradeResult {
       ...(conversations.length === 1 && entry.item.externalId ? { externalId: entry.item.externalId } : {}),
       format: "conversation",
       data: conversation,
+      ...(entry.item.project ? { project: entry.item.project } : {}),
     };
     if (itemTooLarge(item)) {
       const shrunk = shrinkConversation(conversation, SHRINK_BUDGET_BYTES);
@@ -271,7 +298,7 @@ async function prepareItems(
       if (!nextSnapshot) continue;
       const item = await adapter.toItem(file.path);
       if (!item) continue;
-      items.push({ file: file.path, item, snapshot: nextSnapshot });
+      items.push({ file: file.path, item: await attachGitProject(adapter, file.path, item), snapshot: nextSnapshot });
     } catch (error: any) {
       errors.push({ file: file.path, error: error?.message ?? String(error) });
     }

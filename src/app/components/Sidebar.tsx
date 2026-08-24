@@ -62,13 +62,13 @@ import { toast } from "sonner";
 import { useAppContext, Conversation, Folder, Platform, Document, DocumentFolder, DEFAULT_DOCUMENT_PROJECT_ID } from "../data";
 import {
   buildMoveTargetGroups,
-  filterDocumentsByProject,
+  filterByProject,
   filterFoldersByProject,
   moveGroupRowCount,
-  sortDocumentsByTime,
   uncategorizedInProject,
   type MoveTargetGroup,
-} from "../document-projects";
+} from "../projects";
+import { filterDocumentsByProject, sortDocumentsByTime } from "../document-projects";
 import { isAiWorkspaceFolderId, sortAiWorkspaceFirst, sortMemoryFirst } from "@/shared/ai-workspace";
 import { sortByAttention } from "@/shared/attention";
 import { isAiGenerated } from "../skills/agent-write-policy";
@@ -106,6 +106,20 @@ function useDocumentMoveGroups(): MoveTargetGroup[] {
       uncategorizedLabel: t("sidebar.uncategorized"),
     }),
     [documentFolders, documentProjects, t],
+  );
+}
+
+function useConversationMoveGroups(): MoveTargetGroup[] {
+  const { t } = useTranslation();
+  const { folders, documentProjects } = useAppContext();
+  return useMemo(
+    () => buildMoveTargetGroups({
+      folders,
+      projects: documentProjects,
+      defaultProjectLabel: t("sidebar.defaultProject"),
+      uncategorizedLabel: t("sidebar.uncategorized"),
+    }),
+    [folders, documentProjects, t],
   );
 }
 
@@ -215,6 +229,7 @@ function conversationToMarkdown(conversation: Conversation): string {
   if (conversation.currentVersionId) lines.push(`currentVersionId: ${escapeFrontmatterValue(conversation.currentVersionId)}`);
   // 与 api-router.ts 的 conversationToMd 保持一致（spec conversation-project-attribution）
   if (conversation.sourceProject) lines.push(`sourceProject: ${escapeFrontmatterValue(conversation.sourceProject)}`);
+  if (conversation.projectId) lines.push(`projectId: ${escapeFrontmatterValue(conversation.projectId)}`);
 
   return `---\n${lines.join("\n")}\n---\n\n${msgBlock}`;
 }
@@ -660,6 +675,7 @@ export function Sidebar() {
     folders,
     conversations,
     addFolder,
+    activeConversationProjectId,
     language,
     setLanguage,
     activeView,
@@ -691,6 +707,20 @@ export function Sidebar() {
     if (isMobile) setMobileNavOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversationId, activeDocId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/migrations/conversation-projects", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { processed?: number } | null) => {
+        if (cancelled || !data?.processed) return;
+        if (localStorage.getItem("pentou-conv-projects-backfill-notice")) return;
+        localStorage.setItem("pentou-conv-projects-backfill-notice", "1");
+        toast.info(t("sidebar.backfillNotice", { n: data.processed }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [t]);
 
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -732,9 +762,15 @@ export function Sidebar() {
 
   // 搜索已统一收敛到命令面板浮层（spec hybrid-search US-01 AC4）；
   // 侧栏列表不再按 searchQuery 实时过滤，直接展示全量。
+  const projectConvFolders = useMemo(
+    () => filterFoldersByProject(folders, activeConversationProjectId),
+    [folders, activeConversationProjectId],
+  );
+
   const filteredConversations = useMemo(() => {
+    const scoped = filterByProject(conversations, activeConversationProjectId);
     const dir = convSortAsc ? 1 : -1;
-    const byTime = [...conversations].sort((a, b) => {
+    const byTime = [...scoped].sort((a, b) => {
       const ta = new Date(a.date ?? "").getTime();
       const tb = new Date(b.date ?? "").getTime();
       const va = Number.isNaN(ta) ? 0 : ta;
@@ -747,7 +783,7 @@ export function Sidebar() {
     // 正/倒序开关只作用于组内。分组在整表做、各文件夹再按 folderId 过滤 —— 过滤保序，
     // 因此收藏项只会浮到**其所属文件夹内部**的首位，不会被提到文件夹之外。
     return sortByAttention(byTime);
-  }, [conversations, convSortAsc]);
+  }, [conversations, convSortAsc, activeConversationProjectId]);
   // 文档按当前项目过滤（spec document-projects §切换项目过滤列表）：
   // projectId 为空 = 默认目录，其余按项目 id 精确匹配。排序与会话列表同口径：
   // 时间相同以标题稳定兜底，避免同一秒批量入库的文档在列表里抖动。
@@ -790,7 +826,7 @@ export function Sidebar() {
   // 当前视图可见叶子 id（受搜索 + 文件夹折叠影响）
   const visibleLeafIds = useMemo(() => {
     if (activeView === "chat") {
-      const folderIds = new Set(folders.map((f) => f.id));
+      const folderIds = new Set(projectConvFolders.map((f) => f.id));
       const ids: string[] = [];
       for (const c of filteredConversations) {
         if (!c.folderId || !folderIds.has(c.folderId)) {
@@ -812,7 +848,7 @@ export function Sidebar() {
       }
       return ids;
     }
-  }, [activeView, folders, projectFolders, filteredConversations, filteredDocuments, chatFolderOpen, docFolderOpen]);
+  }, [activeView, projectConvFolders, projectFolders, filteredConversations, filteredDocuments, chatFolderOpen, docFolderOpen]);
 
   const selectAllState: "none" | "partial" | "all" = (() => {
     if (visibleLeafIds.length === 0 || selectedIds.size === 0) return "none";
@@ -886,8 +922,8 @@ export function Sidebar() {
     const ids = Array.from(selectedIds);
     if (activeView === "chat") {
       for (const id of ids) {
-        try { await moveConversation(id, folderId); }
-        catch (e) { console.error({ module: "Sidebar", op: "batchMoveConv", id, folderId, err: e }); }
+        try { await moveConversation(id, folderId, projectId); }
+        catch (e) { console.error({ module: "Sidebar", op: "batchMoveConv", id, folderId, projectId, err: e }); }
       }
     } else {
       for (const id of ids) {
@@ -925,24 +961,17 @@ export function Sidebar() {
     exitSelection();
   };
 
-  // 对话视图仍是扁平的对话文件夹列表（无 label → 无分组标题），两条路径显式分开
   const docMoveGroups = useDocumentMoveGroups();
-  const moveGroups: MoveTargetGroup[] =
-    activeView === "chat"
-      ? [{
-          key: "chat",
-          projectId: null,
-          targets: [{ id: null, name: t("sidebar.uncategorized") }, ...folders.map((f) => ({ id: f.id, name: f.name }))],
-        }]
-      : docMoveGroups;
+  const convMoveGroups = useConversationMoveGroups();
+  const moveGroups: MoveTargetGroup[] = activeView === "chat" ? convMoveGroups : docMoveGroups;
 
   const selectedCount = selectedIds.size;
   const hasSelection = selectedCount > 0;
-  const areAllChatFoldersOpen = folders.length > 0 && folders.every((folder) => chatFolderOpen[folder.id] ?? false);
+  const areAllChatFoldersOpen = projectConvFolders.length > 0 && projectConvFolders.every((folder) => chatFolderOpen[folder.id] ?? false);
 
   const toggleAllChatFolders = () => {
     const nextOpen = !areAllChatFoldersOpen;
-    setChatFolderOpen(Object.fromEntries(folders.map((folder) => [folder.id, nextOpen])));
+    setChatFolderOpen(Object.fromEntries(projectConvFolders.map((folder) => [folder.id, nextOpen])));
   };
 
   return (
@@ -1059,7 +1088,7 @@ export function Sidebar() {
       </div>
 
       {/* 项目选择器固定在列表**之外**：列表滚动时它不跟着走（spec §项目切换选择器） */}
-      {activeView === "doc" && <ProjectSwitcher />}
+      <ProjectSwitcher />
 
       {/* Lists */}
       <div
@@ -1103,7 +1132,7 @@ export function Sidebar() {
                       {convSortAsc ? <ArrowUpNarrowWide size={14} /> : <ArrowDownNarrowWide size={14} />}
                     </Button>
                   </IconTooltip>
-                  {folders.length > 0 && (
+                  {projectConvFolders.length > 0 && (
                     <IconTooltip label={areAllChatFoldersOpen ? t("sidebar.collapseAllFolders") : t("sidebar.expandAllFolders")}>
                       <Button
                         type="button"
@@ -1119,10 +1148,10 @@ export function Sidebar() {
                 </div>
               </div>
               <div className="space-y-0.5">
-                {folders.length === 0 ? (
+                {projectConvFolders.length === 0 ? (
                   <div className="px-4 py-2 text-xs text-zinc-400 italic">{t("sidebar.empty")}</div>
                 ) : (
-                  folders.map((folder) => (
+                  projectConvFolders.map((folder) => (
                     <FolderItem
                       key={folder.id}
                       folder={folder}
@@ -1140,7 +1169,9 @@ export function Sidebar() {
               <div className="sticky top-0 z-10 -mx-2 bg-[#FAFAFA] px-5 py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:bg-[#151515] dark:text-zinc-500">
                 {t("sidebar.uncategorized")}
               </div>
-              <ConversationUncategorizedList conversations={filteredConversations.filter((c) => !c.folderId)} />
+              <ConversationUncategorizedList
+                conversations={uncategorizedInProject(filteredConversations, folders, activeConversationProjectId)}
+              />
             </div>
           </>
         ) : (
@@ -1561,7 +1592,7 @@ function FolderItem({
 
 function ConversationUncategorizedList({ conversations }: { conversations: Conversation[] }) {
   const { t } = useTranslation();
-  const { moveConversation } = useAppContext();
+  const { moveConversation, activeConversationProjectId } = useAppContext();
   const { mode: selectionMode, isMobile } = useSelection();
   const dndDisabled = selectionMode || isMobile;
 
@@ -1571,13 +1602,13 @@ function ConversationUncategorizedList({ conversations }: { conversations: Conve
       canDrop: () => !dndDisabled,
       drop: (item: { id: string }) => {
         if (dndDisabled) return;
-        moveConversation(item.id, null);
+        moveConversation(item.id, null, activeConversationProjectId);
       },
       collect: (monitor) => ({
         isOver: !!monitor.isOver() && !dndDisabled,
       }),
     }),
-    [dndDisabled, moveConversation]
+    [dndDisabled, moveConversation, activeConversationProjectId]
   );
 
   return (
@@ -1601,7 +1632,7 @@ function ConversationUncategorizedList({ conversations }: { conversations: Conve
 
 function ConversationItem({ conversation }: { conversation: Conversation }) {
   const { t, language } = useTranslation();
-  const { activeConversationId, setActiveConversationId, deleteConversation, renameConversation, moveConversation, folders } =
+  const { activeConversationId, setActiveConversationId, deleteConversation, renameConversation, moveConversation } =
     useAppContext();
   const { mode: selectionMode, isSelected, toggle, isMobile } = useSelection();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1636,8 +1667,8 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
     setRenameOpen(true);
   };
 
-  const handleMove = (folderId: string | null) => {
-    moveConversation(conversation.id, folderId);
+  const handleMove = (folderId: string | null, projectId: string | null) => {
+    moveConversation(conversation.id, folderId, projectId);
     setMenuOpen(false);
   };
 
@@ -1660,15 +1691,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
     downloadMarkdownFile(`${conversation.id}.md`, conversationToMarkdown(conversation));
   };
 
-  // 对话视图只有对话文件夹，且不带分组标题 —— 与文档的项目维度显式隔离
-  const moveGroups: MoveTargetGroup[] = [{
-    key: "chat",
-    projectId: null,
-    targets: [
-      { id: null, name: t("sidebar.uncategorized") },
-      ...folders.map((folder) => ({ id: folder.id, name: folder.name })),
-    ],
-  }];
+  const moveGroups = useConversationMoveGroups();
 
   const toggleMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -1925,9 +1948,12 @@ function ProjectMenuItem({
 export function ProjectSwitcher() {
   const { t } = useTranslation();
   const {
+    activeView,
     documentProjects,
     activeProjectId,
     setActiveProjectId,
+    activeConversationProjectId,
+    setActiveConversationProjectId,
     createDocumentProject,
     updateDocumentProject,
     deleteDocumentProject,
@@ -1938,7 +1964,10 @@ export function ProjectSwitcher() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const activeProject = documentProjects.find((project) => project.id === activeProjectId) ?? null;
+  const isChat = activeView === "chat";
+  const selectedProjectId = isChat ? activeConversationProjectId : activeProjectId;
+  const setSelectedProjectId = isChat ? setActiveConversationProjectId : setActiveProjectId;
+  const activeProject = documentProjects.find((project) => project.id === selectedProjectId) ?? null;
 
   // 选项数据展开态与收起态共用一份：Base UI 的 SelectValue 默认渲染的是**原始 value**，
   // 不给它标签就会在界面上露出 dp_xxx 这类内部 id。
@@ -1961,9 +1990,9 @@ export function ProjectSwitcher() {
   return (
     <div className="flex shrink-0 items-center gap-2 px-2 pt-3 pb-1">
       <Select
-        value={activeProjectId ?? DEFAULT_DOCUMENT_PROJECT_ID}
+        value={selectedProjectId ?? DEFAULT_DOCUMENT_PROJECT_ID}
         onValueChange={(value) =>
-          value == null ? undefined : setActiveProjectId(value === DEFAULT_DOCUMENT_PROJECT_ID ? null : value)
+          value == null ? undefined : setSelectedProjectId(value === DEFAULT_DOCUMENT_PROJECT_ID ? null : value)
         }
       >
         {/* 尺寸/内边距一律用 registry 默认（text-sm 主行 + text-xs 描述），不在产品仓私调 */}
@@ -2045,7 +2074,10 @@ export function ProjectSwitcher() {
         initialDescription=""
         onClose={() => setCreateOpen(false)}
         // 失败（重名）时抛给弹窗自己显示错误，不吞掉
-        onSubmit={(input) => createDocumentProject(input).then(() => undefined)}
+        onSubmit={async (input) => {
+          const project = await createDocumentProject(input);
+          setSelectedProjectId(project.id);
+        }}
       />
 
       <ProjectEditModal

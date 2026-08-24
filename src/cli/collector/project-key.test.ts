@@ -7,7 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { gitProjectKey, resolveProjectKey } from "./project-key";
+import { gitProjectInfo, gitProjectKey, resolveProjectKey } from "./project-key";
 
 function tmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "pentou-project-key-"));
@@ -22,6 +22,8 @@ describe("gitProjectKey", () => {
     // 登记的是子目录，但项目名应当是仓库名——否则两个仓库的 docs/ 会撞在一起
     expect(gitProjectKey(nested)).toBe("my-repo");
     expect(gitProjectKey(root)).toBe("my-repo");
+    expect(gitProjectInfo(nested)?.key).toBe("my-repo");
+    expect(path.basename(gitProjectInfo(nested)?.rootPath ?? "")).toBe("my-repo");
   });
 
   it("returns undefined outside a git repository and never throws", () => {

@@ -3,6 +3,7 @@ import path from "node:path";
 import { parseGrokTurns, type GrokTurnWindow } from "../../../shared/normalizers/grok-cli.js";
 import { defaultGrokRoot, resolveUserPath } from "../config.js";
 import type { CollectorAdapter, IngestItem, SessionFile } from "../types.js";
+import { grokCliCwdFromFile } from "../cwd.js";
 import { walkFiles } from "./walk.js";
 
 const CHAT_FILE = "chat_history.jsonl";
@@ -127,6 +128,9 @@ export function createGrokCliAdapter(root = defaultGrokRoot()): CollectorAdapter
         }),
         filename: CHAT_FILE,
       };
+    },
+    async resolveCwd(file: string): Promise<string | undefined> {
+      return grokCliCwdFromFile(file);
     },
   };
 }

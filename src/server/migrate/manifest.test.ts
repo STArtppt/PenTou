@@ -160,6 +160,17 @@ describe("migration folder bundle carries document projects", () => {
     });
   });
 
+  it("keeps conversation folder projectId when merging into an empty target", () => {
+    const result = mergeFolderBundleIntoDataDir(dir, {
+      folders: [{ id: "f_claude", name: "Claude Code", platform: "Claude", projectId: "dp_a" }],
+      documentFolders: [],
+      documentProjects: [project("dp_a", "pentou")],
+    });
+    expect(result.folders.result).toBe(1);
+    const folders = JSON.parse(fs.readFileSync(path.join(dir, "folders.json"), "utf-8"));
+    expect(folders[0]).toMatchObject({ id: "f_claude", projectId: "dp_a" });
+  });
+
   it("merges projects by id so migrated documents keep a project that exists", () => {
     write("document-projects.json", JSON.stringify([project("dp_target", "notes")]));
 

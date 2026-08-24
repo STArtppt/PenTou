@@ -42,6 +42,10 @@ export function createCopilotAdapter(db = defaultCopilotDb()): CollectorAdapter 
       if (turns.length === 0) return null;
       return { schema: "copilot-v1", session, messages: turns };
     },
+    resolveCwd(database, sessionId) {
+      const session = database.prepare("select cwd from sessions where id = ?").get(sessionId) as { cwd?: unknown } | undefined;
+      return typeof session?.cwd === "string" ? session.cwd : undefined;
+    },
   });
 }
 

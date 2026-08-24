@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { defaultClaudeRoot, resolveUserPath } from "../config.js";
 import type { CollectorAdapter, IngestItem, SessionFile } from "../types.js";
+import { cwdFromJsonlHead } from "../cwd.js";
 import { walkFiles } from "./walk.js";
 
 /** 子代理转录（<session-id>/subagents/agent-*.jsonl）是支线流量，不构成用户对话。 */
@@ -34,6 +35,9 @@ export function createClaudeCodeAdapter(root = defaultClaudeRoot()): CollectorAd
         data,
         filename: path.basename(file),
       };
+    },
+    async resolveCwd(file: string): Promise<string | undefined> {
+      return cwdFromJsonlHead(file, (obj) => obj?.cwd ?? obj?.payload?.cwd);
     },
   };
 }

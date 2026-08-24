@@ -16,8 +16,13 @@ import path from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
-/** 仓库根目录名；不是 git 仓库、没装 git、目录不存在都返回 undefined（绝不抛错）。 */
-export function gitProjectKey(dir: string): string | undefined {
+export interface GitProjectInfo {
+  key: string;
+  rootPath: string;
+}
+
+/** 仓库根路径 + 目录名；不是 git 仓库、没装 git、目录不存在都返回 undefined（绝不抛错）。 */
+export function gitProjectInfo(dir: string): GitProjectInfo | undefined {
   try {
     if (!fs.existsSync(dir)) return undefined;
     const top = execFileSync("git", ["rev-parse", "--show-toplevel"], {
@@ -28,10 +33,16 @@ export function gitProjectKey(dir: string): string | undefined {
     }).trim();
     if (!top) return undefined;
     const name = path.basename(top);
-    return name && name !== path.sep ? name : undefined;
+    if (!name || name === path.sep) return undefined;
+    return { key: name, rootPath: top };
   } catch {
     return undefined;
   }
+}
+
+/** 仓库根目录名；不是 git 仓库、没装 git、目录不存在都返回 undefined（绝不抛错）。 */
+export function gitProjectKey(dir: string): string | undefined {
+  return gitProjectInfo(dir)?.key;
 }
 
 export interface ResolveProjectKeyOptions {

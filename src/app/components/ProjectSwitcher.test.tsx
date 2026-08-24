@@ -46,7 +46,8 @@ vi.mock("../i18n", () => ({
         "sidebar.editProject": "编辑项目",
         "sidebar.editProjectHint": "名称和描述都只是展示用",
         "sidebar.deleteProject": "删除项目",
-        "sidebar.deleteProjectPrompt": `确定要删除项目「${vars?.name ?? ""}」吗？其下文件夹将被删除，文档会移至默认目录的未分类`,
+        "sidebar.deleteProjectPrompt": `确定要删除项目「${vars?.name ?? ""}」吗？其下文件夹将被删除，文档与对话会移至默认目录的未分类`,
+        "sidebar.backfillNotice": `已按来源项目整理 ${vars?.n ?? 0} 条对话`,
         "sidebar.projectName": "项目名称",
         "sidebar.projectDescription": "极简描述",
         "sidebar.cancel": "取消",
@@ -72,9 +73,12 @@ let ProjectSwitcher: typeof import("./Sidebar")["ProjectSwitcher"];
 beforeEach(async () => {
   ({ ProjectSwitcher } = await import("./Sidebar"));
   mocks.appContext = {
+    activeView: "doc",
     documentProjects: PROJECTS,
     activeProjectId: null,
     setActiveProjectId: vi.fn(),
+    activeConversationProjectId: null,
+    setActiveConversationProjectId: vi.fn(),
     createDocumentProject: vi.fn().mockResolvedValue(PROJECTS[0]),
     updateDocumentProject: vi.fn(),
     deleteDocumentProject: vi.fn(),
@@ -193,6 +197,8 @@ describe("default folder is not editable", () => {
 
     expect(mocks.appContext.createDocumentProject)
       .toHaveBeenCalledWith({ name: "新项目", description: "随手记" });
+    expect(mocks.appContext.setActiveProjectId).toHaveBeenCalledWith("dp_pentou");
+    expect(mocks.appContext.setActiveConversationProjectId).not.toHaveBeenCalled();
     // 成功后弹窗关闭
     expect([...document.querySelectorAll("input")].filter((el) => !el.hasAttribute("aria-hidden"))).toHaveLength(0);
   });
@@ -272,6 +278,29 @@ describe("project actions", () => {
 
     const prompt = document.body.textContent ?? "";
     expect(prompt).toContain("文件夹将被删除");
-    expect(prompt).toContain("文档会移至默认目录的未分类");
+    expect(prompt).toContain("文档与对话会移至默认目录的未分类");
+  });
+});
+
+describe("conversation view remembers its own project", () => {
+  it("selects the conversation-view project without touching the document view", () => {
+    mocks.appContext.activeView = "chat";
+    mocks.appContext.activeConversationProjectId = "dp_pentou";
+    mocks.appContext.activeProjectId = null;
+    render();
+    const lines = container.querySelector('[data-slot="select-value-lines"]');
+    expect(lines?.textContent).toContain("笔头文档");
+  });
+
+  it("creates a project from the conversation view and only switches that view", async () => {
+    mocks.appContext.activeView = "chat";
+    render();
+    click(container.querySelector('button[aria-label="项目操作"]'));
+    click(findByText("新建项目"));
+    setValue(visibleInputs()[0], "实验");
+    click(findByText("创建"));
+    await act(async () => { await Promise.resolve(); });
+    expect(mocks.appContext.setActiveConversationProjectId).toHaveBeenCalledWith("dp_pentou");
+    expect(mocks.appContext.setActiveProjectId).not.toHaveBeenCalled();
   });
 });

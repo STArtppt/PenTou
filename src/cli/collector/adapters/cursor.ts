@@ -70,5 +70,16 @@ export function createCursorAdapter(db = defaultCursorDb()): CollectorAdapter {
       };
       return { schema: "cursor-v1", session, messages };
     },
+    resolveCwd(database, sessionId) {
+      const row = database.prepare("select value from cursorDiskKV where key = ?").get(`${COMPOSER_PREFIX}${sessionId}`) as { value?: unknown } | undefined;
+      if (!row?.value) return undefined;
+      try {
+        const composer = JSON.parse(String(row.value));
+        const cwd = composer?.cwd ?? composer?.directory;
+        return typeof cwd === "string" ? cwd : undefined;
+      } catch {
+        return undefined;
+      }
+    },
   });
 }

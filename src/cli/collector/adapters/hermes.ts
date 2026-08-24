@@ -41,5 +41,9 @@ export function createHermesAdapter(db = defaultHermesDb()): CollectorAdapter {
       if (messages.length === 0) return null;
       return { schema: "hermes-v1", session, messages };
     },
+    resolveCwd(database, sessionId) {
+      const session = database.prepare("select cwd from sessions where id = ?").get(sessionId) as { cwd?: unknown } | undefined;
+      return typeof session?.cwd === "string" ? session.cwd : undefined;
+    },
   });
 }

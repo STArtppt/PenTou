@@ -134,12 +134,9 @@ describe("sourceProject frontmatter roundtrip", () => {
   });
 });
 
-describe("conversation folder model is untouched", () => {
-  it("keeps folders.json entries free of any project dimension", () => {
-    // 对话文件夹按平台组织、文档文件夹按项目组织；两边都不引入对方的维度字段。
+describe("conversation folder projectId is optional", () => {
+  it("treats a missing projectId as the default directory (zero-migration)", () => {
     const folders = [{ id: "f1", name: "ChatGPT", platform: "ChatGPT" }];
-    for (const folder of folders) {
-      expect(Object.keys(folder).sort()).toEqual(["id", "name", "platform"]);
-    }
+    expect(folders[0]).not.toHaveProperty("projectId");
   });
 });

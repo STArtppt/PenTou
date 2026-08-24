@@ -63,6 +63,16 @@ describe("initial document project selection", () => {
   });
 });
 
+describe("initial conversation project selection", () => {
+  it("persists the conversation-view project independently of the document view", () => {
+    const data = readFileSync("src/app/data.tsx", "utf8");
+    expect(data).toContain('localStorage.setItem("pentou-active-conversation-project"');
+    expect(data).toContain('localStorage.removeItem("pentou-active-conversation-project")');
+    expect(data).toContain("pentou-active-conversation-project");
+    expect(data).toContain("setActiveConversationProjectIdState");
+  });
+});
+
 // 文档页刷新后应恢复上次打开的文档，而不是变成未选中。
 describe("initial document selection", () => {
   const docs = [{ id: "doc_a" }, { id: "doc_b" }, { id: "doc_c" }];

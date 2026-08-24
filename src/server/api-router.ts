@@ -48,7 +48,16 @@ import {
   readConvVersionBody,
   deleteConvVersions,
 } from "./conversation-versions.js";
-import { matchAiProduct } from "../shared/ai-products.js";
+import {
+  normalizeConversationFolders,
+  resolveAutoFolderId,
+  writeConversationFolders,
+} from "./conversation-folders.js";
+import {
+  backfillConversationProjects,
+  readConversationProjectsMarker,
+} from "./conversation-projects.js";
+import { log } from "./logger.js";
 import {
   extractReasoningFromBody,
   formatReasoningForMd,
@@ -119,6 +128,14 @@ export function ensureDirs(dataDir: string): void {
   // 图片资产目录（spec media-assets 异常 1）。
   ensureAssetsDir(dataDir);
 
+  // 存量对话按 sourceProject 一次性归集：必须在对外提供服务之前完成，
+  // 避免"刷新一次分组变一次"。失败不阻断启动（spec conversation-projects）。
+  try {
+    backfillConversationProjects(dataDir);
+  } catch (error) {
+    log.warn(`conversation-projects backfill failed: ${String(error)}`);
+  }
+
   // 迁移中断残留的任务级临时目录永不进入 manifest，启动时顺手清理。
   cleanupMigrationTmp(dataDir);
 
@@ -171,6 +188,8 @@ function toConversationMeta(conv: any) {
     ingestSource: conv.ingestSource,
     // 顶栏项目徽章消费（spec content-topbar-attribution）：与完整会话一致，无需水合消息体
     sourceProject: conv.sourceProject,
+    // 侧栏项目分组指针（spec conversation-projects）：缺键即默认目录
+    projectId: conv.projectId,
     // 侧栏置顶与顶栏星标都读它（spec content-favorites），meta 模式必须带上
     favorite: conv.favorite,
     messageCount: conv.messages?.length ?? 0,
@@ -226,6 +245,8 @@ export function conversationToMd(conv: any): string {
   if (conv.ingestSource) fmLines.push(`ingestSource: ${escapeFrontmatterValue(conv.ingestSource)}`);
   // 来源项目（spec conversation-project-attribution）：仅数据层，判定不了就不写
   if (conv.sourceProject) fmLines.push(`sourceProject: ${escapeFrontmatterValue(conv.sourceProject)}`);
+  // 项目归属（spec conversation-projects）：真值才写键，缺键即默认目录，存量文件零迁移。
+  if (conv.projectId) fmLines.push(`projectId: ${escapeFrontmatterValue(conv.projectId)}`);
   // 收藏（spec content-favorites）：真值才写键，缺键即未收藏 —— 存量文件零迁移。
   if (conv.favorite) fmLines.push(`favorite: true`);
 
@@ -351,6 +372,7 @@ export function parseMdFile(id: string, content: string): any {
     externalKey: meta.externalKey || undefined,
     ingestSource: meta.ingestSource || undefined,
     sourceProject: meta.sourceProject || undefined,
+    projectId: meta.projectId && meta.projectId !== "null" ? meta.projectId : undefined,
     // 仅 "true" 视作已收藏；其余（含缺键与脏值）一律未收藏且不报错（spec content-favorites）
     favorite: meta.favorite === "true" ? true : undefined,
     messages: mergeConsecutiveMessages(messages),
@@ -516,43 +538,17 @@ function findConversationByExternalKey(convDir: string, externalKey: string): an
   return null;
 }
 
-/**
- * 导入自动归类（spec import-auto-classify §4.1）：platform 命中默认产品清单时
- * 查找（folder.platform 优先、name 回退）或创建平台文件夹，返回其 id；
- * 清单外平台或 folders.json 异常时返回 null → 未分类（§5 异常 1）。
- */
-function resolveAutoFolderId(convDir: string, platform: unknown): string | null {
-  if (typeof platform !== "string" || !platform) return null;
-  const product = matchAiProduct(platform);
-  if (!product) return null;
-  const foldersFile = path.join(path.dirname(convDir), "folders.json");
-  try {
-    const folders = JSON.parse(fs.readFileSync(foldersFile, "utf-8"));
-    if (!Array.isArray(folders)) return null;
-    // 标准名文件夹优先，alias 文件夹仅在无标准名文件夹时沿用，避免新旧两处分裂
-    // （spec collector-source-expansion §4.5 决策 4）
-    const existing =
-      folders.find((f: any) => f && f.platform === product.name) ??
-      folders.find((f: any) => f && (product.aliases ?? []).includes(f.platform)) ??
-      folders.find((f: any) => f && f.name === product.name);
-    if (existing?.id) return existing.id;
-    const folder = {
-      id: `f_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      name: product.name,
-      platform: product.name,
-    };
-    fs.writeFileSync(foldersFile, JSON.stringify([...folders, folder], null, 2), "utf-8");
-    return folder.id;
-  } catch {
-    return null;
-  }
+/** 仅当已有对话的 projectId 与 folderId 都为空时才接受载荷项目（照抄文档 shouldAdoptProject）。 */
+function shouldAdoptConversationProject(existing: any, incoming: any): boolean {
+  return Boolean(incoming?.projectId) && !existing?.projectId && !existing?.folderId;
 }
 
 function createConversation(convDir: string, incoming: any): UpsertConversationResult {
   const now = new Date().toISOString();
   const full = normalizeConversation({ ...incoming, updatedAt: incoming.updatedAt ?? now });
   // 仅新建分支归类；merge 保留已有 folderId（spec import-auto-classify §4.5 决策 2）
-  if (!full.folderId) full.folderId = resolveAutoFolderId(convDir, full.platform);
+  // 归类作用域是所属项目：同一平台在不同项目下各有一个文件夹
+  if (!full.folderId) full.folderId = resolveAutoFolderId(convDir, full.platform, full.projectId);
   const v1 = initConvVersions(convDir, full.id, conversationToMd(full), "import");
   const conversation = { ...full, currentVersionId: v1.id };
   writeConversationFile(convDir, conversation);
@@ -573,10 +569,16 @@ function mergeConversation(convDir: string, existing: any, incoming: any): Upser
   // 2. 用新内容覆盖当前；保留已有条目的 id 与 folderId（不被导入项覆盖，spec §5 边界·跨folder）。
   //    externalKey / ingestSource：导入项未携带时保留已有值，避免手动导入合并把身份键抹掉
   //    （spec ingest-gateway §4.3）。
+  //    项目认领：仅当 projectId 与 folderId 都为空时才接受载荷项目（spec conversation-projects）。
+  const adopt = shouldAdoptConversationProject(existing, incoming);
+  const adoptedFolderId = adopt
+    ? resolveAutoFolderId(convDir, incoming.platform ?? existing.platform, incoming.projectId)
+    : existing.folderId;
   const merged = normalizeConversation({
     ...incoming,
     id: existing.id,
-    folderId: existing.folderId,
+    folderId: adoptedFolderId,
+    projectId: adopt ? incoming.projectId : existing.projectId,
     externalKey: incoming.externalKey ?? existing.externalKey,
     ingestSource: incoming.ingestSource ?? existing.ingestSource,
     sourceProject: incoming.sourceProject ?? existing.sourceProject,
@@ -638,23 +640,34 @@ export function upsertConversation(
     normalizedIncoming.date = earliest;
   }
   const sig = conversationSignature(normalizedIncoming);
+  const skipOrMerge = (existing: any): UpsertConversationResult => {
+    if (conversationSignature(existing).contentHash === sig.contentHash) {
+      if (shouldAdoptConversationProject(existing, normalizedIncoming)) {
+        const folderId = resolveAutoFolderId(
+          convDir,
+          existing.platform ?? normalizedIncoming.platform,
+          normalizedIncoming.projectId,
+        );
+        const next = normalizeConversation({
+          ...existing,
+          projectId: normalizedIncoming.projectId,
+          folderId,
+        });
+        writeConversationFile(convDir, next);
+        return { action: "skipped", id: existing.id, title: next.title, conversation: next };
+      }
+      return { action: "skipped", id: existing.id, title: existing.title };
+    }
+    return mergeConversation(convDir, existing, normalizedIncoming);
+  };
+
   if (opts.externalKey) {
     const existing = findConversationByExternalKey(convDir, opts.externalKey);
-    if (existing) {
-      if (conversationSignature(existing).contentHash === sig.contentHash) {
-        return { action: "skipped", id: existing.id, title: existing.title };
-      }
-      return mergeConversation(convDir, existing, normalizedIncoming);
-    }
+    if (existing) return skipOrMerge(existing);
   }
   if (conversationDedupable(normalizedIncoming)) {
     const existing = findMatchingConversation(convDir, sig.fingerprint);
-    if (existing) {
-      if (conversationSignature(existing).contentHash === sig.contentHash) {
-        return { action: "skipped", id: existing.id, title: existing.title };
-      }
-      return mergeConversation(convDir, existing, normalizedIncoming);
-    }
+    if (existing) return skipOrMerge(existing);
   }
   return createConversation(convDir, normalizedIncoming);
 }
@@ -715,6 +728,18 @@ function validateConversationPayload(data: unknown): any {
  * `format: "document"` 的结构校验（spec document-ingest §ingest 网关接受文档载荷）。
  * 文档没有指纹以外的天然身份，externalId 必填——缺它就无法做幂等 upsert。
  */
+/** ingest item 上的 `project` 载荷：命中已有项目不回写 name/description。非法则抛错（该条失败）。 */
+function resolveIngestProject(project: unknown): { id: string } | null {
+  if (project === undefined || project === null) return null;
+  if (typeof project !== "object" || Array.isArray(project)) throw new Error("invalid project payload");
+  const key = typeof (project as any).key === "string" ? (project as any).key.trim() : "";
+  if (!key) throw new Error("invalid project payload");
+  return findOrCreateProjectByKey(key, {
+    name: typeof (project as any).name === "string" ? (project as any).name : undefined,
+    rootPath: typeof (project as any).rootPath === "string" ? (project as any).rootPath : undefined,
+  });
+}
+
 function validateDocumentPayload(data: unknown): { title: string; body: string; project?: any } {
   const doc: any = data;
   const invalid = () => new Error("invalid document payload");
@@ -991,8 +1016,11 @@ async function handleIngestRequest(
       const externalKey = externalId && conversations.length === 1
         ? `${item.platform}:${encodeURIComponent(externalId)}`
         : undefined;
+      // CLI 侧 git 仓库根经 item.project 上送；与文档推送走同一条 findOrCreateProjectByKey
+      const ingestProject = resolveIngestProject(item.project);
       for (const conv of conversations) {
         await localizeMessages(conv.messages, { downloadRemote: true, urlCache });
+        if (ingestProject) conv.projectId = ingestProject.id;
         const upserted = upsertConversation(convDir, conv, { externalKey, ingestSource });
         if (upserted.action !== "skipped") changed = true;
         result.conversations.push({ action: upserted.action, id: upserted.id, title: upserted.title });
@@ -1498,7 +1526,7 @@ export async function handleApiRequest(
           // 当前内容先存为 pre-rollback，再用目标版本覆盖（rolled-back-from）
           appendConvVersion(convDir, cid, { body: conversationToMd(existing), type: "pre-rollback" });
           // favorite 显式沿用现状（spec content-favorites）：回滚的是内容，不是用户的关注标记
-          const merged = { ...targetConv, id: cid, folderId: existing.folderId, favorite: existing.favorite, updatedAt: new Date().toISOString() };
+          const merged = { ...targetConv, id: cid, folderId: existing.folderId, projectId: existing.projectId, favorite: existing.favorite, updatedAt: new Date().toISOString() };
           const newV = appendConvVersion(convDir, cid, {
             body: conversationToMd(merged),
             type: "rolled-back-from",
@@ -1593,7 +1621,7 @@ export async function handleApiRequest(
   if (url === "/api/folders" && method === "GET") {
     try {
       const content = fs.readFileSync(foldersFile, "utf-8");
-      json(res, 200, JSON.parse(content));
+      json(res, 200, normalizeConversationFolders(JSON.parse(content)));
       return true;
     } catch (e) {
       json(res, 500, { error: String(e) });
@@ -1605,13 +1633,23 @@ export async function handleApiRequest(
   if (url === "/api/folders" && method === "POST") {
     try {
       const body = JSON.parse(await readBody(req));
-      fs.writeFileSync(foldersFile, JSON.stringify(body, null, 2), "utf-8");
+      if (!Array.isArray(body)) {
+        json(res, 400, { error: "folders must be an array" });
+        return true;
+      }
+      writeConversationFolders(ctx.dataDir, body);
       json(res, 200, { ok: true });
       return true;
     } catch (e) {
       json(res, 500, { error: String(e) });
       return true;
     }
+  }
+
+  // ── GET /api/migrations/conversation-projects（存量归集结果，供一次性提示）──
+  if (pathOnly === "/api/migrations/conversation-projects" && method === "GET") {
+    json(res, 200, readConversationProjectsMarker(ctx.dataDir) ?? { processed: 0, projects: 0 });
+    return true;
   }
 
   // ── POST /api/import/link ─────────────────────────────────────────────

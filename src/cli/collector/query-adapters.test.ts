@@ -77,6 +77,7 @@ runIf("opencode adapter (US-03)", () => {
     expect(envelope.messages).toHaveLength(2);
     expect(envelope.messages[0].parts).toEqual([{ type: "text", text: "你好" }]);
     expect(envelope.messages[1].parts).toEqual([{ type: "text", text: "hi" }]); // step-start 不入信封
+    expect(await adapter.resolveCwd?.(files[0].path)).toBe("/proj");
   });
 
   it("missing db discovers nothing", async () => {
@@ -108,6 +109,7 @@ runIf("copilot adapter (US-04)", () => {
     const envelope = typeof copilotRaw === "string" ? JSON.parse(copilotRaw) : copilotRaw;
     expect(envelope.schema).toBe("copilot-v1");
     expect(envelope.messages[0]).toMatchObject({ turn_index: 0, user_message: "你好，我能做什么" });
+    expect(await adapter.resolveCwd?.(files[0].path)).toBe("/proj");
   });
 
   it("parseSqliteUtc handles both sqlite datetime and ISO strings", () => {
@@ -138,6 +140,7 @@ runIf("hermes adapter (US-05)", () => {
     const envelope = typeof hermesRaw === "string" ? JSON.parse(hermesRaw) : hermesRaw;
     expect(envelope.schema).toBe("hermes-v1");
     expect(envelope.messages).toHaveLength(2); // 空 content 的 assistant 行不入信封
+    expect(await adapter.resolveCwd?.(files[0].path)).toBe("/proj");
   });
 });
 

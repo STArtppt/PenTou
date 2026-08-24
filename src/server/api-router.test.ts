@@ -923,6 +923,86 @@ describe("import auto-classify (spec import-auto-classify)", () => {
     expect(res.status).toBe(201);
     expect(res.body.conversation.folderId).toBeNull();
   });
+
+  it("scopes platform folders by project: same platform gets one folder per project", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, []);
+    const a = await callApi({
+      dataDir: rel, method: "POST", url: "/api/conversations",
+      body: base({ projectId: "dp_a" }),
+    });
+    const b = await callApi({
+      dataDir: rel, method: "POST", url: "/api/conversations",
+      body: base({ projectId: "dp_b" }),
+    });
+    const folders = readFolders(abs);
+    expect(folders).toHaveLength(2);
+    expect(folders.map((f: any) => f.projectId).sort()).toEqual(["dp_a", "dp_b"]);
+    expect(a.body.conversation.folderId).not.toBe(b.body.conversation.folderId);
+    expect(a.body.conversation.projectId).toBe("dp_a");
+    expect(b.body.conversation.projectId).toBe("dp_b");
+  });
+
+  it("reuses the existing default-directory platform folder when projectId is absent", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    writeFolders(abs, [{ id: "f4", name: "Claude", platform: "Claude" }]);
+    const res = await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body: base() });
+    expect(res.body.conversation.folderId).toBe("f4");
+    expect(readFolders(abs)).toHaveLength(1);
+  });
+});
+
+describe("conversation projectId roundtrip (spec conversation-projects)", () => {
+  const conv = (over: any = {}) => ({
+    id: `conv_p_${Math.random().toString(36).slice(2, 7)}`,
+    title: "P",
+    platform: "Claude",
+    date: "2026-07-01T00:00:00.000Z",
+    folderId: null,
+    messages: [
+      { id: "m1", role: "user", content: `hi ${Math.random().toString(36).slice(2, 7)}`, timestamp: "2026-07-01T00:00:00.000Z" },
+    ],
+    ...over,
+  });
+
+  it("writes projectId only when set, and reads it back", () => {
+    const withId = conversationToMd(conv({ projectId: "dp_pentou" }));
+    expect(withId).toContain("projectId: dp_pentou");
+    expect(parseMdFile("x", withId).projectId).toBe("dp_pentou");
+
+    const bare = conversationToMd(conv());
+    expect(bare).not.toMatch(/^projectId:/m);
+    expect(parseMdFile("x", bare).projectId).toBeUndefined();
+  });
+
+  it("includes projectId on ?fields=meta", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    const body = conv({ projectId: "dp_pentou" });
+    await callApi({ dataDir: rel, method: "POST", url: "/api/conversations", body });
+    const list = await callApi({ dataDir: rel, url: "/api/conversations?fields=meta" });
+    const row = list.body.find((c: any) => c.id === body.id);
+    expect(row.projectId).toBe("dp_pentou");
+    expect(row.messages).toEqual([]);
+  });
+
+  it("normalizes missing folder projectId to null on GET without rewriting disk", async () => {
+    const { abs, rel } = makeRelativeTempDataDir();
+    const raw = [{ id: "f1", name: "ChatGPT", platform: "ChatGPT" }];
+    fs.writeFileSync(path.join(abs, "folders.json"), JSON.stringify(raw, null, 2));
+    const listed = await callApi({ dataDir: rel, url: "/api/folders" });
+    expect(listed.body[0].projectId).toBeNull();
+    expect(JSON.parse(fs.readFileSync(path.join(abs, "folders.json"), "utf-8"))[0]).not.toHaveProperty("projectId");
+  });
+
+  it("persists folder projectId through POST then GET", async () => {
+    const { rel } = makeRelativeTempDataDir();
+    await callApi({
+      dataDir: rel, method: "POST", url: "/api/folders",
+      body: [{ id: "f_p", name: "归档", projectId: "dp_pentou" }],
+    });
+    const listed = await callApi({ dataDir: rel, url: "/api/folders" });
+    expect(listed.body).toEqual([{ id: "f_p", name: "归档", projectId: "dp_pentou" }]);
+  });
 });
 
 describe("/api/search route (spec hybrid-search §4.4)", () => {

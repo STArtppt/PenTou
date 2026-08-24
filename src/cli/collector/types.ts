@@ -35,6 +35,12 @@ export interface SessionFile {
   platform: string;
 }
 
+export interface IngestProject {
+  key: string;
+  name?: string;
+  rootPath?: string;
+}
+
 export interface IngestItem {
   platform: string;
   externalId?: string;
@@ -45,6 +51,11 @@ export interface IngestItem {
   format: "raw" | "conversation" | "document";
   data: string | Record<string, unknown>;
   filename?: string;
+  /**
+   * CLI 本机求得的 git 仓库根。命中才附；git 不可用 / 非仓库 / 无 cwd 一律不附。
+   * 服务端用与文档推送同一套 sourceKey 身份规则消费。
+   */
+  project?: IngestProject;
 }
 
 export interface CollectorAdapter {
@@ -59,6 +70,11 @@ export interface CollectorAdapter {
   toItem(fileOrKey: string): Promise<IngestItem | null>;
   /** 查询型必备：虚拟键 → 快照（mtimeMs=会话更新时间，size=消息数） */
   snapshot?(fileOrKey: string): Promise<FileSnapshot | null>;
+  /**
+   * 浅钩子：只取会话工作目录。取不到返回 undefined，绝不抛错。
+   * 不反解把路径分隔符编码成 `-` 的目录名。
+   */
+  resolveCwd?(fileOrKey: string): Promise<string | undefined>;
 }
 
 export type IngestAction = "created" | "merged" | "skipped";
