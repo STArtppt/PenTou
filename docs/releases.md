@@ -1,5 +1,38 @@
 # PenTou 发布说明
 
+## v0.1.2
+
+> 发布日期：2026-08-24
+
+本版的主题是 **「项目维度双平面贯通与注意力权重」**：项目体系从单平面的文档专用升级为对话与文档共享的统一实体，支持按项目隔离会话、自动建项目与跨项目迁移；CLI 采集扩展至 Google Antigravity 并联动工作区智能绑定项目；同时引入对话与文档的双端收藏与注意力加权系统，让高频与高价值内容在侧栏置顶、在全局检索与 AI 技能分析中获得优先阅读。
+
+### 新特性
+
+- **对话平面引入项目目录（OpenSpec `conversation-projects`）**：
+  - 项目实体升级为对话与文档双平面共享（`/api/projects`，保留 `/api/document-projects` 兼容别名）。
+  - 对话与文件夹新增 `projectId`，侧栏支持按项目切换工作区与过滤会话，提供默认目录承载无项目会话。
+  - 平台自动归类下沉为「项目内作用域」：每个项目拥有独立的平台目录树（如 ChatGPT、Claude、DeepSeek 等），支持跨项目的两层目标树移动（选项目 → 选文件夹）。
+  - 侧边栏新增项目选择器与管理菜单（新建/重命名/删除项目），删除项目时级联清空对话归属，保留会话数据安全。
+  - 存量对话按 `sourceProject` 自动一次性平滑归集迁移（幂等可重入，状态隔离于 `data/.migrations/`）。
+- **Google Antigravity 采集器与项目归属联动**：
+  - CLI 采集器新增 Google Antigravity (`antigravity-cli`) 适配器与 normalizer，支持解析 Antigravity JSONL 对话、思考链与工具调用。
+  - 新增 `cwd` 解析钩子：采集时自动根据会话的工作区及 git 仓库根目录探测对应项目，随 ingest 上送并联动项目归属与自动创建。
+  - 前端新增 Google Antigravity 专属品牌图标（`BrandIcon`），CLI 自动采集来源增至 10 个。
+- **对话与文档收藏与注意力权重（OpenSpec `content-favorites`）**：
+  - **收藏标记**：顶栏新增收藏按钮（对话/文档 × 桌面/移动端四处统一收敛），状态落盘至 Markdown YAML frontmatter `favorite: true`（缺键即未收藏，存量零迁移成本）。
+  - **专用轻量端点**：提供 `PUT /api/{conversations,documents}/:id/favorite`，旁路操作严格约束不动 `updatedAt`、不创建版本历史，杜绝打乱时间排序与「更新于」时间戳。
+  - **侧栏收藏优先分组**：列表在时间排序基础上优先置顶已收藏条目，组内严格保持时间序。
+  - **注意力检索加权**：抽象 `src/shared/attention.ts`，检索基于有效名次前移算法（`rank * (1 - 0.3 * weight)`）为收藏项提供 30% 软加权，不挤掉强相关结果；支持 `?favorite=1` 快捷过滤参数。
+  - **AI 技能优先阅读**：Ask AI 上下文检索、`topic-digest` 与 `conversation-to-doc` 候选清单中为收藏项标注 ★ 并优先阅读。
+  - **收藏保全**：采集合并、文档 upsert、覆盖上传、版本回滚与通用 PUT 全链路保证收藏标记不被冲掉。
+
+### 修复
+
+- **Grok CLI 噪声清洗**：过滤 Grok CLI 会话中混入用户消息的 prompt 规则注入块（如 `<rules>` 块），保持会话首轮消息纯净。
+- **构建资产归属**：将 Ask AI 图标迁移至 git 跟踪的 `assets/icons/`，修复干净 clone 与 CI 环境下的构建解析问题。
+
+---
+
 ## v0.1.1
 
 > 发布日期：2026-08-10
