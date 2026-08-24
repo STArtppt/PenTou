@@ -12,6 +12,7 @@ import { normalizeCopilotVscode } from "./copilot-vscode.js";
 import { normalizeHermes } from "./hermes.js";
 import { normalizeCursor } from "./cursor.js";
 import { normalizePi } from "./pi.js";
+import { normalizeAntigravityCli } from "./antigravity-cli.js";
 
 export function registerDefaultRawNormalizers(): void {
   registerRawNormalizer("chatgpt", normalizeChatGptApi);
@@ -30,4 +31,5 @@ export function registerDefaultRawNormalizers(): void {
   registerRawNormalizer("hermes", normalizeHermes);
   registerRawNormalizer("cursor", normalizeCursor);
   registerRawNormalizer("pi", normalizePi);
+  registerRawNormalizer("antigravity-cli", normalizeAntigravityCli);
 }

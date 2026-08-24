@@ -744,6 +744,177 @@ describe("two-level raw dispatch", () => {
     const after = parseMdFile(filed.id, fs.readFileSync(path.join(dataDir, "conversations", `${filed.id}.md`), "utf-8"));
     expect(after.projectId).toBe("dp_keep");
     expect(after.folderId).toBe("f_keep");
+    // 没人认领这个项目 → 连项目行都不该落盘（惰性建项目）
+    expect(fs.existsSync(path.join(dataDir, "document-projects.json"))).toBe(false);
+  });
+
+  it("claims a conversation the importer auto-classified into the default folder", async () => {
+    const dataDir = makeDataDir();
+    // f_auto 是导入器自己建的默认目录平台文件夹 —— 不是用户的归档决定
+    fs.writeFileSync(path.join(dataDir, "folders.json"), JSON.stringify([
+      { id: "f_auto", name: "Claude", platform: "Claude" },
+    ]));
+    const stranded = {
+      id: "conv_stranded",
+      title: "stranded",
+      platform: "Claude",
+      date: "2026-07-01T00:00:00.000Z",
+      folderId: "f_auto",
+      externalKey: "claude-code:sess-42",
+      messages: [
+        { id: "m1", role: "user", content: "hello world", timestamp: "2026-07-01T00:00:00.000Z" },
+        { id: "m2", role: "ai", content: "hi there", timestamp: "2026-07-01T00:00:05.000Z" },
+      ],
+    };
+    fs.writeFileSync(path.join(dataDir, "conversations", `${stranded.id}.md`), conversationToMd(stranded));
+    await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: {
+        source: "cli",
+        items: [ingestItem({ format: "conversation", data: stranded, project: { key: "pentou", name: "pentou" } })],
+      },
+      headers: authed(dataDir),
+    });
+    const after = parseMdFile(stranded.id, fs.readFileSync(path.join(dataDir, "conversations", `${stranded.id}.md`), "utf-8"));
+    const projects = JSON.parse(fs.readFileSync(path.join(dataDir, "document-projects.json"), "utf-8"));
+    expect(after.projectId).toBe(projects[0].id);
+    const folders = JSON.parse(fs.readFileSync(path.join(dataDir, "folders.json"), "utf-8"));
+    expect(folders.find((f: any) => f.id === after.folderId)?.projectId).toBe(projects[0].id);
+  });
+
+  it("leaves a conversation the user filed into a hand-made folder alone", async () => {
+    const dataDir = makeDataDir();
+    // 用户手建的文件夹（无 platform、名字也不是平台名）→ 归档决定，不该被采集改写
+    fs.writeFileSync(path.join(dataDir, "folders.json"), JSON.stringify([
+      { id: "f_mine", name: "待读" },
+    ]));
+    const filed = {
+      id: "conv_mine",
+      title: "mine",
+      platform: "Claude",
+      date: "2026-07-01T00:00:00.000Z",
+      folderId: "f_mine",
+      externalKey: "claude-code:sess-42",
+      messages: [
+        { id: "m1", role: "user", content: "hello world", timestamp: "2026-07-01T00:00:00.000Z" },
+        { id: "m2", role: "ai", content: "hi there", timestamp: "2026-07-01T00:00:05.000Z" },
+      ],
+    };
+    fs.writeFileSync(path.join(dataDir, "conversations", `${filed.id}.md`), conversationToMd(filed));
+    await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: {
+        source: "cli",
+        items: [ingestItem({ format: "conversation", data: filed, project: { key: "pentou", name: "pentou" } })],
+      },
+      headers: authed(dataDir),
+    });
+    const after = parseMdFile(filed.id, fs.readFileSync(path.join(dataDir, "conversations", `${filed.id}.md`), "utf-8"));
+    expect(after.folderId).toBe("f_mine");
+    expect(after.projectId).toBeUndefined();
+    expect(fs.existsSync(path.join(dataDir, "document-projects.json"))).toBe(false);
+  });
+
+  it("does not resurrect a project the user deleted", async () => {
+    const dataDir = makeDataDir();
+    fs.writeFileSync(path.join(dataDir, "folders.json"), JSON.stringify([]));
+    const created = await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: { source: "cli", items: [ingestItem({ project: { key: "junk", name: "junk" } })] },
+      headers: authed(dataDir),
+    });
+    const convId = created.body.results[0].conversations[0].id;
+    const projectId = JSON.parse(fs.readFileSync(path.join(dataDir, "document-projects.json"), "utf-8"))[0].id;
+
+    await call({ dataDir, method: "DELETE", url: `/api/projects/${projectId}` });
+    expect(JSON.parse(fs.readFileSync(path.join(dataDir, "document-projects.json"), "utf-8"))).toHaveLength(0);
+
+    // 采集是自动探测，不是明确意图 → 不复活
+    await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: { source: "cli", items: [ingestItem({ externalId: "sess-99", data: CLAUDE_JSONL_OTHER, project: { key: "junk", name: "junk" } })] },
+      headers: authed(dataDir),
+    });
+    expect(JSON.parse(fs.readFileSync(path.join(dataDir, "document-projects.json"), "utf-8"))).toHaveLength(0);
+    const conv = parseMdFile(convId, fs.readFileSync(path.join(dataDir, "conversations", `${convId}.md`), "utf-8"));
+    expect(conv.projectId).toBeUndefined();
+
+    // 用户显式新建同名项目 = 明确要它回来，墓碑解除
+    const revived = await call({
+      dataDir, method: "POST", url: "/api/projects", body: { name: "junk" },
+    });
+    expect(revived.status).toBe(201);
+    await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: { source: "cli", items: [ingestItem({ externalId: "sess-77", data: CLAUDE_JSONL_OTHER, project: { key: "junk", name: "junk" } })] },
+      headers: authed(dataDir),
+    });
+    const projects = JSON.parse(fs.readFileSync(path.join(dataDir, "document-projects.json"), "utf-8"));
+    expect(projects).toHaveLength(1);
+  });
+
+  it("does not create an empty project when a rescan changes nothing", async () => {
+    const dataDir = makeDataDir();
+    fs.writeFileSync(path.join(dataDir, "folders.json"), JSON.stringify([]));
+    const item = ingestItem({ project: { key: "pentou", name: "pentou" } });
+    const first = await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: { source: "cli", items: [item] },
+      headers: authed(dataDir),
+    });
+    expect(first.body.results[0].conversations[0].action).toBe("created");
+    const projectsFile = path.join(dataDir, "document-projects.json");
+    expect(JSON.parse(fs.readFileSync(projectsFile, "utf-8"))).toHaveLength(1);
+
+    // 同一会话内容一字未变、且已有归属：重扫走 skip，不得再碰项目表
+    const before = fs.readFileSync(projectsFile, "utf-8");
+    const again = await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: { source: "cli", items: [{ ...item, project: { key: "other-repo", name: "other-repo" } }] },
+      headers: authed(dataDir),
+    });
+    expect(again.body.results[0].conversations[0].action).toBe("skipped");
+    expect(fs.readFileSync(projectsFile, "utf-8")).toBe(before);
+  });
+
+  it("still claims an unfiled conversation on rescan (skip branch adopts)", async () => {
+    const dataDir = makeDataDir();
+    fs.writeFileSync(path.join(dataDir, "folders.json"), JSON.stringify([]));
+    // 存量对话：内容会与载荷完全一致，但 folderId / projectId 都为空 → 可被认领
+    const unfiled = {
+      id: "conv_unfiled",
+      title: "unfiled",
+      platform: "Claude",
+      date: "2026-07-01T00:00:00.000Z",
+      folderId: null,
+      externalKey: "claude-code:sess-42",
+      messages: [
+        { id: "m1", role: "user", content: "hello world", timestamp: "2026-07-01T00:00:00.000Z" },
+        { id: "m2", role: "ai", content: "hi there", timestamp: "2026-07-01T00:00:05.000Z" },
+      ],
+    };
+    fs.writeFileSync(path.join(dataDir, "conversations", `${unfiled.id}.md`), conversationToMd(unfiled));
+    const again = await call({
+      dataDir, method: "POST", url: "/api/ingest",
+      body: {
+        source: "cli",
+        items: [ingestItem({
+          format: "conversation",
+          data: { ...unfiled },
+          project: { key: "pentou", name: "pentou" },
+        })],
+      },
+      headers: authed(dataDir),
+    });
+    expect(again.body.results[0].conversations[0].action).toBe("skipped");
+    const conv = parseMdFile(unfiled.id, fs.readFileSync(path.join(dataDir, "conversations", `${unfiled.id}.md`), "utf-8"));
+    const projects = JSON.parse(fs.readFileSync(path.join(dataDir, "document-projects.json"), "utf-8"));
+    expect(projects).toHaveLength(1);
+    expect(conv.projectId).toBe(projects[0].id);
+    // 认领同时在该项目内建出平台文件夹
+    const folders = JSON.parse(fs.readFileSync(path.join(dataDir, "folders.json"), "utf-8"));
+    expect(folders[0]).toMatchObject({ platform: "Claude", projectId: projects[0].id });
+    expect(conv.folderId).toBe(folders[0].id);
   });
 });
 

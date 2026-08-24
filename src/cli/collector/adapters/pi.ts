@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { defaultPiRoot, resolveUserPath } from "../config.js";
 import type { CollectorAdapter, IngestItem } from "../types.js";
+import { cwdFromJsonlHead } from "../cwd.js";
 import { walkFiles } from "./walk.js";
 
 /**
@@ -41,6 +42,10 @@ export function createPiAdapter(root = defaultPiRoot()): CollectorAdapter {
         data,
         filename: path.basename(file),
       };
+    },
+    async resolveCwd(file: string): Promise<string | undefined> {
+      // 首行 `{"type":"session",...,"cwd":...}`；父目录名是 `-` 编码的 cwd，不可逆，不猜
+      return cwdFromJsonlHead(file, (obj) => obj?.cwd);
     },
   };
 }

@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createClaudeCodeAdapter } from "./adapters/claude-code";
 import { createDocsAdapter } from "./adapters/docs";
-import { CollectorWatchEngine, backoffDelay, createExcludeMatcher, degradeOversizeItem, pullOnce, snapshotChanged } from "./engine";
+import { CollectorWatchEngine, backoffDelay, createExcludeMatcher, degradeOversizeItem, lookupGitProject, pullOnce, snapshotChanged, type GitProjectCache } from "./engine";
 import { makeCollectorConfig } from "./test-fixtures";
 import type { IngestItem, IngestResponse } from "./types";
 import { IngestHttpError } from "./ingest-client";
@@ -478,6 +478,39 @@ describe("conversation git project payload", () => {
     const summary = await pullOnce(claudeConfig(root), [createClaudeCodeAdapter(root)], { client: client as any });
     expect(summary.counts.error).toBe(0);
     expect(client.calls[0][0].project).toBeUndefined();
+  });
+
+  it("probes each cwd once per scan, negatives included", () => {
+    const cache: GitProjectCache = new Map();
+    const seen: string[] = [];
+    const detect = (dir: string) => {
+      seen.push(dir);
+      return dir === "/repo/src" ? { key: "pentou", rootPath: "/repo" } : undefined;
+    };
+    // 同一仓库的几十个会话共用一次 git 探测；非仓库目录（返回 undefined）同样只探一次
+    for (let i = 0; i < 20; i++) {
+      expect(lookupGitProject(cache, "/repo/src", detect)).toMatchObject({ key: "pentou" });
+      expect(lookupGitProject(cache, "/elsewhere", detect)).toBeUndefined();
+    }
+    expect(seen).toEqual(["/repo/src", "/elsewhere"]);
+  });
+
+  it("shares one git probe across every session in the same repo", async () => {
+    const repo = path.join(tmpDir("pentou-git-shared-"), "pentou");
+    fs.mkdirSync(path.join(repo, "src"), { recursive: true });
+    execFileSync("git", ["init", "-q"], { cwd: repo, stdio: "ignore" });
+    const root = tmpDir("pentou-cwd-many-");
+    for (let i = 0; i < 5; i++) {
+      writeJsonl(
+        path.join(root, `s${i}.jsonl`),
+        JSON.stringify({ type: "user", cwd: path.join(repo, "src"), message: { role: "user", content: `hi ${i}` } }) + "\n",
+      );
+    }
+    const client = new FakeClient();
+    await pullOnce(claudeConfig(root), [createClaudeCodeAdapter(root)], { client: client as any });
+    const items = client.calls.flat();
+    expect(items).toHaveLength(5);
+    for (const item of items) expect(item.project).toMatchObject({ key: "pentou" });
   });
 
   it("omits project when the session has no cwd", async () => {

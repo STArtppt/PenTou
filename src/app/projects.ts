@@ -35,6 +35,21 @@ export function uncategorizedInProject<T extends { projectId?: string | null; fo
   return filterByProject(items, projectId).filter((item) => !item.folderId || !ids.has(item.folderId));
 }
 
+/**
+ * 手工导入的项目归属：跟随当前选中的项目（spec conversation-projects §切换项目过滤列表）。
+ *
+ * 不跟随的话，用户在项目 X 里导入，条目落进默认目录 —— 导入报"成功"、列表里当场找不着，
+ * 只有正文区因为自动激活而显示着它。载荷自带 `projectId` 的（解析源已判定过）不覆盖；
+ * 当前是默认目录时也不写键，缺键即默认目录。
+ */
+export function withImportProject<T extends { projectId?: string | null }>(
+  item: T,
+  activeProjectId: string | null,
+): T {
+  if (item.projectId !== undefined || !activeProjectId) return item;
+  return { ...item, projectId: activeProjectId };
+}
+
 export interface MoveTarget {
   id: string | null;
   name: string;

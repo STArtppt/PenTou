@@ -736,7 +736,7 @@ export function Sidebar() {
   const [docFolderOpen, setDocFolderOpen] = useState<Record<string, boolean>>({});
   const { isScrolling: isListScrolling, markScrollActive: markListScrollActive } = useScrollActivity();
 
-  const platformOptions: Platform[] = ["ChatGPT", "DeepSeek", "Gemini", "Claude", "CLI", "Cursor", "Copilot", "Codex", "Hermes"];
+  const platformOptions: Platform[] = ["ChatGPT", "DeepSeek", "Gemini", "Antigravity", "Claude", "CLI", "Cursor", "Copilot", "Codex", "Hermes"];
 
   // 会话按原平台发起时间排序，默认正序（spec conversation-time-and-sort US-03）
   const [convSortAsc, setConvSortAsc] = useState<boolean>(

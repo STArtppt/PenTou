@@ -28,7 +28,8 @@ Options:
   --exclude <glob>     Exclude path pattern (repeatable)
   --debounce-ms <n>    Watch debounce window, default 15000
   --adapter <name>     Limit pull to one adapter: claude-code, waylog, codex,
-                       grok-cli, pi, copilot, copilot-vscode, opencode, hermes, cursor, docs
+                       grok-cli, pi, antigravity-cli, copilot, copilot-vscode,
+                       opencode, hermes, cursor, docs
   --dry-run            List files without uploading
   --config <path>      Collector config path, default ~/.pentou/collector.json
   --verbose            Print skipped paths and watch roots
@@ -210,6 +211,7 @@ function printDetectedSources(cfg: CollectorConfig): void {
     ["codex", cfg.adapters.codex.root],
     ["grok-cli", cfg.adapters["grok-cli"].root],
     ["pi", cfg.adapters.pi.root],
+    ["antigravity-cli", cfg.adapters["antigravity-cli"].root],
     ["copilot-vscode", cfg.adapters["copilot-vscode"].root],
     ["opencode", cfg.adapters.opencode.db],
     ["copilot", cfg.adapters.copilot.db],

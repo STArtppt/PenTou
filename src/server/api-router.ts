@@ -17,6 +17,8 @@ import {
   upsertDocument,
   buildDocumentUpsertIndex,
   findOrCreateProjectByKey,
+  isProjectKeyTombstoned,
+  clearProjectTombstone,
   type DocumentUpsertIndex,
 } from "../../vite-plugins/documentsPlugin.js";
 import {
@@ -49,6 +51,7 @@ import {
   deleteConvVersions,
 } from "./conversation-versions.js";
 import {
+  isDefaultAutoPlatformFolder,
   normalizeConversationFolders,
   resolveAutoFolderId,
   writeConversationFolders,
@@ -538,14 +541,55 @@ function findConversationByExternalKey(convDir: string, externalKey: string): an
   return null;
 }
 
-/** 仅当已有对话的 projectId 与 folderId 都为空时才接受载荷项目（照抄文档 shouldAdoptProject）。 */
-function shouldAdoptConversationProject(existing: any, incoming: any): boolean {
-  return Boolean(incoming?.projectId) && !existing?.projectId && !existing?.folderId;
+/**
+ * 已有对话是否接受载荷项目。要求 `projectId` 为空，且当前**没有被用户归档**：
+ * folderId 为空、或它只是导入器自己做的自动平台归类（见 isDefaultAutoPlatformFolder）。
+ *
+ * 早先只认「双空」，导致所有先无项目入库的会话被自动归类的 folderId 永久锁在默认目录，
+ * CLI 之后每次带对项目也没用。用户手建的文件夹仍不会被动。
+ */
+function shouldAdoptConversationProject(
+  convDir: string,
+  existing: any,
+  hasIncomingProject: boolean,
+  platform: unknown,
+): boolean {
+  if (!hasIncomingProject || existing?.projectId) return false;
+  if (!existing?.folderId) return true;
+  return isDefaultAutoPlatformFolder(path.dirname(convDir), existing.folderId, platform);
 }
 
-function createConversation(convDir: string, incoming: any): UpsertConversationResult {
+/**
+ * 载荷项目的**惰性**句柄：`resolve()` 才落盘建项目，且同一句柄只建一次。
+ *
+ * 为什么惰性：CLI 按 git 仓库根附 project，一次全量重扫会给每个仓库都上送项目，
+ * 但其中绝大多数会话内容一字未变、走 skip 分支什么也不写 —— 早建就等于在项目列表里
+ * 凭空堆出一批空项目，只能靠用户手工删。载荷合法性仍在 prepare 阶段立即校验，
+ * 推迟的只有"建"这一步。
+ */
+export interface IngestProjectRef {
+  resolve(): string;
+}
+
+/**
+ * 归一后的载荷项目：`has` 供认领判定（不触发建项目），`resolve()` 供真要写盘时取 id。
+ * 载荷未带项目时 has=false、resolve() 返回对话自身的 projectId（手工导入路径）。
+ */
+interface IncomingProject {
+  has: boolean;
+  resolve(): string | null;
+}
+
+function incomingProjectOf(incoming: any, ref?: IngestProjectRef): IncomingProject {
+  if (ref) return { has: true, resolve: () => ref.resolve() };
+  const own = incoming?.projectId ?? null;
+  return { has: Boolean(own), resolve: () => own };
+}
+
+function createConversation(convDir: string, incoming: any, project: IncomingProject): UpsertConversationResult {
   const now = new Date().toISOString();
-  const full = normalizeConversation({ ...incoming, updatedAt: incoming.updatedAt ?? now });
+  const projectId = project.has ? project.resolve() : incoming.projectId ?? null;
+  const full = normalizeConversation({ ...incoming, projectId, updatedAt: incoming.updatedAt ?? now });
   // 仅新建分支归类；merge 保留已有 folderId（spec import-auto-classify §4.5 决策 2）
   // 归类作用域是所属项目：同一平台在不同项目下各有一个文件夹
   if (!full.folderId) full.folderId = resolveAutoFolderId(convDir, full.platform, full.projectId);
@@ -555,7 +599,12 @@ function createConversation(convDir: string, incoming: any): UpsertConversationR
   return { action: "created", id: full.id, title: full.title, conversation };
 }
 
-function mergeConversation(convDir: string, existing: any, incoming: any): UpsertConversationResult {
+function mergeConversation(
+  convDir: string,
+  existing: any,
+  incoming: any,
+  project: IncomingProject,
+): UpsertConversationResult {
   const now = new Date().toISOString();
   // 降级·历史数据无版本：首次合并时懒补 v1（spec §5）
   if (!hasConvVersions(convDir, existing.id)) {
@@ -570,15 +619,19 @@ function mergeConversation(convDir: string, existing: any, incoming: any): Upser
   //    externalKey / ingestSource：导入项未携带时保留已有值，避免手动导入合并把身份键抹掉
   //    （spec ingest-gateway §4.3）。
   //    项目认领：仅当 projectId 与 folderId 都为空时才接受载荷项目（spec conversation-projects）。
-  const adopt = shouldAdoptConversationProject(existing, incoming);
+  const adopt = shouldAdoptConversationProject(
+    convDir, existing, project.has, incoming.platform ?? existing.platform,
+  );
+  // merge 必然写盘，此处 resolve() 建出来的项目一定有对话落进去
+  const adoptedProjectId = adopt ? project.resolve() : existing.projectId;
   const adoptedFolderId = adopt
-    ? resolveAutoFolderId(convDir, incoming.platform ?? existing.platform, incoming.projectId)
+    ? resolveAutoFolderId(convDir, incoming.platform ?? existing.platform, adoptedProjectId)
     : existing.folderId;
   const merged = normalizeConversation({
     ...incoming,
     id: existing.id,
     folderId: adoptedFolderId,
-    projectId: adopt ? incoming.projectId : existing.projectId,
+    projectId: adoptedProjectId,
     externalKey: incoming.externalKey ?? existing.externalKey,
     ingestSource: incoming.ingestSource ?? existing.ingestSource,
     sourceProject: incoming.sourceProject ?? existing.sourceProject,
@@ -598,6 +651,11 @@ export interface UpsertConversationOptions {
   externalKey?: string;
   /** 采集端标识（extension / cli / …），仅溯源。 */
   ingestSource?: string;
+  /**
+   * ingest 载荷带来的项目（惰性）：只有确实要写盘的分支才 resolve，
+   * 全量去重的重扫不会因此在项目列表里留下空项目。
+   */
+  project?: IngestProjectRef;
 }
 
 /**
@@ -639,26 +697,28 @@ export function upsertConversation(
   if (incoming?.dateFromSource !== true && earliest && (Number.isNaN(dateMs) || dateMs > new Date(earliest).getTime())) {
     normalizedIncoming.date = earliest;
   }
+  const project = incomingProjectOf(normalizedIncoming, opts.project);
   const sig = conversationSignature(normalizedIncoming);
   const skipOrMerge = (existing: any): UpsertConversationResult => {
     if (conversationSignature(existing).contentHash === sig.contentHash) {
-      if (shouldAdoptConversationProject(existing, normalizedIncoming)) {
+      // 内容一字未变，但无归属的存量对话仍要认领 —— 这一支写盘，resolve() 建项目是值当的；
+      // 已有归属则彻底不碰项目表（重扫的绝大多数落在这里）。
+      if (shouldAdoptConversationProject(
+        convDir, existing, project.has, existing.platform ?? normalizedIncoming.platform,
+      )) {
+        const projectId = project.resolve();
         const folderId = resolveAutoFolderId(
           convDir,
           existing.platform ?? normalizedIncoming.platform,
-          normalizedIncoming.projectId,
+          projectId,
         );
-        const next = normalizeConversation({
-          ...existing,
-          projectId: normalizedIncoming.projectId,
-          folderId,
-        });
+        const next = normalizeConversation({ ...existing, projectId, folderId });
         writeConversationFile(convDir, next);
         return { action: "skipped", id: existing.id, title: next.title, conversation: next };
       }
       return { action: "skipped", id: existing.id, title: existing.title };
     }
-    return mergeConversation(convDir, existing, normalizedIncoming);
+    return mergeConversation(convDir, existing, normalizedIncoming, project);
   };
 
   if (opts.externalKey) {
@@ -669,7 +729,7 @@ export function upsertConversation(
     const existing = findMatchingConversation(convDir, sig.fingerprint);
     if (existing) return skipOrMerge(existing);
   }
-  return createConversation(convDir, normalizedIncoming);
+  return createConversation(convDir, normalizedIncoming, project);
 }
 
 // ── Ingest gateway（spec ingest-gateway §4.1 / §4.4）──────────────────────────
@@ -729,15 +789,23 @@ function validateConversationPayload(data: unknown): any {
  * 文档没有指纹以外的天然身份，externalId 必填——缺它就无法做幂等 upsert。
  */
 /** ingest item 上的 `project` 载荷：命中已有项目不回写 name/description。非法则抛错（该条失败）。 */
-function resolveIngestProject(project: unknown): { id: string } | null {
+/**
+ * 校验载荷项目并返回**惰性**句柄：形状不合法立即抛错（该 item 报 error），
+ * 但建项目推迟到真有对话要写盘时（见 IngestProjectRef）。同一句柄只建一次。
+ */
+function prepareIngestProject(project: unknown): IngestProjectRef | null {
   if (project === undefined || project === null) return null;
   if (typeof project !== "object" || Array.isArray(project)) throw new Error("invalid project payload");
   const key = typeof (project as any).key === "string" ? (project as any).key.trim() : "";
   if (!key) throw new Error("invalid project payload");
-  return findOrCreateProjectByKey(key, {
-    name: typeof (project as any).name === "string" ? (project as any).name : undefined,
-    rootPath: typeof (project as any).rootPath === "string" ? (project as any).rootPath : undefined,
-  });
+  // 用户删过这个项目：采集是自动探测出来的、不是明确意图，不复活（spec §删除后不复活）
+  if (isProjectKeyTombstoned(key)) return null;
+  const name = typeof (project as any).name === "string" ? (project as any).name : undefined;
+  const rootPath = typeof (project as any).rootPath === "string" ? (project as any).rootPath : undefined;
+  let id: string | null = null;
+  return {
+    resolve: () => (id ??= findOrCreateProjectByKey(key, { name, rootPath }).id),
+  };
 }
 
 function validateDocumentPayload(data: unknown): { title: string; body: string; project?: any } {
@@ -954,6 +1022,8 @@ async function handleIngestRequest(
         } else {
           body = await localizeMedia(body, { downloadRemote: true, urlCache });
           // 项目按不可变 sourceKey 复用；命中时不回写用户改过的 name / description
+          // 文档推送是用户显式指定的项目（--doc-project），解除墓碑后照常复用/新建
+          if (payload.project) clearProjectTombstone(payload.project.key);
           const project = payload.project
             ? findOrCreateProjectByKey(payload.project.key, {
                 name: payload.project.name,
@@ -1016,12 +1086,16 @@ async function handleIngestRequest(
       const externalKey = externalId && conversations.length === 1
         ? `${item.platform}:${encodeURIComponent(externalId)}`
         : undefined;
-      // CLI 侧 git 仓库根经 item.project 上送；与文档推送走同一条 findOrCreateProjectByKey
-      const ingestProject = resolveIngestProject(item.project);
+      // CLI 侧 git 仓库根经 item.project 上送；与文档推送走同一条 findOrCreateProjectByKey，
+      // 但只在会真正写盘的分支才建项目（惰性，见 prepareIngestProject）
+      const ingestProject = prepareIngestProject(item.project);
       for (const conv of conversations) {
         await localizeMessages(conv.messages, { downloadRemote: true, urlCache });
-        if (ingestProject) conv.projectId = ingestProject.id;
-        const upserted = upsertConversation(convDir, conv, { externalKey, ingestSource });
+        const upserted = upsertConversation(convDir, conv, {
+          externalKey,
+          ingestSource,
+          ...(ingestProject ? { project: ingestProject } : {}),
+        });
         if (upserted.action !== "skipped") changed = true;
         result.conversations.push({ action: upserted.action, id: upserted.id, title: upserted.title });
       }

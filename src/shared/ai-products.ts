@@ -18,6 +18,8 @@ export const DEFAULT_AI_PRODUCTS: AiProduct[] = [
   { name: "ChatGPT", aliases: ["Codex"] },
   { name: "DeepSeek" },
   { name: "Gemini" },
+  // Antigravity 独立品牌：不并入 Gemini 文件夹（spec collector-antigravity US-04）
+  { name: "Antigravity" },
   { name: "Claude" },
   { name: "Cursor" },
   { name: "Copilot" },

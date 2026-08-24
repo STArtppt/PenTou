@@ -38,6 +38,7 @@ let DATA_DIR = path.resolve(process.cwd(), "data");
 export let DOCS_DIR = path.join(DATA_DIR, "documents");
 let DOC_FOLDERS_FILE = path.join(DATA_DIR, "document-folders.json");
 let DOC_PROJECTS_FILE = path.join(DATA_DIR, "document-projects.json");
+let DELETED_PROJECTS_FILE = path.join(DATA_DIR, "deleted-projects.json");
 
 export function setDocsDataDir(dataDir: string): void {
   const resolvedDataDir = path.resolve(dataDir);
@@ -45,6 +46,7 @@ export function setDocsDataDir(dataDir: string): void {
   DOCS_DIR = path.join(resolvedDataDir, "documents");
   DOC_FOLDERS_FILE = path.join(resolvedDataDir, "document-folders.json");
   DOC_PROJECTS_FILE = path.join(resolvedDataDir, "document-projects.json");
+  DELETED_PROJECTS_FILE = path.join(resolvedDataDir, "deleted-projects.json");
   setMineruDataDir(resolvedDataDir);
 }
 
@@ -159,6 +161,50 @@ export function readDocumentProjects(): any[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * 项目墓碑（spec conversation-projects §删除后不复活）。
+ *
+ * 删项目只清归属、不删内容，被释放的对话仍留着 `sourceProject`；CLI 下次扫到它们
+ * 就会按同一个 sourceKey 把刚删掉的项目原样建回来，用户的清理白做。墓碑记下被删的
+ * sourceKey，**只挡自动探测的采集路径**——用户显式新建同名项目或显式推送文档到该项目，
+ * 都是明确要它回来，那时墓碑被解除。
+ */
+function readDeletedProjectKeys(): string[] {
+  try {
+    if (!fs.existsSync(DELETED_PROJECTS_FILE)) return [];
+    const raw = JSON.parse(fs.readFileSync(DELETED_PROJECTS_FILE, "utf-8"));
+    return Array.isArray(raw) ? raw.filter((key: unknown) => typeof key === "string" && key) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDeletedProjectKeys(keys: string[]): void {
+  fs.writeFileSync(DELETED_PROJECTS_FILE, JSON.stringify([...new Set(keys)], null, 2), "utf-8");
+}
+
+/** 采集侧问：这个 sourceKey 是被用户删过的吗？ */
+export function isProjectKeyTombstoned(key: string): boolean {
+  const trimmed = String(key ?? "").trim();
+  if (!trimmed) return false;
+  return readDeletedProjectKeys().includes(trimmed);
+}
+
+export function tombstoneProjectKey(key: string): void {
+  const trimmed = String(key ?? "").trim();
+  if (!trimmed) return;
+  writeDeletedProjectKeys([...readDeletedProjectKeys(), trimmed]);
+}
+
+/** 显式意图（手工新建 / 显式推送同名项目）解除墓碑。 */
+export function clearProjectTombstone(key: string): void {
+  const trimmed = String(key ?? "").trim();
+  if (!trimmed) return;
+  const keys = readDeletedProjectKeys();
+  if (!keys.includes(trimmed)) return;
+  writeDeletedProjectKeys(keys.filter((item) => item !== trimmed));
 }
 
 /** 写共用项目表（文件名是历史命名债，见 readDocumentProjects）。 */
@@ -778,6 +824,8 @@ export async function documentsApiHandler(
         createdAt: new Date().toISOString(),
       };
       writeDocumentProjects([...projects, project]);
+      // 手工新建同名项目 = 明确要它回来，解除墓碑
+      clearProjectTombstone(name);
       // 新项目立即拥有 AI 空间与项目记忆，无需用户操作（spec ai-workspace）
       ensureAiWorkspaceDocs();
       json(res, 201, { ok: true, project });
@@ -832,6 +880,8 @@ export async function documentsApiHandler(
       writeDocumentFolders(folders.filter((folder: any) => folder.projectId !== projectId));
       clearConversationsForDeletedProject(DATA_DIR, projectId);
       writeDocumentProjects(projects.filter((project) => project.id !== projectId));
+      // 立碑：被释放的对话仍带着 sourceProject，不挡的话下次采集就把它建回来
+      tombstoneProjectKey(target.sourceKey);
       json(res, 200, { ok: true });
     } catch (e) {
       json(res, 500, { error: String(e) });

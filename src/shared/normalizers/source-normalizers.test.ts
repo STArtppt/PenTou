@@ -11,6 +11,7 @@ import { normalizeCopilotVscode } from "./copilot-vscode";
 import { normalizeHermes } from "./hermes";
 import { normalizeCursor } from "./cursor";
 import { normalizePi } from "./pi";
+import { normalizeAntigravityCli } from "./antigravity-cli";
 import { parseJsonl, parseMarkdown } from "../parsers";
 import { EmptyPayloadError } from "./util";
 
@@ -518,6 +519,116 @@ describe("pi normalizer", () => {
       line({ type: "message", message: { role: "toolResult", content: [{ type: "text", text: "只有工具回显" }] } }),
     ].join("\n");
     expect(() => normalizePi(data)).toThrow(EmptyPayloadError);
+  });
+});
+
+describe("antigravity-cli normalizer (spec collector-antigravity US-02)", () => {
+  const line = (obj: unknown) => JSON.stringify(obj);
+
+  const transcript = [
+    line({
+      step_index: 0,
+      source: "USER_EXPLICIT",
+      type: "USER_INPUT",
+      status: "DONE",
+      created_at: "2026-08-19T09:51:10Z",
+      content: "<USER_REQUEST>\n理解一下本项目\n</USER_REQUEST>\n<ADDITIONAL_METADATA>\nThe current local time is: 2026-08-19T17:51:10+08:00.\n</ADDITIONAL_METADATA>\n<USER_SETTINGS_CHANGE>\nThe user changed setting `Model Selection` from None to Gemini 3.6 Flash (High).\n</USER_SETTINGS_CHANGE>",
+    }),
+    line({
+      step_index: 1,
+      source: "SYSTEM",
+      type: "CHECKPOINT",
+      status: "DONE",
+      created_at: "2026-08-19T09:51:10Z",
+      content: "{{ CHECKPOINT 0 }} The earlier parts of this conversation have been truncated...",
+    }),
+    // 工具调用轮：只有 tool_calls，无正文 → 跳过
+    line({
+      step_index: 2,
+      source: "MODEL",
+      type: "PLANNER_RESPONSE",
+      status: "DONE",
+      created_at: "2026-08-19T09:51:12Z",
+      tool_calls: [{ name: "list_dir", args: { DirectoryPath: "/Users/x/proj" } }],
+    }),
+    // 工具结果 → 跳过
+    line({
+      step_index: 3,
+      source: "MODEL",
+      type: "GENERIC",
+      status: "DONE",
+      created_at: "2026-08-19T09:51:13Z",
+      content: "Created At: ... Completed At: ... File Path: `file:///Users/x/proj/package.json`",
+    }),
+    // 带 thinking + content 的最终回答
+    line({
+      step_index: 4,
+      source: "MODEL",
+      type: "PLANNER_RESPONSE",
+      status: "DONE",
+      created_at: "2026-08-19T09:51:20Z",
+      thinking: "先看 package.json 再下结论。",
+      content: "这是一个 Vite 项目。",
+    }),
+    // 进行中的步（RUNNING）→ 跳过，避免半写内容
+    line({
+      step_index: 5,
+      source: "MODEL",
+      type: "PLANNER_RESPONSE",
+      status: "RUNNING",
+      created_at: "2026-08-19T09:51:21Z",
+      content: "半截回答不该入库",
+    }),
+  ].join("\n");
+
+  it("maps USER_INPUT / final PLANNER_RESPONSE to messages, drops tool & system noise", () => {
+    const [conv] = normalizeAntigravityCli(transcript);
+    expect(conv.platform).toBe("Antigravity");
+    expect(conv.title).toBe("理解一下本项目");
+    expect(conv.date).toBe("2026-08-19T09:51:10.000Z");
+    expect(conv.dateFromSource).toBe(true);
+    expect(conv.messages.map((m) => [m.role, m.content, m.timestamp])).toEqual([
+      ["user", "理解一下本项目", "2026-08-19T09:51:10.000Z"],
+      ["ai", "这是一个 Vite 项目。", "2026-08-19T09:51:20.000Z"],
+    ]);
+    expect(conv.messages[1].reasoning).toEqual({ thinking: "先看 package.json 再下结论。" });
+  });
+
+  it("envelope carries workspace → sourceProject (independent from Gemini brand)", () => {
+    const envelope = JSON.stringify({
+      schema: "antigravity-cli-v1",
+      conversationId: "77b9ef85-035e-450c-942e-027bfcbb9f22",
+      workspace: "/Users/x/Desktop/LIFE/coding/myproj/startist-ui",
+      history: transcript,
+    });
+    const [conv] = normalizeAntigravityCli(envelope);
+    expect(conv.platform).toBe("Antigravity");
+    expect(conv.sourceProject).toBe("startist-ui");
+  });
+
+  it("falls back to raw jsonl text (no envelope) and tolerates broken lines", () => {
+    const data = [
+      "不是 json 的行",
+      line({
+        step_index: 0,
+        source: "USER_EXPLICIT",
+        type: "USER_INPUT",
+        status: "DONE",
+        created_at: "2026-08-19T09:51:10Z",
+        content: "<USER_REQUEST>只问一个问题</USER_REQUEST>",
+      }),
+    ].join("\n");
+    const [conv] = normalizeAntigravityCli(data);
+    expect(conv.messages).toHaveLength(1);
+    expect(conv.messages[0]).toMatchObject({ role: "user", content: "只问一个问题" });
+  });
+
+  it("throws EmptyPayloadError when every step is noise", () => {
+    const data = [
+      line({ step_index: 0, source: "SYSTEM", type: "CHECKPOINT", status: "DONE", created_at: "2026-08-19T09:51:10Z", content: "x" }),
+      line({ step_index: 1, source: "MODEL", type: "GENERIC", status: "DONE", created_at: "2026-08-19T09:51:11Z", content: "tool result" }),
+    ].join("\n");
+    expect(() => normalizeAntigravityCli(data)).toThrow(EmptyPayloadError);
   });
 });
 

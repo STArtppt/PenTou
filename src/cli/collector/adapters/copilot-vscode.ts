@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { defaultVscodeChatRoot, resolveUserPath } from "../config.js";
 import type { CollectorAdapter, IngestItem, SessionFile } from "../types.js";
+import { vscodeWorkspaceCwd } from "../cwd.js";
 import { walkFiles } from "./walk.js";
 
 /** workspaceStorage/<hash>/chatSessions/<uuid>.json 才是会话文件 */
@@ -47,6 +48,10 @@ export function createCopilotVscodeAdapter(root = defaultVscodeChatRoot()): Coll
         data,
         filename: path.basename(file),
       };
+    },
+    async resolveCwd(file: string): Promise<string | undefined> {
+      if (!isChatSessionFile(file)) return undefined;
+      return vscodeWorkspaceCwd(file);
     },
   };
 }

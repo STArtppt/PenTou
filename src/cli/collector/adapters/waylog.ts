@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { resolveUserPath } from "../config.js";
 import type { CollectorAdapter, IngestItem, SessionFile } from "../types.js";
+import { waylogCwdFromFile } from "../cwd.js";
 import { walkFiles } from "./walk.js";
 
 const EXTERNAL_KEYS = ["sessionId", "session_id", "conversationId", "conversation_id", "id"];
@@ -52,6 +53,9 @@ export function createWaylogAdapter(dirs: string[]): CollectorAdapter {
         data,
         filename: path.basename(file),
       };
+    },
+    async resolveCwd(file: string): Promise<string | undefined> {
+      return waylogCwdFromFile(file);
     },
   };
 }

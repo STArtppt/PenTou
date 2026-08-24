@@ -8,7 +8,7 @@ import {
 import { generateDocId, generateAnnotationId } from "./doc-utils";
 import { toggleTaskLine } from "./task-checkbox";
 import type { InAppLink } from "./in-app-links";
-import { resolveMoveProjectId } from "./projects";
+import { resolveMoveProjectId, withImportProject } from "./projects";
 import { isAiWorkspaceFolderId, sortAiWorkspaceFirst } from "../shared/ai-workspace";
 import {
   AiChatSession,
@@ -42,7 +42,7 @@ import type { RunEvent } from "./skill-runtime";
 
 // "Codex" 仅存量数据兼容：新解析一律输出 "ChatGPT"（spec collector-source-expansion 决策 2）
 // Doubao / Qwen：extension-source-expansion-cn 登录态采集输出（Qianwen 为存量 alias，归类层折叠到 Qwen）
-export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode" | "Pi" | "Doubao" | "Qwen";
+export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Antigravity" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode" | "Pi" | "Doubao" | "Qwen";
 
 /** 消息级推理过程（spec message-reasoning）：搜索段 + 思考段，均为已渲染 Markdown。 */
 export interface MessageReasoning {
@@ -1085,7 +1085,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     for (const conv of convs) {
       try {
-        const r = await apiFetch("/api/conversations", { method: "POST", body: JSON.stringify(conv) });
+        // 导入跟随当前选中项目；服务端的平台自动归类也会在该项目内建文件夹
+        const payload = withImportProject(conv, activeConversationProjectId);
+        const r = await apiFetch("/api/conversations", { method: "POST", body: JSON.stringify(payload) });
         const action: ImportActionItem["action"] = r.action ?? "created";
         const savedConv: Conversation = r.conversation ?? { ...conv, id: r.id ?? conv.id, updatedAt: now };
         items.push({ action, id: r.id ?? conv.id, title: r.title ?? conv.title });
@@ -1140,7 +1142,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       skipped: items.filter((i) => i.action === "skipped").length,
       items,
     };
-  }, []);
+  }, [activeConversationProjectId]);
 
   // ── Conversation version operations（对齐文档；spec 决策5） ──────────────────
 

@@ -57,6 +57,7 @@ python3 assets/icons/normalize_icons.py --padding 20 --force
 | 品牌/平台 | 文件 | 状态 | 备注 |
 | --- | --- | --- | --- |
 | Microsoft Copilot | `microsoft-copilot.svg` | 已下载 | 当前复用 GitHub Copilot 图标，需审查是否替换成 Microsoft Copilot 官方图标 |
+| Antigravity | `google-antigravity.svg` | 已落地 | 源为 `Google-Antigravity-Icon-One-Color.png`（540×540 单色+透明 alpha），由 `trace2.py` 走 marching squares 追踪轮廓转真矢量 SVG；对话 `platform: "Antigravity"` 映射此文件，与 Gemini 品牌独立 |
 | Perplexity | `perplexity.svg` | 已下载 | 常见 AI 搜索/问答平台 |
 | Metaso / 秘塔AI搜索 | `metaso.svg` | 已下载 | 已补真矢量 SVG |
 | Meta AI / Llama | `meta.svg` | 已下载 | 使用 Meta 图标代表 Llama/Meta AI |
@@ -91,6 +92,7 @@ python3 assets/icons/normalize_icons.py --padding 20 --force
 - `cursor.svg`
 - `deepseek.svg`
 - `github-copilot.svg`
+- `google-antigravity.svg`
 - `google-gemini.svg`
 - `google.svg`
 - `grok.svg`

@@ -151,6 +151,37 @@ export function resolveAutoFolderId(
 }
 
 /**
+ * 该文件夹是不是「默认目录里的自动平台文件夹」——也就是**导入器自己**归类的产物，
+ * 而不是用户的归档决定（spec conversation-projects §项目内的平台文件夹自动归类）。
+ *
+ * 为什么需要这个判定：认领规则原本要求 `projectId` 与 `folderId` 双空，但新建分支
+ * 一律会自动归类出一个 folderId，于是**任何一条曾经在没有项目载荷时入库的会话，
+ * 此后永远认领不了**——哪怕 CLI 每次更新都带着正确的项目上来。把自动归类的产物
+ * 视同未归类，才能让这类会话在下次采集时自愈；用户手建的文件夹仍然一动不动。
+ */
+export function isDefaultAutoPlatformFolder(
+  dataDir: string,
+  folderId: string | null | undefined,
+  platform: unknown,
+): boolean {
+  if (!folderId) return false;
+  const folders = readConversationFolders(dataDir);
+  const folder = folders.find((f) => f.id === folderId);
+  // 指向已不存在的文件夹：等同未归类（与前端 uncategorizedInProject 的自愈同口径）
+  if (!folder) return true;
+  // 已经在某个项目里 —— 无论谁放的，都不再改动
+  if (projectKeyOf(folder)) return false;
+  if (typeof platform !== "string" || !platform) return false;
+  const product = matchAiProduct(platform);
+  if (!product) return false;
+  return (
+    folder.platform === product.name ||
+    (product.aliases ?? []).includes(folder.platform ?? "") ||
+    folder.name === product.name
+  );
+}
+
+/**
  * 删除项目时清理对话平面：删该项目下的对话文件夹，清空受影响对话的
  * `projectId` / `folderId`。内容一条都不删。
  */

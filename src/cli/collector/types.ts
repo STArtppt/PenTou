@@ -14,6 +14,8 @@ export interface CollectorConfig {
     "grok-cli": { enabled: boolean; root?: string };
     pi: { enabled: boolean; root?: string };
     "copilot-vscode": { enabled: boolean; root?: string };
+    // Antigravity CLI（spec collector-antigravity）：brain 目录下的 transcript jsonl
+    "antigravity-cli": { enabled: boolean; root?: string };
     // SQLite 查询型
     opencode: { enabled: boolean; db?: string };
     copilot: { enabled: boolean; db?: string };

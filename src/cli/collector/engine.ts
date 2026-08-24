@@ -16,7 +16,7 @@ import type {
 import { IngestClient, describeIngestError, isAuthIngestError, isRateLimitedIngestError, isRetryableIngestError } from "./ingest-client.js";
 import { writeConfig } from "./config.js";
 import { isVirtualKey, parseSessionKey } from "./sqlite.js";
-import { gitProjectInfo } from "./project-key.js";
+import { gitProjectInfo, type GitProjectInfo } from "./project-key.js";
 import { EmptyPayloadError, parseRawConversations } from "../../shared/raw-dispatch.js";
 import { shrinkConversation } from "./shrink.js";
 
@@ -144,6 +144,27 @@ function adapterForFile(adapters: CollectorAdapter[], file: string): CollectorAd
 }
 
 /**
+ * cwd → 仓库信息的**单次扫描内**缓存。同一仓库往往有几十上百个会话，
+ * `git rev-parse` 每次都要 spawn 一个进程（实测 ~9ms），不缓存会给全量扫描
+ * 白白加上数秒。作用域只到本次扫描结束：常驻 watcher 里后来才 `git init`
+ * 的目录，下一轮扫描仍能被认出来。
+ */
+export type GitProjectCache = Map<string, GitProjectInfo | undefined>;
+
+/** `detect` 是注入点，便于测试数探测次数（与 project-key.ts 的 detectGit 同惯例）。 */
+export function lookupGitProject(
+  cache: GitProjectCache,
+  cwd: string,
+  detect: (dir: string) => GitProjectInfo | undefined = gitProjectInfo,
+): GitProjectInfo | undefined {
+  // 用 has 而非真值判断：`undefined`（非仓库）同样要缓存，否则最该省的那一类反而每次都探
+  if (cache.has(cwd)) return cache.get(cwd);
+  const info = detect(cwd);
+  cache.set(cwd, info);
+  return info;
+}
+
+/**
  * CLI 侧 git 探测：取 adapter 的 cwd，命中仓库根才附 project 载荷。
  * 文档 item 已自带 project，不覆盖。失败安静降级，不产生警告噪声。
  */
@@ -151,13 +172,14 @@ async function attachGitProject(
   adapter: CollectorAdapter,
   file: string,
   item: IngestItem,
+  cache: GitProjectCache,
 ): Promise<IngestItem> {
   if (item.format === "document" || item.project) return item;
   if (!adapter.resolveCwd) return item;
   try {
     const cwd = await adapter.resolveCwd(file);
     if (!cwd) return item;
-    const info = gitProjectInfo(cwd);
+    const info = lookupGitProject(cache, cwd);
     if (!info) return item;
     return {
       ...item,
@@ -280,6 +302,7 @@ async function prepareItems(
   const errors: CollectorFileError[] = [];
   let skippedByExclude = 0;
   const logger = options.logger ?? DEFAULT_LOGGER;
+  const gitCache: GitProjectCache = new Map();
 
   for (const file of files) {
     // exclude 是文件路径黑名单；查询型虚拟键无路径语义，不参与（spec §4.3）
@@ -298,7 +321,7 @@ async function prepareItems(
       if (!nextSnapshot) continue;
       const item = await adapter.toItem(file.path);
       if (!item) continue;
-      items.push({ file: file.path, item: await attachGitProject(adapter, file.path, item), snapshot: nextSnapshot });
+      items.push({ file: file.path, item: await attachGitProject(adapter, file.path, item, gitCache), snapshot: nextSnapshot });
     } catch (error: any) {
       errors.push({ file: file.path, error: error?.message ?? String(error) });
     }

@@ -11,7 +11,7 @@ import {
   sortDocumentsByTime,
   uncategorizedInProject,
 } from "./document-projects";
-import { filterByProject, uncategorizedInProject as uncategorizedItems } from "./projects";
+import { filterByProject, uncategorizedInProject as uncategorizedItems, withImportProject } from "./projects";
 import { sortByAttention } from "@/shared/attention";
 import type { Conversation, Document, DocumentFolder, DocumentProject, Folder } from "./data";
 
@@ -231,5 +231,26 @@ describe("收藏优先分组叠加时间排序", () => {
   it("全未收藏时与纯时间排序逐项一致（缺省行为不变）", () => {
     const plain = [doc("x", { updatedAt: "2026-06-01T00:00:00.000Z" }), doc("y", { updatedAt: "2026-05-01T00:00:00.000Z" })];
     expect(listFor(plain, true).map((d) => d.id)).toEqual(sortDocumentsByTime(plain, true).map((d) => d.id));
+  });
+});
+
+// ── 导入归属（spec conversation-projects）──────────────────────────────────────
+
+describe("withImportProject", () => {
+  const imported = (extra: Partial<Conversation> = {}): Conversation =>
+    ({ id: "c1", title: "c1", platform: "ChatGPT", messages: [], folderId: null, ...extra }) as Conversation;
+
+  it("files an import into the project the user is currently looking at", () => {
+    expect(withImportProject(imported(), "dp_a").projectId).toBe("dp_a");
+  });
+
+  it("leaves the key off in the default folder (missing key = default)", () => {
+    expect(withImportProject(imported(), null)).not.toHaveProperty("projectId");
+  });
+
+  it("never overrides a projectId the payload already carries", () => {
+    expect(withImportProject(imported({ projectId: "dp_b" }), "dp_a").projectId).toBe("dp_b");
+    // 显式 null（载荷判定为默认目录）同样是已决定，不该被当前项目改写
+    expect(withImportProject(imported({ projectId: null }), "dp_a").projectId).toBeNull();
   });
 });

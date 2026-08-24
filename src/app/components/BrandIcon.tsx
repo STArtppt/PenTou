@@ -3,6 +3,7 @@ import clsx from "clsx";
 import chatgptUrl from "../assets/brand-icons/chatgpt.svg";
 import deepseekUrl from "../assets/brand-icons/deepseek.svg";
 import geminiUrl from "../assets/brand-icons/google-gemini.svg";
+import antigravityUrl from "../assets/brand-icons/google-antigravity.svg";
 import claudeUrl from "../assets/brand-icons/claude.svg";
 import cursorUrl from "../assets/brand-icons/cursor.svg";
 import githubCopilotUrl from "../assets/brand-icons/github-copilot.svg";
@@ -23,6 +24,7 @@ export const BRAND_ICON_URLS: Record<string, string> = {
   ChatGPT: chatgptUrl,
   DeepSeek: deepseekUrl,
   Gemini: geminiUrl,
+  Antigravity: antigravityUrl,
   Claude: claudeUrl,
   Cursor: cursorUrl,
   Copilot: githubCopilotUrl,

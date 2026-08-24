@@ -217,6 +217,24 @@ describe("collector adapters", () => {
     expect(await adapter.resolveCwd?.(path.join(root, "missing.jsonl"))).toBeUndefined();
   });
 
+  it("claude-code resolveCwd only reads the file head, not the whole session", async () => {
+    const root = tmpDir("pentou-claude-cwd-big-");
+    const file = path.join(root, "s.jsonl");
+    // 首行带 cwd，后面缀 8MB 正文：只读头部就该拿到结果，且不把整文件读进内存
+    const tail = `{"type":"assistant","content":"${"x".repeat(1024)}"}\n`.repeat(8 * 1024);
+    fs.writeFileSync(file, '{"type":"user","cwd":"/Users/x/proj/pentou"}\n' + tail);
+    expect(fs.statSync(file).size).toBeGreaterThan(8 * 1024 * 1024);
+    expect(await createClaudeCodeAdapter(root).resolveCwd?.(file)).toBe("/Users/x/proj/pentou");
+  });
+
+  it("claude-code resolveCwd drops the truncated tail line instead of mis-parsing it", async () => {
+    const root = tmpDir("pentou-claude-cwd-trunc-");
+    const file = path.join(root, "s.jsonl");
+    // 单行就超出读取窗口：读到的是半行 JSON，必须安静返回 undefined 而不是抛错
+    fs.writeFileSync(file, `{"type":"user","pad":"${"y".repeat(512 * 1024)}","cwd":"/repo"}\n`);
+    expect(await createClaudeCodeAdapter(root).resolveCwd?.(file)).toBeUndefined();
+  });
+
   it("codex resolveCwd reads session_meta.payload.cwd", async () => {
     const root = tmpDir("pentou-codex-cwd-");
     const file = path.join(root, "rollout-2026-01-01T00-00-00-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl");
@@ -233,9 +251,52 @@ describe("collector adapters", () => {
     expect(await createGrokCliAdapter(root).resolveCwd?.(file)).toBe("/Users/x/proj/pentou");
   });
 
+  it("pi resolveCwd reads cwd from the session header line", async () => {
+    const root = tmpDir("pentou-pi-cwd-");
+    // 父目录名是 `-` 编码的 cwd（不可逆），只能靠首行
+    const dir = path.join(root, "--Users-sunchao-proj-pentou--");
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, "2026-08-10T03-24-01-149Z_019fe9b2.jsonl");
+    fs.writeFileSync(file, '{"type":"session","id":"019fe9b2","cwd":"/Users/sunchao/proj/pentou"}\n{"type":"model_change"}\n');
+    expect(await createPiAdapter(root).resolveCwd?.(file)).toBe("/Users/sunchao/proj/pentou");
+  });
+
+  it("copilot-vscode resolveCwd reads the sibling workspace.json folder URI", async () => {
+    const root = tmpDir("pentou-vscode-cwd-");
+    const storage = path.join(root, "214d97c1");
+    const sessions = path.join(storage, "chatSessions");
+    fs.mkdirSync(sessions, { recursive: true });
+    fs.writeFileSync(path.join(storage, "workspace.json"), JSON.stringify({ folder: "file:///Users/x/proj/startist-ui" }));
+    const file = path.join(sessions, "s.json");
+    fs.writeFileSync(file, JSON.stringify({ sessionId: "s", requests: [{}] }));
+    expect(await createCopilotVscodeAdapter(root).resolveCwd?.(file)).toBe("/Users/x/proj/startist-ui");
+  });
+
+  it("copilot-vscode resolveCwd gives up on multi-root workspaces instead of guessing", async () => {
+    const root = tmpDir("pentou-vscode-multi-");
+    const storage = path.join(root, "abc");
+    const sessions = path.join(storage, "chatSessions");
+    fs.mkdirSync(sessions, { recursive: true });
+    // 多根工作区写的是 workspace（.code-workspace 路径）而非 folder
+    fs.writeFileSync(path.join(storage, "workspace.json"), JSON.stringify({ workspace: "file:///Users/x/a.code-workspace" }));
+    const file = path.join(sessions, "s.json");
+    fs.writeFileSync(file, JSON.stringify({ sessionId: "s", requests: [{}] }));
+    expect(await createCopilotVscodeAdapter(root).resolveCwd?.(file)).toBeUndefined();
+  });
+
+  it("waylog resolveCwd takes the directory holding .waylog", async () => {
+    const proj = path.join(tmpDir("pentou-waylog-cwd-"), "pentou");
+    const dir = path.join(proj, ".waylog", "sessions");
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, "s.md");
+    fs.writeFileSync(file, "---\nsessionId: s\n---\n");
+    expect(await createWaylogAdapter([proj]).resolveCwd?.(file)).toBe(proj);
+  });
+
   it("pi: filename without the timestamp prefix falls back to the whole basename", () => {
     expect(piExternalId("/x/019fa2f4.jsonl")).toBe("019fa2f4");
     // 时间戳前缀里本身带 `-` 不带 `_`，切在首个 `_` 上不会误伤 UUID
     expect(piExternalId("/x/2026-07-27T09-43-03-653Z_abc_def.jsonl")).toBe("abc_def");
   });
+
 });

@@ -56,6 +56,8 @@ data/.migrations/
 data/document-folders.json
 # 同类：文档项目清单（spec document-projects），随本机采集/手建产生，不入库
 data/document-projects.json
+# 同类：已删除项目的墓碑（spec conversation-projects），本机清理意图，不入库
+data/deleted-projects.json
 # npx-launcher default runtime data dir (<cwd>/pentou-data): real conversations + .session-secret.
 # Accidentally committed in abf7e4f while smoke-testing from repo root — never track.
 pentou-data/

@@ -35,6 +35,14 @@ export function defaultPiRoot(): string {
 }
 
 /**
+ * Antigravity CLI 的会话 transcript 目录（spec collector-antigravity）。
+ * 每个会话一个子目录：`<brain>/<conversation-uuid>/.system_generated/logs/transcript_full.jsonl`。
+ */
+export function defaultAntigravityRoot(): string {
+  return path.join(os.homedir(), ".gemini", "antigravity-cli", "brain");
+}
+
+/**
  * 与 opencode 自身的 `Global.Path.data` 保持一致：`path.join(xdgData, "opencode")`，
  * 其中 xdgData 来自 xdg-basedir —— `XDG_DATA_HOME || ~/.local/share`，**没有 Windows 分支**，
  * 因此 Windows 上同样落在 `%USERPROFILE%\.local\share`，不需要按平台分派。
@@ -75,7 +83,7 @@ export function defaultCursorDb(): string {
 
 export function defaultConfig(overrides: Partial<CollectorConfig> = {}): CollectorConfig {
   const rootAdapter = (
-    name: "codex" | "grok-cli" | "pi" | "copilot-vscode",
+    name: "codex" | "grok-cli" | "pi" | "copilot-vscode" | "antigravity-cli",
     defaultRoot: string,
   ): { enabled: boolean; root: string } => ({
     enabled: overrides.adapters?.[name]?.enabled ?? true,
@@ -107,6 +115,7 @@ export function defaultConfig(overrides: Partial<CollectorConfig> = {}): Collect
       "grok-cli": rootAdapter("grok-cli", defaultGrokRoot()),
       pi: rootAdapter("pi", defaultPiRoot()),
       "copilot-vscode": rootAdapter("copilot-vscode", defaultVscodeChatRoot()),
+      "antigravity-cli": rootAdapter("antigravity-cli", defaultAntigravityRoot()),
       opencode: dbAdapter("opencode", defaultOpencodeDb()),
       copilot: dbAdapter("copilot", defaultCopilotDb()),
       hermes: dbAdapter("hermes", defaultHermesDb()),
@@ -166,6 +175,7 @@ export function normalizeConfig(raw: any): CollectorConfig {
       "grok-cli": rootAdapter("grok-cli", defaultGrokRoot()),
       pi: rootAdapter("pi", defaultPiRoot()),
       "copilot-vscode": rootAdapter("copilot-vscode", defaultVscodeChatRoot()),
+      "antigravity-cli": rootAdapter("antigravity-cli", defaultAntigravityRoot()),
       opencode: dbAdapter("opencode", defaultOpencodeDb()),
       copilot: dbAdapter("copilot", defaultCopilotDb()),
       hermes: dbAdapter("hermes", defaultHermesDb()),
