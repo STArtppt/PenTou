@@ -27,7 +27,7 @@ AUTHOR_NAME="${SYNC_AUTHOR_NAME:-}"
 BLACKLIST_PATHS=(
   CLAUDE.md AGENTS.md DESIGN.md
   skills rules guidelines
-  .claude .grok .waylog
+  .claude .grok .waylog .pi
   src/docs openspec
   pentou-data
 )

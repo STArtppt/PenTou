@@ -24,7 +24,7 @@ jobs:
           # 前 12 项必须与 .githooks/pre-commit 的 BLACKLIST_REGEX、
           # scripts/sync-to-public.sh 的 BLACKLIST_PATHS 逐项一致（三处同步，见 guide §7.2.4）。
           # .drafts / .trae 是 audit 独有的额外兜底，另两处没有对应项。
-          for path in CLAUDE.md AGENTS.md DESIGN.md skills rules guidelines .claude .grok .waylog src/docs openspec pentou-data .drafts .trae; do
+          for path in CLAUDE.md AGENTS.md DESIGN.md skills rules guidelines .claude .grok .waylog .pi src/docs openspec pentou-data .drafts .trae; do
             if [ -e "$path" ]; then
               echo "::error::黑名单路径仍存在: $path"
               fail=1
