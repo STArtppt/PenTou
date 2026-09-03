@@ -513,6 +513,34 @@ describe("conversation git project payload", () => {
     for (const item of items) expect(item.project).toMatchObject({ key: "pentou" });
   });
 
+  // 回归：watch 事件的单文件热路径曾绕过 attachGitProject，常驻 watcher 期间新增的
+  // 会话一律不带 project 载荷，全部落进默认目录（快照已推进，之后也不会自愈）。
+  it("attaches project on the single-file watch path too", async () => {
+    const repo = path.join(tmpDir("pentou-git-watch-"), "pentou");
+    fs.mkdirSync(path.join(repo, "src"), { recursive: true });
+    execFileSync("git", ["init", "-q"], { cwd: repo, stdio: "ignore" });
+    const root = tmpDir("pentou-watch-project-");
+    const file = path.join(root, "a.jsonl");
+    writeJsonl(
+      file,
+      JSON.stringify({ type: "user", cwd: path.join(repo, "src"), message: { role: "user", content: "hi" } }) + "\n",
+    );
+    const config = makeCollectorConfig({
+      server: "http://x",
+      token: "t",
+      debounceMs: 5,
+      adapters: { "claude-code": { enabled: true, root }, waylog: { enabled: false, dirs: [] } },
+    });
+    const client = new FakeClient();
+    const engine = new CollectorWatchEngine(config, [createClaudeCodeAdapter(root)], { client: client as any });
+
+    engine.schedule(file);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    expect(client.calls[0][0].project).toMatchObject({ key: "pentou", name: "pentou" });
+    engine.stop();
+  });
+
   it("omits project when the session has no cwd", async () => {
     const root = tmpDir("pentou-nocwd-");
     writeJsonl(path.join(root, "a.jsonl"));

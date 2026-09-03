@@ -620,12 +620,19 @@ export class CollectorWatchEngine {
     }
   }
 
+  /**
+   * 单文件热路径（fs.watch 事件）。**必须**和 prepareItems 一样附 git 项目载荷：
+   * 常驻 watcher 下绝大多数会话都是从这里上报的，漏附会让它们全部落进默认目录，
+   * 而快照已推进、下次不会重发 —— 表现为"有项目的对话被归到默认目录"。
+   * 缓存只覆盖本次调用（单个 cwd），与"探测结果不跨扫描沿用"的约定一致。
+   */
   private async sendFile(file: string, adapter: CollectorAdapter): Promise<boolean> {
     const snapshot = adapter.snapshot ? await adapter.snapshot(file) : await snapshotFile(file);
     if (!snapshot) return true;
     const item = await adapter.toItem(file);
     if (!item) return true;
-    return await this.sendPrepared({ file, item, snapshot });
+    const withProject = await attachGitProject(adapter, file, item, new Map());
+    return await this.sendPrepared({ file, item: withProject, snapshot });
   }
 
   private async sendPrepared(entry: PreparedItem): Promise<boolean> {
