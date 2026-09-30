@@ -114,5 +114,6 @@ python3 assets/icons/normalize_icons.py --padding 20 --force
 - `runway.svg`
 - `suno.svg`
 - `tencent-hunyuan.svg`
+- `workbuddy.svg`
 - `xai-grok.svg`
 - `zhipu-ai.svg`
