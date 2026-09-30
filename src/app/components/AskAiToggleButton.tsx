@@ -42,15 +42,23 @@ export function AskAiFab({
         type="button"
         onClick={() => setAiSidebarOpen(true)}
         aria-label={label}
-        className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 transition-transform active:scale-95"
+        className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/20 ring-1 ring-black/10 transition-transform active:scale-95 dark:bg-card dark:text-card-foreground dark:ring-white/20"
       >
-        {/* 自定义 AI 空间图标（黑稿）；在 primary 底上反成浅色 */}
-        <img
-          src={aiSpaceIconUrl}
-          alt=""
+        {/* 单色黑稿：mask + currentColor，随按钮前景色反色（深色主题不再 invert 成白底白字） */}
+        <span
           aria-hidden
-          className="size-7 object-contain brightness-0 invert"
-          draggable={false}
+          className="size-7 shrink-0 bg-current"
+          style={{
+            // 双引号必需：Vite 内联的 data URI 含单引号，裸 url() 会成为非法 CSS 被丢弃
+            WebkitMaskImage: `url("${aiSpaceIconUrl}")`,
+            maskImage: `url("${aiSpaceIconUrl}")`,
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+          }}
         />
       </button>
     </IconTooltip>,

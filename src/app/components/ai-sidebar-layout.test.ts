@@ -36,6 +36,10 @@ describe("ai-sidebar-layout contracts", () => {
     expect(fab).toContain("AskAiFab");
     expect(fab).toContain("createPortal");
     expect(fab).toContain("icon-AIspace.svg");
+    expect(fab).toContain("bg-current");
+    expect(fab).toContain("maskImage");
+    expect(fab).toContain("dark:bg-card");
+    expect(fab).not.toContain("brightness-0 invert");
     expect(fab).toContain("bottom-[calc(1rem+env(safe-area-inset-bottom)+4rem)]");
     expect(fab).toContain('side === "left" ? "left-4" : "right-4"');
   });

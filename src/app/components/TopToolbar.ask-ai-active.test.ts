@@ -9,6 +9,9 @@ describe("Ask AI FAB entry", () => {
     expect(src).toContain("createPortal");
     expect(src).toContain("document.body");
     expect(src).toContain("icon-AIspace.svg");
+    expect(src).toContain("bg-current");
+    expect(src).toContain("maskImage");
+    expect(src).not.toContain("brightness-0 invert");
     expect(src).toContain("z-[60]");
     expect(src).toContain("setAiSidebarOpen(true)");
     expect(src).toContain("IconTooltip");
