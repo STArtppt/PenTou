@@ -34,6 +34,11 @@ export function defaultPiRoot(): string {
   return path.join(os.homedir(), ".pi", "agent", "sessions");
 }
 
+/** WorkBuddy 5.x 会话 JSONL 根目录：`~/.workbuddy/projects/<编码 cwd>/<sessionId>.jsonl` */
+export function defaultWorkbuddyRoot(): string {
+  return path.join(os.homedir(), ".workbuddy", "projects");
+}
+
 /**
  * Antigravity CLI 的会话 transcript 目录（spec collector-antigravity）。
  * 每个会话一个子目录：`<brain>/<conversation-uuid>/.system_generated/logs/transcript_full.jsonl`。
@@ -83,7 +88,7 @@ export function defaultCursorDb(): string {
 
 export function defaultConfig(overrides: Partial<CollectorConfig> = {}): CollectorConfig {
   const rootAdapter = (
-    name: "codex" | "grok-cli" | "pi" | "copilot-vscode" | "antigravity-cli",
+    name: "codex" | "grok-cli" | "pi" | "workbuddy" | "copilot-vscode" | "antigravity-cli",
     defaultRoot: string,
   ): { enabled: boolean; root: string } => ({
     enabled: overrides.adapters?.[name]?.enabled ?? true,
@@ -114,6 +119,7 @@ export function defaultConfig(overrides: Partial<CollectorConfig> = {}): Collect
       codex: rootAdapter("codex", defaultCodexRoot()),
       "grok-cli": rootAdapter("grok-cli", defaultGrokRoot()),
       pi: rootAdapter("pi", defaultPiRoot()),
+      workbuddy: rootAdapter("workbuddy", defaultWorkbuddyRoot()),
       "copilot-vscode": rootAdapter("copilot-vscode", defaultVscodeChatRoot()),
       "antigravity-cli": rootAdapter("antigravity-cli", defaultAntigravityRoot()),
       opencode: dbAdapter("opencode", defaultOpencodeDb()),
@@ -174,6 +180,7 @@ export function normalizeConfig(raw: any): CollectorConfig {
       codex: rootAdapter("codex", defaultCodexRoot()),
       "grok-cli": rootAdapter("grok-cli", defaultGrokRoot()),
       pi: rootAdapter("pi", defaultPiRoot()),
+      workbuddy: rootAdapter("workbuddy", defaultWorkbuddyRoot()),
       "copilot-vscode": rootAdapter("copilot-vscode", defaultVscodeChatRoot()),
       "antigravity-cli": rootAdapter("antigravity-cli", defaultAntigravityRoot()),
       opencode: dbAdapter("opencode", defaultOpencodeDb()),

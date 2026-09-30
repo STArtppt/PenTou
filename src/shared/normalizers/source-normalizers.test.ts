@@ -11,6 +11,7 @@ import { normalizeCopilotVscode } from "./copilot-vscode";
 import { normalizeHermes } from "./hermes";
 import { normalizeCursor } from "./cursor";
 import { normalizePi } from "./pi";
+import { normalizeWorkbuddy } from "./workbuddy";
 import { normalizeAntigravityCli } from "./antigravity-cli";
 import { parseJsonl, parseMarkdown } from "../parsers";
 import { EmptyPayloadError } from "./util";
@@ -519,6 +520,103 @@ describe("pi normalizer", () => {
       line({ type: "message", message: { role: "toolResult", content: [{ type: "text", text: "只有工具回显" }] } }),
     ].join("\n");
     expect(() => normalizePi(data)).toThrow(EmptyPayloadError);
+  });
+});
+
+describe("workbuddy normalizer", () => {
+  const line = (obj: unknown) => JSON.stringify(obj);
+
+  it("keeps user_query and assistant text, attaches reasoning, and drops tool noise", () => {
+    const data = [
+      line({ type: "session-meta", sessionId: "s1", timestamp: "1790676510684" }),
+      line({
+        type: "message",
+        role: "user",
+        timestamp: 1790676509671,
+        cwd: "/Users/me/proj/pentou",
+        content: [{ type: "input_text", text: "<system-reminder>噪声</system-reminder>\n<user_query>提炼一个模板</user_query>" }],
+      }),
+      line({ type: "file-history-snapshot", cwd: "/Users/me/proj/pentou" }),
+      line({ type: "ai-title", aiTitle: "提炼大数据平台报告 Word 模板" }),
+      line({
+        type: "reasoning",
+        rawContent: [{ type: "reasoning_text", text: "先看模板结构。" }],
+        content: [],
+      }),
+      line({
+        type: "message",
+        role: "assistant",
+        status: "completed",
+        timestamp: 1790676516453,
+        content: [{ type: "output_text", text: "我先把模板读一遍。" }],
+      }),
+      line({ type: "function_call", name: "Read", arguments: "{\"file_path\":\"a.docx\"}" }),
+      line({ type: "function_call_result", name: "Read", output: { type: "text", text: "文件正文" } }),
+      line({
+        type: "message",
+        role: "user",
+        timestamp: 1790676600000,
+        content: [{ type: "input_text", text: "<task-notification><summary>后台命令结束</summary></task-notification>" }],
+      }),
+      "半行 not json",
+    ].join("\n");
+
+    const [conv] = normalizeWorkbuddy(data);
+    expect(conv.platform).toBe("WorkBuddy");
+    expect(conv.title).toBe("提炼大数据平台报告 Word 模板");
+    expect(conv.date).toBe(new Date(1790676510684).toISOString());
+    expect(conv.dateFromSource).toBe(true);
+    expect(conv.sourceProject).toBe("pentou");
+    expect(conv.messages.map((m) => [m.role, m.content])).toEqual([
+      ["user", "提炼一个模板"],
+      ["ai", "我先把模板读一遍。"],
+    ]);
+    expect(conv.messages[1].reasoning).toEqual({ thinking: "先看模板结构。" });
+    expect(conv.messages[1].timestamp).toBe(new Date(1790676516453).toISOString());
+  });
+
+  it("does not carry reasoning across the next real user turn, and skips in-progress assistant rows", () => {
+    const data = [
+      line({ type: "session-meta", timestamp: 1790676510684 }),
+      line({ type: "reasoning", rawContent: [{ type: "reasoning_text", text: "上一轮没说完的思考" }] }),
+      line({
+        type: "message",
+        role: "user",
+        timestamp: 1790676509671,
+        content: [{ type: "input_text", text: "<user_query>下一问</user_query>" }],
+      }),
+      line({
+        type: "message",
+        role: "assistant",
+        status: "in_progress",
+        timestamp: 1790676510000,
+        content: [{ type: "output_text", text: "半截回答" }],
+      }),
+      line({ type: "reasoning", content: [{ type: "reasoning_text", text: "这一轮的思考" }] }),
+      line({
+        type: "message",
+        role: "assistant",
+        status: "completed",
+        timestamp: 1790676516453,
+        content: [{ type: "output_text", text: "答完了" }],
+      }),
+    ].join("\n");
+
+    const [conv] = normalizeWorkbuddy(data);
+    expect(conv.messages.map((m) => [m.role, m.content])).toEqual([
+      ["user", "下一问"],
+      ["ai", "答完了"],
+    ]);
+    expect(conv.messages[1].reasoning).toEqual({ thinking: "这一轮的思考" });
+  });
+
+  it("throws EmptyPayloadError when the session has no user or assistant text", () => {
+    const data = [
+      line({ type: "session-meta", timestamp: 1790676510684, cwd: "/tmp/x" }),
+      line({ type: "function_call", name: "Bash" }),
+      line({ type: "message", role: "user", content: [{ type: "input_text", text: "<system-reminder>只有噪声</system-reminder>" }] }),
+    ].join("\n");
+    expect(() => normalizeWorkbuddy(data)).toThrow(EmptyPayloadError);
   });
 });
 

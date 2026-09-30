@@ -3,6 +3,7 @@ import { createWaylogAdapter } from "./waylog.js";
 import { createCodexAdapter } from "./codex.js";
 import { createGrokCliAdapter } from "./grok-cli.js";
 import { createPiAdapter } from "./pi.js";
+import { createWorkbuddyAdapter } from "./workbuddy.js";
 import { createAntigravityCliAdapter } from "./antigravity-cli.js";
 import { createCopilotVscodeAdapter } from "./copilot-vscode.js";
 import { createOpencodeAdapter } from "./opencode.js";
@@ -24,6 +25,7 @@ export function createAdapters(
   if (cfg.codex.enabled) adapters.push(createCodexAdapter(cfg.codex.root));
   if (cfg["grok-cli"].enabled) adapters.push(createGrokCliAdapter(cfg["grok-cli"].root));
   if (cfg.pi.enabled) adapters.push(createPiAdapter(cfg.pi.root));
+  if (cfg.workbuddy.enabled) adapters.push(createWorkbuddyAdapter(cfg.workbuddy.root));
   if (cfg["antigravity-cli"].enabled) adapters.push(createAntigravityCliAdapter(cfg["antigravity-cli"].root));
   if (cfg["copilot-vscode"].enabled) adapters.push(createCopilotVscodeAdapter(cfg["copilot-vscode"].root));
   // 文档推送：仅显式登记（enabled）时创建，未登记时完全静默（spec collector-docs-push）

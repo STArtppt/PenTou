@@ -48,7 +48,7 @@ npx -y @startist/pentou@latest
 | 方式 | 价值 |
 | --- | --- |
 | 导出文件 / 分享链接导入 | 历史资产一次性归仓 |
-| CLI 自动采集 | Claude Code、Codex、Cursor、Copilot、OpenCode、Hermes、Grok 等桌面会话「发生即归档」 |
+| CLI 自动采集 | Claude Code、Codex、Cursor、Copilot、OpenCode、Hermes、Grok、WorkBuddy 等桌面会话「发生即归档」 |
 | 浏览器插件 | 网页对话哑采集，服务端统一解析与去重；[Pentou Collector](https://chromewebstore.google.com/detail/pentou-collector/kfepbkfbnminfhcenaookdnikccdfmip) 已上架 Chrome 应用商店 |
 | 平台自动归类 | 导入后按产品落入文件夹，少做手工整理 |
 | CLI 文档推送 | 仓库里的 Markdown 进文档平面，按项目分组；`watch` 可常驻同步 |
@@ -137,7 +137,7 @@ PDF / Docx / PPTX 等外部资料也可经 MinerU 解析入库，与 AI 对话�
 
 - **Ingest Gateway**（`POST /api/ingest`）：token 鉴权；以平台 + 外部 ID 幂等 upsert；密钥脱敏；CORS 对采集端点友好。
 - **CLI Collector**（`pentou collect init/pull/watch`）：
-  - 文件型：Claude Code、Codex、Grok CLI、Pi、Copilot VS Code 会话文件、waylog 等  
+  - 文件型：Claude Code、Codex、Grok CLI、Pi、WorkBuddy、Copilot VS Code 会话文件、waylog 等  
   - 查询型：OpenCode、Copilot、Hermes、Cursor 等本地 SQLite 会话库  
   - 超大会话：超限时本地降级解析 / 确定性瘦身后再上报  
 - **浏览器扩展（MV3）**：网页端捕获原始数据，服务端统一解析入库。已上架 Chrome 应用商店（[Pentou Collector](https://chromewebstore.google.com/detail/pentou-collector/kfepbkfbnminfhcenaookdnikccdfmip)），装完在选项页填「Pentou 地址 + 采集令牌」即可；自动采集默认关闭、逐平台开启。

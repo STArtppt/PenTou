@@ -59,7 +59,7 @@ PenTou pulls those conversations off a dozen platforms onto your own machine, as
 ### 1. Multi-source capture: archived as it happens
 
 - **Manual import**: ChatGPT / DeepSeek JSON exports, assorted `.jsonl` files, Markdown, and platform share links. Drop them in as a batch — one bad file won't sink the rest.
-- **CLI collector**: watches desktop agent sessions and reports them automatically, covering Claude Code, Codex, Cursor, Copilot, OpenCode, Hermes, Grok CLI, Pi and more. `pull` for batches, `watch` for incremental updates.
+- **CLI collector**: watches desktop agent sessions and reports them automatically, covering Claude Code, Codex, Cursor, Copilot, OpenCode, Hermes, Grok CLI, Pi, WorkBuddy and more. `pull` for batches, `watch` for incremental updates.
 - **Browser extension**: [Pentou Collector](https://chromewebstore.google.com/detail/pentou-collector/kfepbkfbnminfhcenaookdnikccdfmip) is live on the Chrome Web Store — install it, fill in two fields, and it captures ChatGPT / DeepSeek web threads. The extension only does dumb capture; parsing and deduplication happen server-side.
 - **Ingest gateway**: idempotent upserts, secret redaction, and automatic slimming of oversized sessions — syncing repeatedly won't litter your library with duplicates.
 - **Auto-filing on import**: conversations land in the folder matching their platform, so there's less to tidy by hand.
@@ -70,7 +70,7 @@ Document push and project grouping: [`docs/cli-doc-push-guide.md`](./docs/cli-do
 
 ![Import panel: drag in export files, paste a share link, and set up the CLI collector or browser extension](./assets/demo/screenshot-Import-interface.png)
 
-<sub>One panel for all four channels — platform exports, share links (8 platforms), CLI collector (9 desktop agents), browser extension — each card listing the platforms it supports and the three steps to wire it up</sub>
+<sub>One panel for all four channels — platform exports, share links (8 platforms), CLI collector (10 desktop agents), browser extension — each card listing the platforms it supports and the three steps to wire it up</sub>
 
 ### 2. Local Markdown as the source of truth
 

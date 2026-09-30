@@ -42,7 +42,7 @@ import type { RunEvent } from "./skill-runtime";
 
 // "Codex" 仅存量数据兼容：新解析一律输出 "ChatGPT"（spec collector-source-expansion 决策 2）
 // Doubao / Qwen：extension-source-expansion-cn 登录态采集输出（Qianwen 为存量 alias，归类层折叠到 Qwen）
-export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Antigravity" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode" | "Pi" | "Doubao" | "Qwen";
+export type Platform = "ChatGPT" | "DeepSeek" | "Gemini" | "Antigravity" | "Claude" | "CLI" | "Cursor" | "Copilot" | "Codex" | "Hermes" | "Grok" | "OpenCode" | "Pi" | "WorkBuddy" | "Doubao" | "Qwen";
 
 /** 消息级推理过程（spec message-reasoning）：搜索段 + 思考段，均为已渲染 Markdown。 */
 export interface MessageReasoning {

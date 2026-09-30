@@ -8,6 +8,7 @@ import { createCodexAdapter, extractCodexExternalId } from "./adapters/codex";
 import { createGrokCliAdapter } from "./adapters/grok-cli";
 import { createCopilotVscodeAdapter } from "./adapters/copilot-vscode";
 import { createPiAdapter, piExternalId } from "./adapters/pi";
+import { createWorkbuddyAdapter } from "./adapters/workbuddy";
 
 function tmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -297,6 +298,35 @@ describe("collector adapters", () => {
     expect(piExternalId("/x/019fa2f4.jsonl")).toBe("019fa2f4");
     // 时间戳前缀里本身带 `-` 不带 `_`，切在首个 `_` 上不会误伤 UUID
     expect(piExternalId("/x/2026-07-27T09-43-03-653Z_abc_def.jsonl")).toBe("abc_def");
+  });
+
+  it("workbuddy: discovers only project-level session jsonl and reads cwd off a later line", async () => {
+    const root = tmpDir("pentou-workbuddy-");
+    const project = path.join(root, "Users-me-proj");
+    const sessionId = "bc9637de-262d-4e17-ad52-e9a5979233a0";
+    const sessionDir = path.join(project, sessionId, "tool-results");
+    fs.mkdirSync(sessionDir, { recursive: true });
+    const file = path.join(project, `${sessionId}.jsonl`);
+    const raw = [
+      '{"type":"session-meta","sessionId":"bc9637de-262d-4e17-ad52-e9a5979233a0","timestamp":1790676510684}',
+      '{"type":"message","role":"user","cwd":"/Users/me/proj","content":[{"type":"input_text","text":"hi"}]}',
+    ].join("\n") + "\n";
+    fs.writeFileSync(file, raw);
+    fs.writeFileSync(path.join(project, `${sessionId}.file-rollback.ndjson`), "{}\n");
+    fs.writeFileSync(path.join(sessionDir, "nested.jsonl"), "{}\n");
+
+    const adapter = createWorkbuddyAdapter(root);
+    const files = await adapter.discover();
+    expect(files.map((item) => item.path)).toEqual([file]);
+    expect(await adapter.toItem(path.join(sessionDir, "nested.jsonl"))).toBeNull();
+    expect(await adapter.toItem(file)).toMatchObject({
+      platform: "workbuddy",
+      externalId: sessionId,
+      format: "raw",
+      data: raw,
+      filename: `${sessionId}.jsonl`,
+    });
+    expect(await adapter.resolveCwd?.(file)).toBe("/Users/me/proj");
   });
 
 });

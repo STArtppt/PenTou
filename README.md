@@ -59,7 +59,7 @@ PenTou 把散落在十几个平台的对话收进本机，沉淀成**可检索�
 ### 1. 多源采集：发生即归档
 
 - **手动导入**：ChatGPT / DeepSeek 导出 JSON、各类 `.jsonl`、Markdown、平台分享链接；批量拖入，单文件失败不拖垮整批。
-- **CLI Collector**：监听桌面 agent 会话并自动上报——覆盖 Claude Code、Codex、Cursor、Copilot、OpenCode、Hermes、Grok CLI、Pi 等；`pull` 批量 + `watch` 差量。
+- **CLI Collector**：监听桌面 agent 会话并自动上报——覆盖 Claude Code、Codex、Cursor、Copilot、OpenCode、Hermes、Grok CLI、Pi、WorkBuddy 等；`pull` 批量 + `watch` 差量。
 - **浏览器插件**：[Pentou Collector](https://chromewebstore.google.com/detail/pentou-collector/kfepbkfbnminfhcenaookdnikccdfmip) 已上架 Chrome 应用商店，装完填两项即可采 ChatGPT / DeepSeek 网页对话；插件只负责哑采集，解析与去重在服务端统一完成。
 - **Ingest Gateway**：幂等 upsert、密钥脱敏、超长会话自动降级瘦身，反复同步不产生垃圾副本。
 - **导入自动归类**：按平台落入对应文件夹，减少手动整理。
@@ -70,7 +70,7 @@ PenTou 把散落在十几个平台的对话收进本机，沉淀成**可检索�
 
 ![导入面板：拖拽导出文件、粘贴分享链接，以及 CLI 采集器与浏览器插件的接入说明](./assets/demo/screenshot-Import-interface.png)
 
-<sub>导入面板一处收口四条通道：平台导出文件、分享链接（8 个平台）、CLI 采集器（9 个桌面 agent）、浏览器插件，每张卡直接列出该通道已支持的平台与接入三步</sub>
+<sub>导入面板一处收口四条通道：平台导出文件、分享链接（8 个平台）、CLI 采集器（10 个桌面 agent）、浏览器插件，每张卡直接列出该通道已支持的平台与接入三步</sub>
 
 ### 2. 本地 Markdown 即真相源
 

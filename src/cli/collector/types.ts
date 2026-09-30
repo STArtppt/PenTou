@@ -13,6 +13,8 @@ export interface CollectorConfig {
     codex: { enabled: boolean; root?: string };
     "grok-cli": { enabled: boolean; root?: string };
     pi: { enabled: boolean; root?: string };
+    // WorkBuddy 5.x：~/.workbuddy/projects/<编码 cwd>/<sessionId>.jsonl
+    workbuddy: { enabled: boolean; root?: string };
     "copilot-vscode": { enabled: boolean; root?: string };
     // Antigravity CLI（spec collector-antigravity）：brain 目录下的 transcript jsonl
     "antigravity-cli": { enabled: boolean; root?: string };

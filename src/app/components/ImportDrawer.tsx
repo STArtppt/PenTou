@@ -35,6 +35,7 @@ const CLI_COLLECTOR_PLATFORMS = [
   "Codex",
   "Grok CLI",
   "Pi",
+  "WorkBuddy",
   "GitHub Copilot",
   "Copilot VS Code",
   "OpenCode",

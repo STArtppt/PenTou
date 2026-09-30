@@ -30,6 +30,7 @@ export const DEFAULT_AI_PRODUCTS: AiProduct[] = [
   { name: "Grok" },
   { name: "OpenCode" },
   { name: "Pi" },
+  { name: "WorkBuddy" },
 ];
 
 /** platform 与标准名或 alias 精确匹配（不折叠大小写）；未命中返回 null → 未分类。 */

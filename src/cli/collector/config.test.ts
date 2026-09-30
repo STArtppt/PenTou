@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import os from "node:os";
 import path from "node:path";
-import { defaultConfig, defaultOpencodeDb, normalizeConfig } from "./config";
+import { defaultConfig, defaultOpencodeDb, defaultWorkbuddyRoot, normalizeConfig } from "./config";
 
 const ORIGINAL_XDG_DATA_HOME = process.env.XDG_DATA_HOME;
 
@@ -39,6 +39,18 @@ describe("defaultOpencodeDb", () => {
 });
 
 // ── docs adapter 配置（spec collector-docs-push §docs adapter 的配置与注册）──────
+
+describe("workbuddy adapter config", () => {
+  it("defaults to ~/.workbuddy/projects and stays enabled when an old config omits it", () => {
+    expect(defaultWorkbuddyRoot()).toBe(path.join(os.homedir(), ".workbuddy", "projects"));
+    const cfg = normalizeConfig({
+      server: "http://localhost:5173",
+      token: "tok",
+      adapters: { "claude-code": { enabled: true } },
+    });
+    expect(cfg.adapters.workbuddy).toEqual({ enabled: true, root: defaultWorkbuddyRoot() });
+  });
+});
 
 describe("docs adapter config", () => {
   it("defaults to disabled with no registered dirs — nothing is scanned unless asked", () => {

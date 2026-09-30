@@ -170,7 +170,7 @@ npx -y @startist/pentou@latest collect pull
 npx -y @startist/pentou@latest collect pull --adapter <name> --verbose
 ```
 
-`<name>` 示例：`claude-code`、`waylog`、`codex`、`grok-cli`、`pi`、`copilot`、`copilot-vscode`、`opencode`、`hermes`、`cursor`、`docs`。
+`<name>` 示例：`claude-code`、`waylog`、`codex`、`grok-cli`、`pi`、`workbuddy`、`copilot`、`copilot-vscode`、`opencode`、`hermes`、`cursor`、`docs`。
 
 ---
 
